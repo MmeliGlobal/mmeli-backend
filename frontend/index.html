@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Mmeli Global – Premium E‑commerce</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: 'Segoe UI', Roboto, sans-serif; background:#f8f9fa; padding-bottom:70px; }
+:root { --navy:#0a192f; --gold:#d4af37; --orange:#e67e22; }
+.header { background:var(--navy); color:white; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; }
+.logo { display:flex; align-items:center; gap:10px; cursor:pointer; }
+.logo img { height:40px; width:auto; }
+.logo span { font-size:1.5rem; font-weight:bold; background:linear-gradient(135deg,var(--gold),var(--orange)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.cart-icon { background:var(--orange); padding:6px 14px; border-radius:30px; cursor:pointer; display:flex; align-items:center; gap:6px; font-size:0.9rem; }
+.search-bar { background:white; padding:6px 20px; border-bottom:2px solid var(--gold); position:relative; }
+.search-wrapper { display:flex; gap:8px; align-items:center; background:#f1f3f5; border-radius:40px; padding:4px 12px; }
+.search-wrapper input { flex:1; border:none; background:transparent; font-size:14px; outline:none; padding:6px 0; }
+.search-wrapper i { font-size:1rem; cursor:pointer; color:#666; }
+.autocomplete-items { position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ddd; border-radius:8px; max-height:200px; overflow-y:auto; z-index:1000; }
+.autocomplete-items div { padding:8px 12px; cursor:pointer; }
+.autocomplete-items div:hover { background:var(--gold); }
+.main-menu, .sub-menu { display:flex; gap:12px; padding:10px 16px; background:white; overflow-x:auto; white-space:nowrap; border-bottom:1px solid #eee; }
+.main-menu div, .sub-menu div { background:#f1f3f5; padding:5px 14px; border-radius:30px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:0.2s; font-size:0.9rem; }
+.main-menu div img { width:20px; height:20px; object-fit:contain; }
+.main-menu div:hover, .sub-menu div:hover { background:var(--gold); color:var(--navy); }
+.page { display:none; padding:16px; }
+.page.active { display:block; }
+#productsContainer { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:16px; }
+.product-card { background:white; border-radius:16px; overflow:hidden; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.1); transition:0.2s; }
+.product-card:hover { transform:translateY(-4px); }
+.product-card img { width:100%; aspect-ratio:1; object-fit:cover; }
+.product-info { padding:12px; text-align:center; }
+.product-name { font-weight:bold; font-size:0.9rem; }
+.product-price { color:var(--orange); font-weight:bold; margin-top:4px; }
+.bottom-nav { position:fixed; bottom:0; width:100%; background:var(--gold); display:flex; justify-content:space-around; padding:10px 0; border-top:1px solid var(--navy); z-index:100; }
+.bottom-nav div { font-size:24px; cursor:pointer; color:var(--navy); transition:0.2s; }
+.bottom-nav div:hover { color:var(--orange); }
+.footer { background:var(--navy); color:#ccc; padding:30px 20px 20px; margin-top:30px; border-top:3px solid var(--gold); }
+.footer-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:30px; max-width:1200px; margin:0 auto; }
+.footer-grid h4 { color:var(--gold); margin-bottom:15px; }
+.footer-grid a { color:#ccc; text-decoration:none; display:block; margin:8px 0; cursor:pointer; }
+.footer-grid a:hover { color:var(--gold); }
+.footer-bottom { text-align:center; padding-top:20px; margin-top:20px; border-top:1px solid rgba(255,255,255,0.1); font-size:0.8rem; }
+button { background:var(--orange); border:none; color:white; padding:8px 16px; border-radius:40px; cursor:pointer; font-weight:bold; transition:0.2s; }
+button:hover { background:var(--gold); color:var(--navy); }
+.admin-cards-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:16px; margin:20px 0; }
+.admin-card { background:white; border-radius:16px; padding:16px; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.1); transition:0.2s; text-align:center; font-weight:bold; }
+.admin-card:hover { transform:translateY(-2px); background:#f9f9f9; }
+#map { height:300px; border-radius:16px; margin-bottom:16px; background:#e9ecef; z-index:1; }
+.modal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:1000; }
+.modal-content { background:white; max-width:90%; width:700px; border-radius:16px; padding:20px; max-height:85vh; overflow-y:auto; position:relative; }
+.modal-body { min-height:200px; }
+.close-modal { position:absolute; top:10px; right:15px; font-size:28px; cursor:pointer; color:#888; }
+.close-modal:hover { color:var(--orange); }
+.checkout-step { display:none; background:white; padding:20px; border-radius:16px; margin-top:20px; }
+.checkout-step.active { display:block; }
+.timeline { display:flex; justify-content:space-between; margin-top:20px; background:white; padding:16px; border-radius:16px; }
+.timeline-step { text-align:center; flex:1; color:#999; }
+.timeline-step.completed { color:var(--orange); font-weight:bold; }
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:16px; margin-bottom:20px; }
+.stats-card { background:#f0f0f0; padding:16px; border-radius:16px; text-align:center; }
+input, select, textarea { width:100%; padding:8px; margin:5px 0; border-radius:12px; border:1px solid #ddd; }
+.cart-item { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding:10px 0; }
+.product-detail-layout { display:flex; flex-direction:column; gap:20px; }
+@media (min-width: 992px) { .product-detail-layout { flex-direction:row; } .product-detail-left { flex:2; } .product-detail-right { flex:1; } }
+.recommend-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(120px,1fr)); gap:12px; margin-top:10px; }
+.recommend-card { background:white; border-radius:12px; overflow:hidden; cursor:pointer; text-align:center; padding:8px; }
+.recommend-card img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; }
+.color-size-row { display:flex; gap:15px; align-items:center; flex-wrap:wrap; margin:15px 0; }
+.add-to-cart-center { display:flex; justify-content:center; margin:20px 0; }
+.share-btn { background:transparent; color:var(--navy); border:1px solid var(--navy); padding:4px 10px; border-radius:30px; cursor:pointer; float:right; font-size:0.8rem; }
+.popup-promo { position:fixed; bottom:100px; right:20px; background:white; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.2); width:280px; z-index:1000; display:none; }
+.popup-promo img { width:100%; border-radius:16px 16px 0 0; }
+.popup-promo .popup-content { padding:12px; }
+.popup-promo .close-popup { float:right; cursor:pointer; }
+@media (max-width:600px) { #productsContainer { grid-template-columns:repeat(2,1fr); } }
+</style>
+</head>
+<body>
+
+<header class="header">
+<div class="logo" id="logoArea">
+<img src="logo.png" alt="Logo" id="siteLogo" style="height:40px;">
+<span>Mmeli Global</span>
+</div>
+<div class="cart-icon" onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i> <span id="cartCount">0</span></div>
+</header>
+
+<div class="search-bar">
+<div class="search-wrapper">
+<input type="text" id="searchInput" placeholder="Search products..." autocomplete="off" onfocus="this.removeAttribute('readonly')">
+<i class="fas fa-search" onclick="searchProducts()"></i>
+<label for="scanInput" style="cursor:pointer;"><i class="fas fa-camera"></i></label>
+<input type="file" id="scanInput" hidden accept="image/*">
+</div>
+<div id="autocompleteList" class="autocomplete-items"></div>
+</div>
+
+<div id="mainMenu" class="main-menu"></div>
+<div id="subMenu" class="sub-menu"></div>
+
+<section id="home" class="page active"><div id="productsContainer"></div></section>
+<section id="productPage" class="page"><button onclick="goBackHome()"><i class="fas fa-arrow-left"></i> Back</button><div id="productDetailContainer"></div></section>
+<section id="cart" class="page"><h3>Your Cart</h3><div id="cartList"></div><div><input type="text" id="promoCodeInput" placeholder="Discount code"><button onclick="applyDiscount()">Apply</button><span id="discountDisplay"></span></div><button onclick="goToCheckout()"><i class="fab fa-whatsapp"></i> Proceed to Checkout</button></section>
+<section id="checkoutPage" class="page">
+<h3>Checkout</h3>
+<div class="checkout-step active" id="stepShipping">
+<h4>Shipping Address</h4>
+<input type="text" id="checkoutAddress" placeholder="Address" value=""><button onclick="nextStep()">Next</button>
+</div>
+<div class="checkout-step" id="stepDelivery">
+<h4>Delivery Method</h4>
+<label><input type="radio" name="delivery" value="standard" checked> Standard (3-5 days) – $5</label>
+<label><input type="radio" name="delivery" value="express"> Express (1-2 days) – $15</label>
+<button onclick="nextStep()">Next</button>
+</div>
+<div class="checkout-step" id="stepPayment">
+<h4>Payment</h4>
+<p>You will be redirected to WhatsApp to confirm payment.</p>
+<button onclick="completeCheckout()">Place Order</button>
+</div>
+</section>
+<section id="tracking" class="page"><h3>Track Your Order</h3><div id="map"></div><input type="text" id="trackCode" placeholder="Enter Tracking Code"><button onclick="trackOrder()"><i class="fas fa-search"></i> Track</button><div id="trackInfo"></div><div id="trackTimeline" class="timeline"></div></section>
+<section id="promo" class="page"><h3>Special Offers</h3><div id="promoList"></div></section>
+<section id="account" class="page">
+<div id="loginBox">
+<h3>Customer Login</h3>
+<input type="email" id="loginEmail" placeholder="Email" autocomplete="off"><input type="password" id="loginPassword" placeholder="Password"><button onclick="login()">Login</button>
+<hr><h3>New Customer? Register</h3>
+<input type="text" id="regName" placeholder="Full Name"><input type="email" id="regEmail" placeholder="Email" autocomplete="off"><input type="tel" id="regPhone" placeholder="Phone"><input type="text" id="regAddress" placeholder="Address"><input type="password" id="regPassword" placeholder="Password"><button onclick="register()">Register</button>
+</div>
+<div id="dashboard" style="display:none;">
+<h3>Welcome, <span id="userName"></span></h3>
+<div style="display:flex; gap:10px; flex-wrap:wrap; margin:15px 0;">
+<button onclick="showMyOrders()"><i class="fas fa-box"></i> My Orders</button>
+<button onclick="showMyQuotations()"><i class="fas fa-file-invoice"></i> My Quotations</button>
+<button onclick="showMyReturns()"><i class="fas fa-undo-alt"></i> My Returns</button>
+<button onclick="openShipmentTracking()"><i class="fas fa-shipping-fast"></i> Track Shipment</button>
+<button onclick="showProfile()"><i class="fas fa-user-edit"></i> Edit Profile</button>
+<button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+</div>
+<div id="customerData"></div>
+</div>
+</section>
+<section id="adminDashboard" class="page">
+<div id="adminLoginDiv"><h3>Admin Login</h3><input type="email" id="adminEmail" placeholder="Email" autocomplete="off"><input type="password" id="adminPassword" placeholder="Password"><button onclick="adminLogin()">Login</button></div>
+<div id="adminPanel" style="display:none;">
+<h3>Admin Dashboard</h3>
+<div class="admin-cards-grid">
+<div class="admin-card" data-modal="dashboardStats">📊 Dashboard</div>
+<div class="admin-card" data-modal="manageProducts">🛍️ Products</div>
+<div class="admin-card" data-modal="addProduct">➕ Add Product</div>
+<div class="admin-card" data-modal="manageOrders">📦 Orders</div>
+<div class="admin-card" data-modal="discounts">🏷️ Discounts</div>
+<div class="admin-card" data-modal="returns">🔄 Returns</div>
+<div class="admin-card" data-modal="inventory">📦 Inventory</div>
+<div class="admin-card" data-modal="managePolicies">📜 Policies</div>
+<div class="admin-card" data-modal="manageShipments">🚚 Shipments</div>
+<div class="admin-card" data-modal="broadcast">📢 Broadcast</div>
+</div>
+<button onclick="switchPage('account')"><i class="fas fa-arrow-left"></i> Back to Site</button>
+</div>
+</section>
+
+<!-- MODALS -->
+<div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalManageProducts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalAddProduct" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalManageOrders" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalDiscounts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalReturns" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalInventory" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalManagePolicies" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalManageShipments" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalBroadcast" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="shipmentTrackingModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeShipmentModal()">&times;</span><h3>Track Your Shipment</h3><input type="text" id="shipmentCode" placeholder="Enter tracking code"><button onclick="fetchShipmentStatus()">Track</button><div id="shipmentStatus"></div></div></div>
+<div id="quoteModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div id="quotePreview"></div></div></div>
+<div id="popupPromo" class="popup-promo"><span class="close-popup">&times;</span><div id="popupContent"></div></div>
+
+<nav class="bottom-nav">
+<div onclick="resetHome()"><i class="fas fa-home"></i></div>
+<div onclick="switchPage('promo')"><i class="fas fa-fire"></i></div>
+<div onclick="switchPage('tracking')"><i class="fas fa-map-marker-alt"></i></div>
+<div onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i></div>
+<div onclick="switchPage('account')"><i class="fas fa-user"></i></div>
+</nav>
+
+<footer class="footer">
+<div class="footer-grid">
+<div><h4>Mmeli Global</h4><p>Premium products delivered worldwide.</p><p><i class="fab fa-whatsapp"></i> +263 77 687 1711</p><p><i class="far fa-envelope"></i> info@mmeliglobal.com</p></div>
+<div><h4>Quick Links</h4><a href="#" onclick="resetHome()">Home</a><a href="#" onclick="switchPage('promo')">Promotions</a><a href="#" onclick="switchPage('tracking')">Track Order</a><a href="#" onclick="switchPage('account')">My Account</a></div>
+<div><h4>Policies</h4><a href="#" id="privacyLink">Privacy Policy</a><a href="#" id="termsLink">Terms of Service</a><a href="#" id="shippingLink">Shipping Info</a><a href="#" id="returnsLink">Returns & Refunds</a></div>
+<div><h4>Newsletter</h4><p>Get updates</p><input type="email" id="subEmail" placeholder="Email"><input type="tel" id="subPhone" placeholder="WhatsApp"><button onclick="subscribe()">Subscribe</button></div>
+</div>
+<div class="footer-bottom">&copy; 2025 Mmeli Global. All rights reserved.</div>
+</footer>
+
+<script>
+const API = '/api';
+let allProducts = [];
+let currentProduct = null;
+let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+let token = localStorage.getItem('token');
+let user = JSON.parse(localStorage.getItem('user') || 'null');
+let map = null;
+let appliedDiscount = null;
+let retryCount = 0;
+
+// Category hierarchy (same as before)
+const categoryHierarchy = {
+"Phones": { "Smartphones": ["Android Phones", "iPhones", "Rugged Phones"], "Feature Phones": ["Keypad Phones"], "Accessories": ["Chargers", "Power Banks", "Phone Cases", "Screen Protectors"] },
+"Cameras": { "Cameras": ["Digital Cameras", "DSLR Cameras", "Mirrorless Cameras"], "Video Equipment": ["Camcorders", "Action Cameras"], "Accessories": ["Tripods", "Lighting", "Microphones"] },
+"Farming": { "Farm Machinery": ["Tractors", "Harvesting Machines", "Planting Machines"], "Irrigation": ["Water Pumps", "Systems"], "Tools": ["Hand Tools", "Power Tools"] },
+"Construction": { "Heavy Equipment": ["Excavators", "Loaders"], "Materials": ["Cement Products", "Steel Materials"], "Tools": ["Power Tools", "Hand Tools"] },
+"Electronics": { "Consumer Electronics": ["Televisions", "Audio"], "Accessories": ["Cables", "Adapters"], "Smart Devices": ["Smart Home", "Wearables"] },
+"Hardware": { "Tools": ["Hand Tools", "Power Tools"], "Fasteners": ["Screws", "Bolts & Nuts"], "Safety Equipment": ["Gloves", "Helmets"] },
+"Home Appliances": { "Kitchen Appliances": ["Refrigerators", "Cooking", "Small Appliances"], "Cleaning": ["Washing Machines", "Vacuum Cleaners"], "Climate": ["Air Conditioners", "Fans"] },
+"Beauty": { "Hair Products": ["Wigs", "Extensions", "Hair Care"], "Salon Equipment": ["Chairs", "Stations"], "Beauty Products": ["Skincare", "Makeup"] },
+"Women Hair": { "Raw Hair": ["Brazilian Hair", "Peruvian Hair"], "Wigs": ["Lace Front Wigs", "Full Lace Wigs"], "Accessories": ["Closures", "Frontals"] },
+"E-Bikes": { "Electric Bikes": ["City Bikes", "Off Road Bikes"], "Scooters": ["Electric Scooters", "Mobility Scooters"], "Accessories": ["Batteries", "Chargers"] },
+"Furniture": { "Home Furniture": ["Living Room", "Bedroom"], "Office Furniture": ["Chairs", "Desks"], "Outdoor": ["Garden Chairs", "Tables"] },
+"Industrial": { "Machines": ["CNC Machines", "Laser Machines"], "Packaging": ["Sealing Machines", "Filling Machines"], "Textile": ["Sewing Machines"] },
+"Fashion": { "Women Clothing": ["Dresses", "Tops", "Bottoms"], "Men Clothing": ["Shirts", "Pants"], "Footwear": ["Sneakers", "Sandals"], "Accessories": ["Bags", "Jewelry"] },
+"Fitness": { "Strength Equipment": ["Dumbbells", "Benches"], "Cardio": ["Treadmills", "Bikes"] },
+"Animal": { "Poultry Equipment": ["Incubators", "Feeders"], "Livestock Equipment": ["Drinkers", "Housing"] },
+"Packaging": { "Packaging": ["Cartons", "Plastic Packaging"], "Handling": ["Trolleys", "Pallet Equipment"] }
+};
+const subcategoryIcons = {
+"Smartphones": "https://cdn-icons-png.flaticon.com/512/1055/1055685.png", "Feature Phones": "https://cdn-icons-png.flaticon.com/512/180/180027.png", "Accessories": "https://cdn-icons-png.flaticon.com/512/1510/1510665.png",
+"Cameras": "https://cdn-icons-png.flaticon.com/512/1046/1046773.png", "Video Equipment": "https://cdn-icons-png.flaticon.com/512/1686/1686802.png", "Farm Machinery": "https://cdn-icons-png.flaticon.com/512/2964/2964420.png",
+"Irrigation": "https://cdn-icons-png.flaticon.com/512/1591/1591730.png", "Heavy Equipment": "https://cdn-icons-png.flaticon.com/512/2991/2991654.png", "Materials": "https://cdn-icons-png.flaticon.com/512/1665/1665742.png",
+"Consumer Electronics": "https://cdn-icons-png.flaticon.com/512/2320/2320352.png", "Tools": "https://cdn-icons-png.flaticon.com/512/1843/1843315.png", "Fasteners": "https://cdn-icons-png.flaticon.com/512/1046/1046795.png",
+"Kitchen Appliances": "https://cdn-icons-png.flaticon.com/512/4060/4060889.png", "Cleaning": "https://cdn-icons-png.flaticon.com/512/2195/2195960.png", "Hair Products": "https://cdn-icons-png.flaticon.com/512/2909/2909902.png",
+"Salon Equipment": "https://cdn-icons-png.flaticon.com/512/3135/3135715.png", "Raw Hair": "https://cdn-icons-png.flaticon.com/512/3508/3508206.png", "Wigs": "https://cdn-icons-png.flaticon.com/512/2936/2936842.png",
+"Electric Bikes": "https://cdn-icons-png.flaticon.com/512/3095/3095722.png", "Scooters": "https://cdn-icons-png.flaticon.com/512/1355/1355425.png", "Home Furniture": "https://cdn-icons-png.flaticon.com/512/3448/3448609.png",
+"Office Furniture": "https://cdn-icons-png.flaticon.com/512/2672/2672223.png", "Machines": "https://cdn-icons-png.flaticon.com/512/2140/2140641.png", "Packaging": "https://cdn-icons-png.flaticon.com/512/2421/2421755.png",
+"Women Clothing": "https://cdn-icons-png.flaticon.com/512/921/921504.png", "Men Clothing": "https://cdn-icons-png.flaticon.com/512/1087/1087811.png", "Footwear": "https://cdn-icons-png.flaticon.com/512/2906/2906266.png",
+"Strength Equipment": "https://cdn-icons-png.flaticon.com/512/2121/2121811.png", "Cardio": "https://cdn-icons-png.flaticon.com/512/2362/2362147.png", "Poultry Equipment": "https://cdn-icons-png.flaticon.com/512/2752/2752783.png",
+"Livestock Equipment": "https://cdn-icons-png.flaticon.com/512/1995/1995584.png"
+};
+const defaultIcon = "https://cdn-icons-png.flaticon.com/512/456/456212.png";
+
+async function apiCall(endpoint, options = {}) {
+const headers = { 'Content-Type': 'application/json' };
+if (token) headers['Authorization'] = `Bearer ${token}`;
+const res = await fetch(API + endpoint, { ...options, headers });
+if (!res.ok) throw new Error((await res.json()).error || 'Request failed');
+return res.json();
+}
+
+// Shuffle with phone bias
+function shuffleArray(arr) {
+for (let i = arr.length - 1; i > 0; i--) {
+const j = Math.floor(Math.random() * (i + 1));
+[arr[i], arr[j]] = [arr[j], arr[i]];
+}
+return arr;
+}
+function getShuffledProductsWithPhoneBias(products) {
+const phones = products.filter(p => p.cat === 'Phones');
+const nonPhones = products.filter(p => p.cat !== 'Phones');
+let targetPhoneCount = Math.ceil(products.length * 0.3);
+targetPhoneCount = Math.min(targetPhoneCount, phones.length);
+let targetNonPhoneCount = products.length - targetPhoneCount;
+targetNonPhoneCount = Math.min(targetNonPhoneCount, nonPhones.length);
+const selectedPhones = shuffleArray([...phones]).slice(0, targetPhoneCount);
+const selectedNonPhones = shuffleArray([...nonPhones]).slice(0, targetNonPhoneCount);
+return shuffleArray([...selectedPhones, ...selectedNonPhones]);
+}
+
+// Load products (public, no token needed)
+async function loadProducts() {
+try {
+const res = await fetch(API + '/products');
+if (!res.ok) throw new Error(await res.text());
+const data = await res.json();
+allProducts = data;
+localStorage.setItem('cachedProducts', JSON.stringify(allProducts));
+displayProducts(getShuffledProductsWithPhoneBias(allProducts));
+buildMainMenu();
+if (!sessionStorage.getItem('popupShown')) { showRandomPromo(); sessionStorage.setItem('popupShown', 'true'); }
+} catch(e) {
+console.error(e);
+const cached = localStorage.getItem('cachedProducts');
+if (cached) {
+allProducts = JSON.parse(cached);
+displayProducts(getShuffledProductsWithPhoneBias(allProducts));
+buildMainMenu();
+document.getElementById('productsContainer').innerHTML = '<p>Using cached products. Refresh later.</p>';
+} else {
+document.getElementById('productsContainer').innerHTML = '<p>Error loading products. Check backend and Supabase key.</p>';
+}
+}
+}
+
+function displayProducts(products) {
+const container = document.getElementById('productsContainer');
+if (!container) return;
+container.innerHTML = '';
+if (products.length === 0) { container.innerHTML = '<p>No products found.</p>'; return; }
+products.forEach(p => {
+const card = document.createElement('div');
+card.className = 'product-card';
+card.innerHTML = `<img src="${p.main_image || 'https://picsum.photos/300/200'}" alt="${escapeHtml(p.name)}"><div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div><div class="product-price">$${p.price}</div></div>`;
+card.onclick = (e) => { e.stopPropagation(); openProduct(p.id); };
+container.appendChild(card);
+});
+}
+
+function buildMainMenu() {
+const mainMenu = document.getElementById('mainMenu');
+mainMenu.innerHTML = '';
+const categories = Object.keys(categoryHierarchy);
+const categoryImages = {
+'Phones': 'https://cdn-icons-png.flaticon.com/512/1055/1055685.png',
+'Cameras': 'https://cdn-icons-png.flaticon.com/512/1046/1046773.png',
+'Farming': 'https://cdn-icons-png.flaticon.com/512/2964/2964420.png',
+'Construction': 'https://cdn-icons-png.flaticon.com/512/2991/2991654.png',
+'Electronics': 'https://cdn-icons-png.flaticon.com/512/2320/2320352.png',
+'Hardware': 'https://cdn-icons-png.flaticon.com/512/1843/1843315.png',
+'Home Appliances': 'https://cdn-icons-png.flaticon.com/512/4060/4060889.png',
+'Beauty': 'https://cdn-icons-png.flaticon.com/512/2909/2909902.png',
+'Women Hair': 'https://cdn-icons-png.flaticon.com/512/3508/3508206.png',
+'E-Bikes': 'https://cdn-icons-png.flaticon.com/512/3095/3095722.png',
+'Furniture': 'https://cdn-icons-png.flaticon.com/512/3448/3448609.png',
+'Industrial': 'https://cdn-icons-png.flaticon.com/512/2140/2140641.png',
+'Fashion': 'https://cdn-icons-png.flaticon.com/512/921/921504.png',
+'Fitness': 'https://cdn-icons-png.flaticon.com/512/2121/2121811.png',
+'Animal': 'https://cdn-icons-png.flaticon.com/512/2752/2752783.png',
+'Packaging': 'https://cdn-icons-png.flaticon.com/512/2421/2421755.png'
+};
+categories.forEach(cat => {
+const catDiv = document.createElement('div');
+const imgUrl = categoryImages[cat] || defaultIcon;
+catDiv.innerHTML = `<img src="${imgUrl}" style="width:20px;height:20px;"> ${cat}`;
+catDiv.onclick = () => selectMainCategory(cat);
+mainMenu.appendChild(catDiv);
+});
+}
+
+function selectMainCategory(category) {
+const filtered = allProducts.filter(p => p.cat === category);
+displayProducts(filtered);
+const subMenu = document.getElementById('subMenu');
+subMenu.innerHTML = '';
+const subcats = categoryHierarchy[category];
+if (subcats) {
+Object.keys(subcats).forEach(sub => {
+const subDiv = document.createElement('div');
+const iconUrl = subcategoryIcons[sub] || defaultIcon;
+subDiv.innerHTML = `<img src="${iconUrl}" style="width:20px; height:20px; margin-right:4px;"> ${sub}`;
+subDiv.onclick = () => selectSubCategory(category, sub);
+subMenu.appendChild(subDiv);
+});
+}
+}
+
+function selectSubCategory(category, sub) {
+const leaves = categoryHierarchy[category][sub];
+if (leaves) {
+const filtered = allProducts.filter(p => leaves.includes(p.subcat));
+displayProducts(filtered);
+}
+}
+
+async function openProduct(id) {
+try {
+let product = allProducts.find(p => p.id == id);
+if (!product) {
+const res = await fetch(API + `/products/${id}`);
+if (!res.ok) throw new Error('Product not found');
+product = await res.json();
+}
+currentProduct = product;
+renderProductDetail(product);
+switchPage('productPage');
+history.pushState(null, '', `#/product/${id}`);
+} catch(e) { console.error(e); alert('Could not open product'); }
+}
+
+function renderProductDetail(p) {
+const container = document.getElementById('productDetailContainer');
+container.innerHTML = `<div class="product-detail-layout"><div class="product-detail-left"><button class="share-btn" onclick="shareProduct()"><i class="fas fa-share-alt"></i> Share</button><img src="${p.main_image}" style="width:100%; border-radius:16px; margin:10px 0;"><h2>${p.name}</h2><p>${p.description || ''}</p><div id="variantSelector"></div><div class="add-to-cart-center"><button onclick="addToCartFromDetail()"><i class="fas fa-cart-plus"></i> Add to Cart</button></div></div><div class="product-detail-right"><h4>You may also like</h4><div id="recommendationsContainer" class="recommend-grid"></div></div></div>`;
+loadRecommendations(p.cat);
+const variantDiv = document.getElementById('variantSelector');
+if (p.colors && p.colors.length) variantDiv.innerHTML += `<div><label>Color:</label> <select id="productColor">${p.colors.map(c => `<option>${c}</option>`).join('')}</select></div>`;
+if (p.size_options && p.size_options.length) {
+variantDiv.innerHTML += `<div><label>Size:</label> <select id="productSize">${p.size_options.map(s => `<option value="${s.price}">${s.size} - $${s.price}</option>`).join('')}</select></div>`;
+document.getElementById('productSize')?.addEventListener('change', () => {
+document.querySelector('.add-to-cart-center button').innerHTML = `<i class="fas fa-cart-plus"></i> Add to Cart ($${document.getElementById('productSize').value})`;
+});
+}
+}
+
+async function loadRecommendations(category) {
+let recs = allProducts.filter(p => p.cat === category && p.id !== currentProduct.id).slice(0, 6);
+if (recs.length < 4) recs = allProducts.filter(p => p.id !== currentProduct.id).slice(0, 6);
+const container = document.getElementById('recommendationsContainer');
+container.innerHTML = recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${p.main_image}" loading="lazy"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('');
+}
+
+function shareProduct() { if (navigator.share) navigator.share({ title: currentProduct.name, url: window.location.href }); else { navigator.clipboard.writeText(window.location.href); alert('Link copied'); } }
+function addToCartFromDetail() {
+const sizeSelect = document.getElementById('productSize');
+const price = sizeSelect ? parseFloat(sizeSelect.value) : currentProduct.price;
+const size = sizeSelect ? sizeSelect.options[sizeSelect.selectedIndex].text.split(' - ')[0] : 'Standard';
+const color = document.getElementById('productColor')?.value || 'Default';
+cart.push({ id: currentProduct.id, name: currentProduct.name, price, size, color, image: currentProduct.main_image });
+localStorage.setItem('cart', JSON.stringify(cart));
+updateCartCount();
+alert('Added to cart');
+}
+function updateCartCount() { document.getElementById('cartCount').innerText = cart.length; }
+function renderCart() {
+const container = document.getElementById('cartList');
+if (!cart.length) { container.innerHTML = '<p>Cart is empty.</p>'; return; }
+let html = '', total = 0;
+cart.forEach((item, i) => {
+total += item.price;
+html += `<div class="cart-item"><div><img src="${item.image}" width="50" style="border-radius:8px;"> ${item.name} (${item.size}, ${item.color})</div><div>$${item.price} <button onclick="removeFromCart(${i})">Remove</button></div></div>`;
+});
+html += `<div class="cart-item"><strong>Total: $${total.toFixed(2)}</strong></div>`;
+container.innerHTML = html;
+if (document.getElementById('discountDisplay')) document.getElementById('discountDisplay').remove();
+}
+function removeFromCart(i) { cart.splice(i,1); localStorage.setItem('cart',JSON.stringify(cart)); updateCartCount(); renderCart(); }
+
+async function applyDiscount() {
+const code = document.getElementById('promoCodeInput').value;
+if (!code) return;
+const total = cart.reduce((s,i)=>s+i.price,0);
+try {
+const res = await apiCall('/marketing/validate', { method:'POST', body: JSON.stringify({ code, cartTotal: total }) });
+appliedDiscount = { code, amount: res.discountAmount };
+const discountSpan = document.getElementById('discountDisplay') || document.createElement('span');
+discountSpan.id = 'discountDisplay';
+discountSpan.innerHTML = `<br>Discount applied: -$${res.discountAmount.toFixed(2)}`;
+document.getElementById('cartList').after(discountSpan);
+} catch(e) { alert(e.message); }
+}
+
+let checkoutData = { shippingAddress: '', deliveryMethod: 'standard', deliveryCost: 5 };
+function goToCheckout() {
+if (!user) { alert('Please login first'); switchPage('account'); return; }
+if (!cart.length) { alert('Cart empty'); return; }
+document.getElementById('checkoutAddress').value = user.address || '';
+document.querySelectorAll('.checkout-step').forEach(step => step.classList.remove('active'));
+document.getElementById('stepShipping').classList.add('active');
+switchPage('checkoutPage');
+}
+function nextStep() {
+const active = document.querySelector('.checkout-step.active');
+if (active.id === 'stepShipping') {
+checkoutData.shippingAddress = document.getElementById('checkoutAddress').value;
+if (!checkoutData.shippingAddress) { alert('Enter address'); return; }
+active.classList.remove('active');
+document.getElementById('stepDelivery').classList.add('active');
+} else if (active.id === 'stepDelivery') {
+const selected = document.querySelector('input[name="delivery"]:checked').value;
+checkoutData.deliveryMethod = selected;
+checkoutData.deliveryCost = selected === 'express' ? 15 : 5;
+active.classList.remove('active');
+document.getElementById('stepPayment').classList.add('active');
+}
+}
+async function completeCheckout() {
+const trackingCode = 'MM' + Math.floor(Math.random()*1000000);
+let total = cart.reduce((s,i)=>s+i.price,0);
+if (appliedDiscount) total -= appliedDiscount.amount;
+total += checkoutData.deliveryCost;
+const order = { tracking_code: trackingCode, user_id: user.id, user_data: user, items: cart, total, status: 'Processing', paid: false, packed: false, shipped: false, delivered: false };
+try {
+await apiCall('/orders', { method:'POST', body: JSON.stringify(order) });
+let msg = `New order%0ATracking: ${trackingCode}%0ATotal: $${total}%0AItems:%0A` + cart.map(i=>`${i.name} - $${i.price}`).join('%0A');
+window.open(`https://wa.me/263776871711?text=${msg}`);
+cart = []; localStorage.setItem('cart',JSON.stringify(cart)); updateCartCount(); renderCart();
+appliedDiscount = null;
+alert(`Order placed! Tracking code: ${trackingCode}`);
+switchPage('home');
+} catch(e) { alert('Order failed: '+e.message); }
+}
+
+async function trackOrder() {
+const code = document.getElementById('trackCode').value.trim();
+if (!code) return alert('Enter tracking code');
+try {
+const order = await apiCall(`/orders/track/${code}`);
+document.getElementById('trackInfo').innerHTML = `<strong>Status:</strong> ${order.status}<br><strong>Items:</strong> ${order.items.map(i=>i.name).join(', ')}<br><strong>Total:</strong> $${order.total}`;
+const timeline = document.getElementById('trackTimeline');
+const steps = ['Ordered', 'Paid', 'Packed', 'Shipped', 'Delivered'];
+let stepStatus = { Ordered: true, Paid: order.paid, Packed: order.packed, Shipped: order.shipped, Delivered: order.delivered };
+timeline.innerHTML = `<div class="timeline">${steps.map(s => `<div class="timeline-step ${stepStatus[s] ? 'completed' : ''}">${s}</div>`).join('')}</div>`;
+if (map) map.remove();
+map = L.map('map').setView([-17.825,31.033], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+if (order.location_lat && order.location_lng) L.marker([order.location_lat, order.location_lng]).addTo(map).bindPopup('Current Location').openPopup();
+else L.marker([-17.825,31.033]).addTo(map).bindPopup('Mmeli Global').openPopup();
+} catch(e) { alert('Order not found'); }
+}
+
+// Autocomplete & scan
+document.getElementById('searchInput').addEventListener('input', function() {
+const term = this.value.toLowerCase();
+const list = document.getElementById('autocompleteList');
+if (!term) { list.innerHTML = ''; return; }
+const matches = allProducts.filter(p => p.name.toLowerCase().includes(term)).slice(0,5);
+list.innerHTML = matches.map(p => `<div onclick="openProduct(${p.id})">${p.name}</div>`).join('');
+});
+document.addEventListener('click', function(e) { if (!e.target.closest('.search-bar')) document.getElementById('autocompleteList').innerHTML = ''; });
+document.getElementById('scanInput')?.addEventListener('change', function(e) {
+const file = e.target.files[0];
+if (!file) return;
+alert('Scanning product... (demo)');
+displayProducts(getShuffledProductsWithPhoneBias(allProducts));
+switchPage('home');
+this.value = '';
+});
+
+// Auth
+async function register() {
+const name = document.getElementById('regName').value, email = document.getElementById('regEmail').value, phone = document.getElementById('regPhone').value, address = document.getElementById('regAddress').value, password = document.getElementById('regPassword').value;
+if (!name || !email || !password) return alert('Fill required fields');
+try {
+const data = await apiCall('/auth/register', { method:'POST', body: JSON.stringify({ name, surname: '', email, phone, address, password }) });
+token = data.token; user = data.user; localStorage.setItem('token',token); localStorage.setItem('user',JSON.stringify(user));
+document.getElementById('loginBox').style.display='none'; document.getElementById('dashboard').style.display='block'; document.getElementById('userName').innerText = user.name;
+alert('Registration successful!');
+} catch(e) { alert('Registration failed: '+e.message); }
+}
+async function login() {
+const email = document.getElementById('loginEmail').value, password = document.getElementById('loginPassword').value;
+if (!email || !password) return alert('Enter credentials');
+try {
+const data = await apiCall('/auth/login', { method:'POST', body: JSON.stringify({ email, password }) });
+token = data.token; user = data.user; localStorage.setItem('token',token); localStorage.setItem('user',JSON.stringify(user));
+document.getElementById('loginBox').style.display='none'; document.getElementById('dashboard').style.display='block'; document.getElementById('userName').innerText = user.name;
+} catch(e) { alert('Login failed: '+e.message); }
+}
+function logout() { token=null; user=null; localStorage.clear(); location.reload(); }
+async function showMyOrders() {
+const orders = await apiCall('/orders/my-orders');
+document.getElementById('customerData').innerHTML = `<h4>My Orders</h4>${orders.map(o=>`<div style="border:1px solid #ddd; padding:8px; margin:8px 0; border-radius:12px;"><strong>${o.tracking_code}</strong> - ${o.status} - $${o.total} <button onclick="trackOrderCode('${o.tracking_code}')">Track</button></div>`).join('')}`;
+}
+async function showMyQuotations() {
+try {
+const quotes = await apiCall('/quotations/my-quotations');
+document.getElementById('customerData').innerHTML = `<h4>My Quotations</h4>${quotes.map(q=>`<div style="border:1px solid #ddd; padding:8px; margin:8px 0; border-radius:12px;">${q.quote_number} - $${q.total} <button onclick="viewQuote(${q.id})">View</button></div>`).join('')}`;
+} catch(e) { document.getElementById('customerData').innerHTML = '<p>No quotations yet.</p>'; }
+}
+async function showMyReturns() {
+try {
+const returns = await apiCall('/returns/my-returns');
+document.getElementById('customerData').innerHTML = `<h4>My Returns</h4>${returns.map(r=>`<div style="border:1px solid #ddd; padding:8px; margin:8px 0; border-radius:12px;">Return for order #${r.order_id}: ${r.status} - ${r.reason}</div>`).join('')}`;
+} catch(e) { document.getElementById('customerData').innerHTML = '<p>No returns yet.</p>'; }
+}
+async function viewQuote(id) { const q = await apiCall(`/quotations/${id}`); document.getElementById('quotePreview').innerHTML = `<pre>${JSON.stringify(q,null,2)}</pre>`; document.getElementById('quoteModal').style.display='flex'; }
+function closeQuoteModal() { document.getElementById('quoteModal').style.display='none'; }
+function showProfile() {
+document.getElementById('customerData').innerHTML = `<h4>Edit Profile</h4><input id="editName" value="${user.name}"><br><input id="editPhone" value="${user.phone || ''}"><br><input id="editAddress" value="${user.address || ''}"><br><button onclick="updateProfile()">Save Changes</button>`;
+}
+async function updateProfile() {
+const name = document.getElementById('editName').value, phone = document.getElementById('editPhone').value, address = document.getElementById('editAddress').value;
+const updated = await apiCall('/users/profile', { method:'PUT', body: JSON.stringify({ name, phone, address }) });
+user = updated; localStorage.setItem('user',JSON.stringify(user));
+document.getElementById('userName').innerText = user.name;
+alert('Profile updated'); showProfile();
+}
+
+function openShipmentTracking() { document.getElementById('shipmentTrackingModal').style.display = 'flex'; }
+function closeShipmentModal() { document.getElementById('shipmentTrackingModal').style.display = 'none'; }
+async function fetchShipmentStatus() {
+const code = document.getElementById('shipmentCode').value.trim();
+if (!code) return alert('Enter tracking code');
+try {
+const shipment = await apiCall(`/shipments/track/${code}`);
+document.getElementById('shipmentStatus').innerHTML = `<strong>Status:</strong> ${shipment.status}<br><strong>Client:</strong> ${shipment.client.name}<br><strong>Receiver:</strong> ${shipment.receiver.name}<br><strong>Notes:</strong> ${shipment.notes || '—'}<br>${shipment.current_location_lat ? `<strong>Location:</strong> <a href="https://www.openstreetmap.org/?mlat=${shipment.current_location_lat}&mlon=${shipment.current_location_lng}" target="_blank">View on map</a>` : ''}`;
+} catch(e) { document.getElementById('shipmentStatus').innerHTML = '<p style="color:red;">Shipment not found.</p>'; }
+}
+
+// ==================== ADMIN MODALS ====================
+async function adminLogin() {
+const email = document.getElementById('adminEmail').value;
+const password = document.getElementById('adminPassword').value;
+try {
+const res = await fetch('/api/auth/login', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ email, password })
+});
+if (!res.ok) throw new Error(await res.text());
+const data = await res.json();
+if (!data.user || data.user.role !== 'admin') throw new Error('Not admin');
+token = data.token;
+user = data.user;
+localStorage.setItem('token', token);
+localStorage.setItem('user', JSON.stringify(user));
+document.getElementById('adminLoginDiv').style.display = 'none';
+document.getElementById('adminPanel').style.display = 'block';
+} catch(e) {
+alert('Admin login failed: ' + e.message);
+}
+}
+
+function initAdminCards() {
+document.querySelectorAll('.admin-card').forEach(card => {
+card.addEventListener('click', () => {
+const modalId = card.getAttribute('data-modal');
+if (modalId) openAdminModal(modalId);
+});
+});
+}
+
+function openAdminModal(modalId) {
+const modal = document.getElementById(`modal${modalId.charAt(0).toUpperCase() + modalId.slice(1)}`);
+if (!modal) return;
+const body = modal.querySelector('.modal-body');
+switch(modalId) {
+case 'dashboardStats': loadDashboardStats(body); break;
+case 'manageProducts': loadProductsModal(body); break;
+case 'addProduct': showAddProductForm(body); break;
+case 'manageOrders': loadOrdersModal(body); break;
+case 'discounts': loadDiscountsModal(body); break;
+case 'returns': loadReturnsModal(body); break;
+case 'inventory': loadInventoryModal(body); break;
+case 'managePolicies': loadPoliciesModal(body); break;
+case 'manageShipments': loadShipmentsModal(body); break;
+case 'broadcast': loadBroadcastModal(body); break;
+default: return;
+}
+modal.style.display = 'flex';
+}
+
+async function loadDashboardStats(container) {
+const stats = await apiCall('/dashboard/stats');
+container.innerHTML = `<h3>Dashboard</h3><div class="stats-grid"><div class="stats-card">📦 Orders<br>${stats.totalOrders}</div><div class="stats-card">💰 Revenue<br>$${stats.totalRevenue}</div><div class="stats-card">🛍️ Products<br>${stats.totalProducts}</div><div class="stats-card">👥 Customers<br>${stats.totalUsers}</div><div class="stats-card">📅 Today<br>${stats.todayOrders} orders</div><div class="stats-card">📈 Week Revenue<br>$${stats.weekRevenue}</div></div><button onclick="closeModal('modalDashboardStats')">Close</button>`;
+}
+
+// KEY FIX: loadProductsModal uses plain fetch (no token) – and correct endpoint '/api/products'
+async function loadProductsModal(container) {
+try {
+const res = await fetch(API + '/products');
+if (!res.ok) throw new Error(await res.text());
+const products = await res.json();
+let html = '<h3>Manage Products</h3>';
+if (products.length === 0) html += '<p>No products found.</p>';
+else {
+products.forEach(p => {
+html += `<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:8px;">
+<img src="${p.main_image}" width="50" style="border-radius:8px;">
+<span>${p.name} - $${p.price}</span>
+<div>
+<button onclick="editProductModal(${p.id})">Edit</button>
+<button onclick="deleteProduct(${p.id})">Delete</button>
+</div>
+</div>`;
+});
+}
+html += '<button onclick="closeModal(\'modalManageProducts\')">Close</button>';
+container.innerHTML = html;
+} catch(e) {
+container.innerHTML = '<p>Error loading products. Check console.</p>';
+console.error(e);
+}
+}
+
+async function editProductModal(id) {
+const p = await apiCall(`/products/${id}`);
+const body = document.getElementById('modalManageProducts').querySelector('.modal-body');
+body.innerHTML = `<h3>Edit Product</h3><img src="${p.main_image}" width="80"><br><input id="editName" value="${p.name}"><br><input id="editPrice" value="${p.price}"><br><input id="editImage" value="${p.main_image}"><br><textarea id="editDesc">${p.description||''}</textarea><br><input id="editCat" value="${p.cat}"><br><input id="editSubcat" value="${p.subcat}"><br><input id="editColors" value="${(p.colors||[]).join(',')}"><br><input id="editSizes" value="${(p.size_options||[]).map(s=>`${s.size}:${s.price}`).join(',')}"><br><button onclick="updateProduct(${id})">Update</button><button onclick="closeModal('modalManageProducts')">Cancel</button>`;
+}
+async function updateProduct(id) {
+const name = document.getElementById('editName').value, price = parseFloat(document.getElementById('editPrice').value), main_image = document.getElementById('editImage').value, description = document.getElementById('editDesc').value, cat = document.getElementById('editCat').value, subcat = document.getElementById('editSubcat').value, colors = document.getElementById('editColors').value.split(',').map(c=>c.trim()), sizeStr = document.getElementById('editSizes').value;
+let size_options = [];
+if (sizeStr) sizeStr.split(',').forEach(pair => { let [s,p] = pair.split(':'); if(s&&p) size_options.push({size:s.trim(), price:parseFloat(p)}); });
+if (!size_options.length) size_options = [{size:'Standard', price}];
+await apiCall(`/products/${id}`, { method:'PUT', body: JSON.stringify({ name, description, cat, subcat, price, colors, size_options, main_image, sub_images: [] }) });
+alert('Product updated'); closeModal('modalManageProducts'); openAdminModal('manageProducts');
+}
+async function deleteProduct(id) { if(confirm('Delete product?')) await apiCall(`/products/${id}`, { method:'DELETE' }); openAdminModal('manageProducts'); }
+function showAddProductForm(container) {
+container.innerHTML = `<h3>Add Product</h3><input id="prodName" placeholder="Name"><br><input id="prodPrice" placeholder="Price"><br><input id="prodImage" placeholder="Image URL"><br><textarea id="prodDesc" placeholder="Description"></textarea><br><input id="prodCat" placeholder="Category"><br><input id="prodSubcat" placeholder="Subcategory"><br><input id="prodColors" placeholder="Colors (comma)"><br><input id="prodSizes" placeholder="Sizes (size:price, comma)"><br><button onclick="addProduct()">Save</button><button onclick="closeModal('modalAddProduct')">Cancel</button>`;
+}
+async function addProduct() {
+const name = document.getElementById('prodName').value, price = parseFloat(document.getElementById('prodPrice').value), main_image = document.getElementById('prodImage').value, description = document.getElementById('prodDesc').value, cat = document.getElementById('prodCat').value, subcat = document.getElementById('prodSubcat').value, colors = document.getElementById('prodColors').value.split(',').map(c=>c.trim()), sizeStr = document.getElementById('prodSizes').value;
+let size_options = [];
+if (sizeStr) sizeStr.split(',').forEach(pair => { let [s,p] = pair.split(':'); if(s&&p) size_options.push({size:s.trim(), price:parseFloat(p)}); });
+if (!size_options.length) size_options = [{size:'Standard', price}];
+const product = { name, description, cat, subcat, price, colors, size_options, main_image, sub_images: [] };
+await apiCall('/products', { method:'POST', body: JSON.stringify(product) });
+alert('Product added'); closeModal('modalAddProduct'); openAdminModal('manageProducts');
+}
+async function loadOrdersModal(container) {
+const orders = await apiCall('/orders');
+container.innerHTML = `<h3>Orders</h3>${orders.map(o=>`<div style="border:1px solid #ddd; padding:8px; margin:8px 0;"><strong>${o.tracking_code}</strong> - ${o.status} - $${o.total}<br><button onclick="updateOrderStatus('${o.id}','paid')">Mark Paid</button> <button onclick="updateOrderStatus('${o.id}','packed')">Mark Packed</button> <button onclick="updateOrderStatus('${o.id}','shipped')">Mark Shipped</button> <button onclick="updateOrderStatus('${o.id}','delivered')">Mark Delivered</button></div>`).join('')}<button onclick="closeModal('modalManageOrders')">Close</button>`;
+}
+async function updateOrderStatus(id, step) {
+const update = {};
+if (step === 'paid') update.paid = true;
+else if (step === 'packed') update.packed = true;
+else if (step === 'shipped') update.shipped = true;
+else if (step === 'delivered') update.delivered = true;
+await apiCall(`/orders/${id}/status`, { method:'PUT', body: JSON.stringify({ ...update, status: step.charAt(0).toUpperCase() + step.slice(1) }) });
+openAdminModal('manageOrders');
+}
+async function loadDiscountsModal(container) {
+const discounts = await apiCall('/marketing/discounts');
+container.innerHTML = `<h3>Discounts</h3>${discounts.map(d=>`<div>${d.code} - ${d.type} ${d.value}% - Active: ${d.is_active} <button onclick="deleteDiscount(${d.id})">Delete</button></div>`).join('')}<button onclick="showAddDiscountForm()">Add Discount</button><button onclick="closeModal('modalDiscounts')">Close</button>`;
+}
+function showAddDiscountForm() {
+const body = document.getElementById('modalDiscounts').querySelector('.modal-body');
+body.innerHTML = `<h3>Add Discount</h3><input id="discountCode" placeholder="Code"><select id="discountType"><option value="percentage">%</option><option value="fixed">Fixed</option></select><input id="discountValue" placeholder="Value"><input id="discountMinOrder" placeholder="Min Order"><button onclick="addDiscount()">Save</button><button onclick="closeModal('modalDiscounts')">Cancel</button>`;
+}
+async function addDiscount() {
+const code = document.getElementById('discountCode').value, type = document.getElementById('discountType').value, value = parseFloat(document.getElementById('discountValue').value), min_order = parseFloat(document.getElementById('discountMinOrder').value);
+await apiCall('/marketing/discounts', { method:'POST', body: JSON.stringify({ code, type, value, min_order, is_active: true }) });
+alert('Discount added'); openAdminModal('discounts');
+}
+async function loadReturnsModal(container) {
+const returns = await apiCall('/returns');
+container.innerHTML = `<h3>Returns</h3>${returns.map(r=>`<div>Order ${r.order_id}: ${r.status} - ${r.reason} <button onclick="updateReturnStatus(${r.id},'approved')">Approve</button> <button onclick="updateReturnStatus(${r.id},'rejected')">Reject</button></div>`).join('')}<button onclick="closeModal('modalReturns')">Close</button>`;
+}
+async function updateReturnStatus(id, status) {
+await apiCall(`/returns/${id}/status`, { method:'PUT', body: JSON.stringify({ status }) });
+openAdminModal('returns');
+}
+async function loadInventoryModal(container) {
+const inv = await apiCall('/inventory');
+container.innerHTML = `<h3>Inventory</h3>${inv.map(i=>`<div>${i.products?.name}: ${i.quantity} in ${i.warehouse} <button onclick="updateStock(${i.id})">Update</button></div>`).join('')}<button onclick="closeModal('modalInventory')">Close</button>`;
+}
+async function updateStock(id) {
+const qty = prompt('New quantity');
+if (qty !== null) await apiCall(`/inventory/${id}`, { method:'PUT', body: JSON.stringify({ quantity: parseInt(qty) }) });
+openAdminModal('inventory');
+}
+async function loadPoliciesModal(container) {
+const policies = await apiCall('/policies');
+container.innerHTML = `<h3>Policies</h3>${policies.map(p => `<div><strong>${p.title}</strong><textarea id="policy_${p.key}" rows="3">${p.content || ''}</textarea><button onclick="updatePolicy('${p.key}')">Save</button></div>`).join('')}<button onclick="closeModal('modalManagePolicies')">Close</button>`;
+}
+async function updatePolicy(key) {
+const content = document.getElementById(`policy_${key}`).value;
+await apiCall(`/policies/${key}`, { method:'PUT', body: JSON.stringify({ content }) });
+alert('Policy updated'); openAdminModal('managePolicies');
+}
+async function loadShipmentsModal(container) {
+const shipments = await apiCall('/shipments');
+container.innerHTML = `<h3>Shipments</h3>${shipments.map(s=>`<div><strong>${s.tracking_code}</strong> - ${s.status}<br>Client: ${s.client.name}<br><button onclick="updateShipmentStatus('${s.id}','shipped')">Mark Shipped</button></div>`).join('')}<button onclick="closeModal('modalManageShipments')">Close</button>`;
+}
+async function updateShipmentStatus(id, status) {
+await apiCall(`/shipments/${id}/status`, { method:'PUT', body: JSON.stringify({ status }) });
+openAdminModal('manageShipments');
+}
+function loadBroadcastModal(container) {
+container.innerHTML = `<h3>Broadcast</h3><textarea id="broadcastMsg" rows="3"></textarea><button onclick="sendBroadcast()">Generate WhatsApp Link</button><div id="broadcastResult"></div><button onclick="closeModal('modalBroadcast')">Close</button>`;
+}
+async function sendBroadcast() {
+const message = document.getElementById('broadcastMsg').value;
+if (!message) return alert('Enter message');
+const data = await apiCall('/notifications/broadcast', { method:'POST', body: JSON.stringify({ message }) });
+document.getElementById('broadcastResult').innerHTML = `<a href="${data.waLink}" target="_blank">Click to send broadcast to ${data.count} subscribers</a>`;
+}
+function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
+
+// Global modal close
+document.querySelectorAll('.close-modal').forEach(btn => {
+btn.addEventListener('click', function() {
+const modal = this.closest('.modal');
+if (modal) modal.style.display = 'none';
+});
+});
+window.addEventListener('click', (e) => {
+if (e.target.classList.contains('modal')) e.target.style.display = 'none';
+});
+
+// Other functions
+async function showRandomPromo() {
+try {
+const promo = await apiCall('/promotions/random');
+if (promo) {
+const popup = document.getElementById('popupPromo');
+document.getElementById('popupContent').innerHTML = `<img src="${promo.image_url || 'https://picsum.photos/300/150'}"><div><strong>${promo.title}</strong><br>${promo.description}<br><a href="${promo.link}" target="_blank">Shop now</a></div>`;
+popup.style.display = 'block';
+setTimeout(() => popup.style.display = 'none', 8000);
+}
+} catch(e) {}
+}
+function closePopup() { document.getElementById('popupPromo').style.display = 'none'; }
+async function subscribe() {
+const email = document.getElementById('subEmail').value, phone = document.getElementById('subPhone').value;
+if (!email && !phone) return alert('Enter email or phone');
+try {
+await apiCall('/notifications/subscribe', { method:'POST', body: JSON.stringify({ email, phone, name: user?.name || '' }) });
+alert('Subscribed successfully!');
+} catch(e) { alert('Subscription failed'); }
+}
+function searchProducts() {
+const term = document.getElementById('searchInput').value.toLowerCase();
+if (!term) return displayProducts(getShuffledProductsWithPhoneBias(allProducts));
+const filtered = allProducts.filter(p => p.name.toLowerCase().includes(term));
+displayProducts(filtered);
+}
+function switchPage(pageId) {
+document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+document.getElementById(pageId).classList.add('active');
+if (pageId === 'cart') renderCart();
+if (pageId === 'home') {
+if (!window._filteredHome) displayProducts(getShuffledProductsWithPhoneBias(allProducts));
+else window._filteredHome = false;
+}
+if (pageId === 'tracking' && map) map.remove();
+}
+function resetHome() {
+window._filteredHome = false;
+displayProducts(getShuffledProductsWithPhoneBias(allProducts));
+document.getElementById('subMenu').innerHTML = '';
+switchPage('home');
+}
+function goBackHome() {
+if (document.getElementById('productPage').classList.contains('active')) {
+resetHome();
+} else {
+window.history.back();
+}
+}
+function trackOrderCode(code) { document.getElementById('trackCode').value = code; switchPage('tracking'); setTimeout(trackOrder, 100); }
+async function showPolicy(key) {
+const policies = await apiCall('/policies');
+const policy = policies.find(p => p.key === key);
+if (policy) alert(`${policy.title}\n\n${policy.content}`);
+}
+document.getElementById('privacyLink')?.addEventListener('click', (e) => { e.preventDefault(); showPolicy('privacy'); });
+document.getElementById('termsLink')?.addEventListener('click', (e) => { e.preventDefault(); showPolicy('terms'); });
+document.getElementById('shippingLink')?.addEventListener('click', (e) => { e.preventDefault(); showPolicy('shipping'); });
+document.getElementById('returnsLink')?.addEventListener('click', (e) => { e.preventDefault(); showPolicy('returns'); });
+function handleHash() {
+const hash = window.location.hash;
+if (hash.startsWith('#/product/')) {
+const id = hash.split('/').pop();
+if (id && !isNaN(id)) openProduct(id);
+}
+}
+window.addEventListener('hashchange', handleHash);
+document.getElementById('logoArea').addEventListener('dblclick', () => { switchPage('adminDashboard'); });
+function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&')return'&amp;';if(m==='<')return'&lt;';if(m==='>')return'&gt;';return m;}); }
+
+window.onload = () => {
+const searchInput = document.getElementById('searchInput');
+if (searchInput) { searchInput.value = ''; searchInput.removeAttribute('readonly'); }
+document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+document.getElementById('home').classList.add('active');
+loadProducts();
+updateCartCount();
+initAdminCards();
+if (user) {
+document.getElementById('loginBox').style.display='none';
+document.getElementById('dashboard').style.display='block';
+document.getElementById('userName').innerText = user.name;
+}
+handleHash();
+};
+</script>
+</body>
+</html>
