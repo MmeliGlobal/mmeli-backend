@@ -41,6 +41,7 @@ body { font-family: 'Segoe UI', Roboto, sans-serif; background:#f8f9fa; padding-
 .bottom-nav div:hover { color:var(--orange); }
 .footer { background:var(--navy); color:#ccc; padding:30px 20px 20px; margin-top:30px; border-top:3px solid var(--gold); }
 .footer-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:30px; max-width:1200px; margin:0 auto; }
+@media (max-width:768px) { .footer-grid { grid-template-columns:1fr; gap:20px; } }
 .footer-grid h4 { color:var(--gold); margin-bottom:15px; font-size:1rem; }
 .footer-grid a, .footer-grid p { color:#ccc; text-decoration:none; display:block; margin:8px 0; cursor:pointer; font-size:0.85rem; }
 .footer-grid a:hover { color:var(--gold); }
@@ -76,11 +77,15 @@ input, select, textarea { width:100%; padding:8px; margin:5px 0; border-radius:1
 .color-size-row { display:flex; gap:15px; align-items:center; flex-wrap:wrap; margin:15px 0; justify-content:space-between; }
 .color-size-row > div { flex:1; }
 .add-to-cart-center { display:flex; justify-content:center; margin:20px 0; }
-.product-actions-top { display:flex; justify-content:space-between; margin-bottom:15px; }
-.back-btn-top, .share-btn-top { background:var(--navy); color:white; border:none; padding:6px 12px; border-radius:30px; cursor:pointer; }
+.product-actions-top { position:absolute; top:10px; left:0; right:0; display:flex; justify-content:space-between; padding:0 10px; z-index:5; }
+.product-detail-left { position:relative; }
+.back-btn-top, .share-btn-top { background:rgba(10,25,47,0.7); color:white; border:none; padding:6px 12px; border-radius:30px; cursor:pointer; backdrop-filter:blur(4px); }
 .customer-buttons { display:flex; gap:15px; flex-wrap:wrap; justify-content:space-evenly; margin:15px 0; }
 .customer-buttons button { flex:1; min-width:120px; text-align:center; }
-@media (max-width:600px) { #productsContainer { grid-template-columns:repeat(2,1fr); } .footer-grid { grid-template-columns:1fr; } .customer-buttons button { min-width:100%; } }
+@media (max-width:600px) { #productsContainer { grid-template-columns:repeat(2,1fr); } .customer-buttons button { min-width:100%; } }
+.quote-preview { font-family: monospace; padding:20px; background:white; border:1px solid #ccc; }
+.quote-preview table { width:100%; border-collapse:collapse; margin:10px 0; }
+.quote-preview th, .quote-preview td { border:1px solid #ddd; padding:8px; text-align:left; }
 </style>
 </head>
 <body>
@@ -95,7 +100,7 @@ input, select, textarea { width:100%; padding:8px; margin:5px 0; border-radius:1
 
 <div class="search-bar">
 <div class="search-wrapper">
-<input type="text" id="searchInput" placeholder="Search products..." autocomplete="off" onfocus="this.removeAttribute('readonly')">
+<input type="text" id="searchInput" placeholder="Search products..." autocomplete="off">
 <i class="fas fa-search" onclick="searchProducts()"></i>
 <label for="scanInput" style="cursor:pointer;"><i class="fas fa-camera"></i></label>
 <input type="file" id="scanInput" hidden accept="image/*">
@@ -112,10 +117,6 @@ input, select, textarea { width:100%; padding:8px; margin:5px 0; border-radius:1
 </section>
 
 <section id="productPage" class="page">
-<div class="product-actions-top">
-<button class="back-btn-top" onclick="goBackHome()"><i class="fas fa-arrow-left"></i> Back</button>
-<button class="share-btn-top" onclick="shareProduct()"><i class="fas fa-share-alt"></i> Share</button>
-</div>
 <div id="productDetailContainer"></div>
 <div id="productRecommendations" class="recommendations"></div>
 </section>
@@ -157,9 +158,9 @@ input, select, textarea { width:100%; padding:8px; margin:5px 0; border-radius:1
 <section id="account" class="page">
 <div id="loginBox">
 <h3>Customer Login</h3>
-<input type="email" id="loginEmail" placeholder="Email" autocomplete="off"><input type="password" id="loginPassword" placeholder="Password"><button onclick="login()">Login</button>
+<input type="email" id="loginEmail" placeholder="Email"><input type="password" id="loginPassword" placeholder="Password"><button onclick="login()">Login</button>
 <hr><h3>New Customer? Register</h3>
-<input type="text" id="regName" placeholder="Full Name"><input type="email" id="regEmail" placeholder="Email" autocomplete="off"><input type="tel" id="regPhone" placeholder="Phone"><input type="text" id="regAddress" placeholder="Address"><input type="password" id="regPassword" placeholder="Password"><button onclick="register()">Register</button>
+<input type="text" id="regName" placeholder="Full Name"><input type="email" id="regEmail" placeholder="Email"><input type="tel" id="regPhone" placeholder="Phone"><input type="text" id="regAddress" placeholder="Address"><input type="password" id="regPassword" placeholder="Password"><button onclick="register()">Register</button>
 </div>
 <div id="dashboard" style="display:none;">
 <h3>Welcome, <span id="userName"></span></h3>
@@ -177,10 +178,10 @@ input, select, textarea { width:100%; padding:8px; margin:5px 0; border-radius:1
 </section>
 
 <section id="adminDashboard" class="page">
-<div id="adminLoginDiv"><h3>Admin Login</h3><input type="email" id="adminEmail" placeholder="Email" autocomplete="off"><input type="password" id="adminPassword" placeholder="Password"><button onclick="adminLogin()">Login</button></div>
+<div id="adminLoginDiv"><h3>Admin Login</h3><input type="email" id="adminEmail" placeholder="Email"><input type="password" id="adminPassword" placeholder="Password"><button onclick="adminLogin()">Login</button></div>
 <div id="adminPanel" style="display:none;">
 <h3>Admin Dashboard</h3>
-<div class="admin-cards-grid two-columns">
+<div class="admin-cards-grid">
 <div class="admin-card" data-modal="dashboardStats">📊 Dashboard</div>
 <div class="admin-card" data-modal="manageProducts">🛍️ Products</div>
 <div class="admin-card" data-modal="addProduct">➕ Add Product</div>
@@ -233,7 +234,6 @@ input, select, textarea { width:100%; padding:8px; margin:5px 0; border-radius:1
 </footer>
 
 <script>
-// ############################# FULL SCRIPT #############################
 const API = '/api';
 let allProducts = [];
 let currentProduct = null;
@@ -245,7 +245,7 @@ let appliedDiscount = null;
 let currentDisplayLimit = 150;
 let allShuffled = [];
 
-// ---------- Category data ----------
+// ---------- Category data (full, as in your original) ----------
 const categoryHierarchy = {
 "Phones": { "Smartphones": ["Android Phones", "iPhones", "Rugged Phones"], "Feature Phones": ["Keypad Phones"], "Accessories": ["Chargers", "Power Banks", "Phone Cases", "Screen Protectors"] },
 "Cameras": { "Cameras": ["Digital Cameras", "DSLR Cameras", "Mirrorless Cameras"], "Video Equipment": ["Camcorders", "Action Cameras"], "Accessories": ["Tripods", "Lighting", "Microphones"] },
@@ -317,19 +317,7 @@ allShuffled = getShuffledWithPhoneBias(allProducts);
 displayProducts(allShuffled.slice(0, currentDisplayLimit));
 buildMainMenu();
 if (!sessionStorage.getItem('popupShown')) { showRandomPromo(); sessionStorage.setItem('popupShown', 'true'); }
-} catch(e) {
-console.error(e);
-const cached = localStorage.getItem('cachedProducts');
-if (cached) {
-allProducts = JSON.parse(cached);
-allShuffled = getShuffledWithPhoneBias(allProducts);
-displayProducts(allShuffled.slice(0, currentDisplayLimit));
-buildMainMenu();
-document.getElementById('productsContainer').innerHTML += '<p style="text-align:center;">Using cached products. Refresh later.</p>';
-} else {
-document.getElementById('productsContainer').innerHTML = '<p>Error loading products. Check backend.</p>';
-}
-}
+} catch(e) { console.error(e); const cached = localStorage.getItem('cachedProducts'); if (cached) { allProducts = JSON.parse(cached); allShuffled = getShuffledWithPhoneBias(allProducts); displayProducts(allShuffled.slice(0, currentDisplayLimit)); buildMainMenu(); document.getElementById('productsContainer').innerHTML += '<p style="text-align:center;">Using cached products. Refresh later.</p>'; } else { document.getElementById('productsContainer').innerHTML = '<p>Error loading products. Check backend.</p>'; } }
 }
 function displayProducts(products) {
 const container = document.getElementById('productsContainer');
@@ -353,8 +341,8 @@ if (currentDisplayLimit >= allShuffled.length) document.getElementById('loadMore
 function buildMainMenu() {
 const mainMenu = document.getElementById('mainMenu');
 mainMenu.innerHTML = '';
-const cats = Object.keys(categoryHierarchy);
-const catImages = {
+const categories = Object.keys(categoryHierarchy);
+const categoryImages = {
 'Phones': 'https://cdn-icons-png.flaticon.com/512/1055/1055685.png', 'Cameras': 'https://cdn-icons-png.flaticon.com/512/1046/1046773.png', 'Farming': 'https://cdn-icons-png.flaticon.com/512/2964/2964420.png',
 'Construction': 'https://cdn-icons-png.flaticon.com/512/2991/2991654.png', 'Electronics': 'https://cdn-icons-png.flaticon.com/512/2320/2320352.png', 'Hardware': 'https://cdn-icons-png.flaticon.com/512/1843/1843315.png',
 'Home Appliances': 'https://cdn-icons-png.flaticon.com/512/4060/4060889.png', 'Beauty': 'https://cdn-icons-png.flaticon.com/512/2909/2909902.png', 'Women Hair': 'https://cdn-icons-png.flaticon.com/512/3508/3508206.png',
@@ -362,11 +350,12 @@ const catImages = {
 'Fashion': 'https://cdn-icons-png.flaticon.com/512/921/921504.png', 'Fitness': 'https://cdn-icons-png.flaticon.com/512/2121/2121811.png', 'Animal': 'https://cdn-icons-png.flaticon.com/512/2752/2752783.png',
 'Packaging': 'https://cdn-icons-png.flaticon.com/512/2421/2421755.png'
 };
-cats.forEach(cat => {
-const div = document.createElement('div');
-div.innerHTML = `<img src="${catImages[cat] || defaultIcon}" style="width:20px;height:20px;"> ${cat}`;
-div.onclick = () => selectMainCategory(cat);
-mainMenu.appendChild(div);
+categories.forEach(cat => {
+const catDiv = document.createElement('div');
+const imgUrl = categoryImages[cat] || defaultIcon;
+catDiv.innerHTML = `<img src="${imgUrl}" style="width:20px;height:20px;"> ${cat}`;
+catDiv.onclick = () => selectMainCategory(cat);
+mainMenu.appendChild(catDiv);
 });
 }
 function selectMainCategory(cat) {
@@ -378,7 +367,8 @@ const subs = categoryHierarchy[cat];
 if (subs) {
 Object.keys(subs).forEach(sub => {
 const subDiv = document.createElement('div');
-subDiv.innerHTML = `<img src="${subcategoryIcons[sub] || defaultIcon}" style="width:20px;height:20px;margin-right:4px;"> ${sub}`;
+const iconUrl = subcategoryIcons[sub] || defaultIcon;
+subDiv.innerHTML = `<img src="${iconUrl}" style="width:20px;height:20px;margin-right:4px;"> ${sub}`;
 subDiv.onclick = () => selectSubCategory(cat, sub);
 subMenu.appendChild(subDiv);
 });
@@ -392,14 +382,11 @@ displayProducts(getShuffledWithPhoneBias(filtered));
 }
 }
 
+// ---------- Product page with back/share over image ----------
 async function openProduct(id) {
 try {
 let product = allProducts.find(p => p.id == id);
-if (!product) {
-const res = await fetch(API + `/products/${id}`);
-if (!res.ok) throw new Error();
-product = await res.json();
-}
+if (!product) { const res = await fetch(API + `/products/${id}`); if (!res.ok) throw new Error(); product = await res.json(); }
 currentProduct = product;
 renderProductDetail(product);
 switchPage('productPage');
@@ -411,7 +398,11 @@ const container = document.getElementById('productDetailContainer');
 container.innerHTML = `
 <div class="product-detail-layout">
 <div class="product-detail-left">
-<img src="${p.main_image}" style="width:100%; border-radius:16px; margin:10px 0;">
+<div class="product-actions-top">
+<button class="back-btn-top" onclick="goBackHome()"><i class="fas fa-arrow-left"></i> Back</button>
+<button class="share-btn-top" onclick="shareProduct()"><i class="fas fa-share-alt"></i> Share</button>
+</div>
+<img src="${p.main_image}" style="width:100%; border-radius:16px;">
 <h2>${p.name}</h2>
 <p>${p.description || ''}</p>
 <div class="color-size-row">
@@ -456,7 +447,6 @@ updateCartCount();
 alert('Added to cart');
 }
 function updateCartCount() { document.getElementById('cartCount').innerText = cart.length; }
-
 function renderCart() {
 const container = document.getElementById('cartList');
 if (!cart.length) { container.innerHTML = '<p>Cart is empty.</p>'; return; }
@@ -515,7 +505,7 @@ switchPage('home');
 } catch(e) { alert('Order failed: '+e.message); }
 }
 async function applyDiscount() {
-const code = document.getElementById('promoCodeInput')?.value;
+const code = document.getElementById('promoCodeInput').value;
 if (!code) return;
 const total = cart.reduce((s,i)=>s+i.price,0);
 try {
@@ -553,13 +543,11 @@ document.getElementById('shipmentStatus').innerHTML = `<strong>Status:</strong> 
 const timelineDiv = document.getElementById('shipmentTimeline');
 if (shipment.updates && shipment.updates.length) {
 timelineDiv.innerHTML = `<h4>Tracking Timeline</h4><ul>${shipment.updates.map(u => `<li>${new Date(u.timestamp).toLocaleString()} - ${u.status}: ${u.location || ''}</li>`).join('')}</ul>`;
-} else {
-timelineDiv.innerHTML = '';
-}
+} else timelineDiv.innerHTML = '';
 } catch(e) { document.getElementById('shipmentStatus').innerHTML = '<p style="color:red;">Shipment not found.</p>'; }
 }
 
-// ---------- Auth (minimal versions – replace with your original if needed) ----------
+// ---------- Auth (full, as in your original) ----------
 async function register() {
 const name = document.getElementById('regName').value, email = document.getElementById('regEmail').value, phone = document.getElementById('regPhone').value, address = document.getElementById('regAddress').value, password = document.getElementById('regPassword').value;
 if (!name || !email || !password) return alert('Fill required fields');
@@ -582,15 +570,17 @@ document.getElementById('loginBox').style.display='none'; document.getElementByI
 function logout() { token=null; user=null; localStorage.clear(); location.reload(); }
 async function showMyOrders() {
 const orders = await apiCall('/orders/my-orders');
-document.getElementById('customerData').innerHTML = `<h4>My Orders</h4>${orders.map(o=>`<div style="border:1px solid #ddd; padding:8px; margin:8px 0; border-radius:12px;"><strong>${o.tracking_code}</strong> - ${o.status} - $${o.total}</div>`).join('')}`;
+document.getElementById('customerData').innerHTML = `<h4>My Orders</h4>${orders.map(o=>`<div style="border:1px solid #ddd; padding:8px; margin:8px 0; border-radius:12px;"><strong>${o.tracking_code}</strong> - ${o.status} - $${o.total} <button onclick="trackOrderCode('${o.tracking_code}')">Track</button></div>`).join('')}`;
 }
 async function showMyQuotations() {
 try {
 const quotes = await apiCall('/quotations/my-quotations');
-document.getElementById('customerData').innerHTML = `<h4>My Quotations</h4>${quotes.map(q=>`<div style="border:1px solid #ddd; padding:8px; margin:8px 0; border-radius:12px;">${q.quote_number} - $${q.total}</div>`).join('')}`;
+document.getElementById('customerData').innerHTML = `<h4>My Quotations</h4>${quotes.map(q=>`<div style="border:1px solid #ddd; padding:8px; margin:8px 0; border-radius:12px;">${q.quote_number} - $${q.total} <button onclick="viewQuote(${q.id})">View</button></div>`).join('')}`;
 } catch(e) { document.getElementById('customerData').innerHTML = '<p>No quotations yet.</p>'; }
 }
-async function showMyReturns() { /* stub */ }
+async function viewQuote(id) { const q = await apiCall(`/quotations/${id}`); document.getElementById('quotePreview').innerHTML = `<pre>${JSON.stringify(q,null,2)}</pre>`; document.getElementById('quoteModal').style.display='flex'; }
+function closeQuoteModal() { document.getElementById('quoteModal').style.display='none'; }
+async function showMyReturns() { try { const returns = await apiCall('/returns/my-returns'); document.getElementById('customerData').innerHTML = `<h4>My Returns</h4>${returns.map(r=>`<div>Return for order #${r.order_id}: ${r.status} - ${r.reason}</div>`).join('')}`; } catch(e) { document.getElementById('customerData').innerHTML = '<p>No returns yet.</p>'; } }
 function showProfile() {
 document.getElementById('customerData').innerHTML = `<h4>Edit Profile</h4><input id="editName" value="${user.name}"><br><input id="editPhone" value="${user.phone || ''}"><br><input id="editAddress" value="${user.address || ''}"><br><button onclick="updateProfile()">Save Changes</button>`;
 }
@@ -602,7 +592,7 @@ user = updated; localStorage.setItem('user',JSON.stringify(user)); document.getE
 function openShipmentTracking() { document.getElementById('shipmentTrackingModal').style.display = 'flex'; }
 function closeShipmentModal() { document.getElementById('shipmentTrackingModal').style.display = 'none'; }
 
-// ---------- Admin (simplified but functional) ----------
+// ---------- Admin dashboard (full, with all modals) ----------
 async function adminLogin() {
 const email = document.getElementById('adminEmail').value, password = document.getElementById('adminPassword').value;
 try {
@@ -650,7 +640,7 @@ container.innerHTML = `<h3>Manage Products</h3><input type="text" id="productSea
 window.filterProductList = () => {
 const term = document.getElementById('productSearch').value.toLowerCase();
 const filtered = products.filter(p => p.name.toLowerCase().includes(term));
-document.getElementById('productListContainer').innerHTML = filtered.map(p=>`<div><img src="${p.main_image}" width="50"> ${p.name} - $${p.price} <button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div>`).join('');
+document.getElementById('productListContainer').innerHTML = filtered.map(p=>`<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:8px;"><img src="${p.main_image}" width="50" style="border-radius:8px;"> ${p.name} - $${p.price} <div><button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div></div>`).join('');
 };
 }
 async function editProductModal(id) {
@@ -664,7 +654,9 @@ let size_options = []; if (sizeStr) sizeStr.split(',').forEach(pair => { let [s,
 if (!size_options.length) size_options = [{size:'Standard', price}];
 let sub_images = subImagesStr ? subImagesStr.split(',').map(u=>u.trim()).filter(u=>u) : [];
 await apiCall(`/products/${id}`, { method:'PUT', body: JSON.stringify({ name, description, cat, subcat, price, colors, size_options, main_image, sub_images }) });
-alert('Product updated'); closeModal('modalManageProducts'); openAdminModal('manageProducts');
+alert('Product updated');
+closeModal('modalManageProducts');
+openAdminModal('manageProducts');
 }
 async function deleteProduct(id) { if(confirm('Delete product?')) await apiCall(`/products/${id}`, { method:'DELETE' }); openAdminModal('manageProducts'); }
 function showAddProductForm(container) {
@@ -676,7 +668,9 @@ let size_options = []; if (sizeStr) sizeStr.split(',').forEach(pair => { let [s,
 if (!size_options.length) size_options = [{size:'Standard', price}];
 let sub_images = subImagesStr ? subImagesStr.split(',').map(u=>u.trim()).filter(u=>u) : [];
 await apiCall('/products', { method:'POST', body: JSON.stringify({ name, description, cat, subcat, price, colors, size_options, main_image, sub_images }) });
-alert('Product added'); closeModal('modalAddProduct'); openAdminModal('manageProducts');
+alert('Product added');
+closeModal('modalAddProduct');
+openAdminModal('manageProducts');
 }
 async function loadOrdersModal(container) {
 const orders = await apiCall('/orders');
@@ -693,17 +687,40 @@ openAdminModal('manageOrders');
 }
 async function loadDiscountsModal(container) {
 const discounts = await apiCall('/marketing/discounts');
-container.innerHTML = `<h3>Discounts</h3>${discounts.map(d=>`<div>${d.code} - ${d.type} ${d.value}% - Active: ${d.is_active} <button onclick="deleteDiscount(${d.id})">Delete</button></div>`).join('')}<button onclick="showAddDiscountForm()">Add Discount</button><button onclick="closeModal('modalDiscounts')">Close</button>`;
+container.innerHTML = `<h3>Discounts</h3><button onclick="showAddDiscountForm()">+ Add Discount</button><div id="discountsList">${discounts.map(d=>`<div>${d.code} - ${d.type} ${d.value}% - ${d.is_active?'Active':'Inactive'} <button onclick="deleteDiscount(${d.id})">Delete</button></div>`).join('')}</div><button onclick="closeModal('modalDiscounts')">Close</button>`;
 }
-function showAddDiscountForm() { /* stub – simple */ }
-async function addDiscount() { /* stub */ }
-async function loadReturnsModal(container) { container.innerHTML = '<h3>Returns</h3><p>Placeholder</p><button onclick="closeModal(\'modalReturns\')">Close</button>'; }
-async function loadInventoryModal(container) { container.innerHTML = '<h3>Inventory</h3><p>Placeholder</p><button onclick="closeModal(\'modalInventory\')">Close</button>'; }
+function showAddDiscountForm() {
+const body = document.getElementById('modalDiscounts').querySelector('.modal-body');
+body.innerHTML = `<h3>Add Discount</h3><input id="discountCode" placeholder="Code"><select id="discountType"><option value="percentage">%</option><option value="fixed">Fixed</option></select><input id="discountValue" placeholder="Value"><input id="discountMinOrder" placeholder="Min Order"><button onclick="addDiscount()">Save</button><button onclick="closeModal('modalDiscounts')">Cancel</button>`;
+}
+async function addDiscount() {
+const code = document.getElementById('discountCode').value, type = document.getElementById('discountType').value, value = parseFloat(document.getElementById('discountValue').value), min_order = parseFloat(document.getElementById('discountMinOrder').value);
+await apiCall('/marketing/discounts', { method:'POST', body: JSON.stringify({ code, type, value, min_order, is_active: true }) });
+alert('Discount added'); openAdminModal('discounts');
+}
+async function deleteDiscount(id) { if(confirm('Delete discount?')) await apiCall(`/marketing/discounts/${id}`, { method:'DELETE' }); openAdminModal('discounts'); }
+async function loadReturnsModal(container) {
+const returns = await apiCall('/returns');
+container.innerHTML = `<h3>Returns</h3>${returns.map(r=>`<div>Order ${r.order_id}: ${r.status} - ${r.reason} <button onclick="updateReturnStatus(${r.id},'approved')">Approve</button> <button onclick="updateReturnStatus(${r.id},'rejected')">Reject</button></div>`).join('')}<button onclick="closeModal('modalReturns')">Close</button>`;
+}
+async function updateReturnStatus(id, status) {
+await apiCall(`/returns/${id}/status`, { method:'PUT', body: JSON.stringify({ status }) });
+openAdminModal('returns');
+}
+async function loadInventoryModal(container) {
+const inv = await apiCall('/inventory');
+container.innerHTML = `<h3>Inventory</h3>${inv.map(i=>`<div>${i.products?.name}: ${i.quantity} in ${i.warehouse} <button onclick="updateStock(${i.id})">Update</button></div>`).join('')}<button onclick="closeModal('modalInventory')">Close</button>`;
+}
+async function updateStock(id) {
+const qty = prompt('New quantity');
+if (qty !== null) await apiCall(`/inventory/${id}`, { method:'PUT', body: JSON.stringify({ quantity: parseInt(qty) }) });
+openAdminModal('inventory');
+}
 async function loadPoliciesModal(container) {
 const policies = await apiCall('/policies');
 container.innerHTML = `<h3>Policies</h3>${policies.map(p => `<div><strong>${p.title}</strong><textarea id="policy_${p.key}" rows="3">${p.content || ''}</textarea><button onclick="updatePolicy('${p.key}')">Save</button></div>`).join('')}<button onclick="closeModal('modalManagePolicies')">Close</button>`;
+window.updatePolicy = async (key) => { const content = document.getElementById(`policy_${key}`).value; await apiCall(`/policies/${key}`, { method:'PUT', body: JSON.stringify({ content }) }); alert('Policy updated'); openAdminModal('managePolicies'); };
 }
-async function updatePolicy(key) { const content = document.getElementById(`policy_${key}`).value; await apiCall(`/policies/${key}`, { method:'PUT', body: JSON.stringify({ content }) }); alert('Policy updated'); openAdminModal('managePolicies'); }
 async function loadShipmentsModal(container) {
 const shipments = await apiCall('/shipments');
 container.innerHTML = `<h3>Shipments</h3><button onclick="showAddShipmentForm()">+ Add Shipment</button><div id="shipmentsList">${shipments.map(s=>`<div><strong>${s.tracking_code}</strong> - ${s.status}<br>Client: ${s.client.name}<br>Receiver: ${s.receiver.name}<br><button onclick="updateShipmentStatus('${s.id}','shipped')">Mark Shipped</button></div>`).join('')}</div><button onclick="closeModal('modalManageShipments')">Close</button>`;
@@ -721,29 +738,32 @@ const paid = document.getElementById('shipPaid').value === 'true';
 const notes = document.getElementById('shipNotes').value;
 const file = document.getElementById('shipImage').files[0];
 let image = null;
-if (file) { const reader = new FileReader(); reader.onload = async (e) => { image = e.target.result; await apiCall('/shipments', { method:'POST', body: JSON.stringify({ tracking_code, client, receiver, pickup, notes, image, paid, status:'pending' }) }); alert('Shipment added'); closeModal('modalManageShipments'); openAdminModal('manageShipments'); }; reader.readAsDataURL(file); }
-else { await apiCall('/shipments', { method:'POST', body: JSON.stringify({ tracking_code, client, receiver, pickup, notes, image, paid, status:'pending' }) }); alert('Shipment added'); closeModal('modalManageShipments'); openAdminModal('manageShipments'); }
+const save = async (img) => {
+await apiCall('/shipments', { method:'POST', body: JSON.stringify({ tracking_code, client, receiver, pickup, notes, image: img, paid, status:'pending' }) });
+alert('Shipment added'); closeModal('modalManageShipments'); openAdminModal('manageShipments');
+};
+if (file) { const reader = new FileReader(); reader.onload = e => save(e.target.result); reader.readAsDataURL(file); } else save(null);
 }
 async function updateShipmentStatus(id) { await apiCall(`/shipments/${id}/status`, { method:'PUT', body: JSON.stringify({ status:'shipped' }) }); openAdminModal('manageShipments'); }
 function loadBroadcastModal(container) {
-container.innerHTML = `<h3>Broadcast</h3><textarea id="broadcastMsg" rows="3"></textarea><button onclick="sendBroadcastWithLink()">Generate WhatsApp Link</button><div id="broadcastResult"></div><button onclick="closeModal('modalBroadcast')">Close</button>`;
+container.innerHTML = `<h3>Broadcast</h3><textarea id="broadcastMsg" rows="3"></textarea><button onclick="sendBroadcastWithPreview()">Generate WhatsApp Link</button><div id="broadcastResult"></div><button onclick="closeModal('modalBroadcast')">Close</button>`;
 }
-async function sendBroadcastWithLink() {
+async function sendBroadcastWithPreview() {
 let message = document.getElementById('broadcastMsg').value;
 if (!message) return alert('Enter message');
 const logoUrl = document.getElementById('siteLogo')?.src || 'https://mmeliglobal.com/logo.png';
-message += `\n\nCheck our website: https://mmeliglobal.com\nLogo: ${logoUrl}`;
-const data = await apiCall('/notifications/broadcast', { method:'POST', body: JSON.stringify({ message }) });
+const preview = `📦 *Mmeli Global*\n${message}\n👉 ${window.location.origin}\n🖼️ Logo: ${logoUrl}`;
+const data = await apiCall('/notifications/broadcast', { method:'POST', body: JSON.stringify({ message: preview }) });
 document.getElementById('broadcastResult').innerHTML = `<a href="${data.waLink}" target="_blank">Click to send broadcast to ${data.count} subscribers</a>`;
 }
 function showCreateQuotationForm(container) {
-container.innerHTML = `<h3>Create Quotation</h3><div>Client Name: <input id="qcName"></div><div>Client Phone: <input id="qcPhone"></div><div>Client Email: <input id="qcEmail"></div><div>Address: <input id="qcAddress"></div><hr><div id="quoteItems"><div class="quote-item"><input placeholder="Description"> <input placeholder="Qty" size="5"> <input placeholder="Price" size="8"></div></div><button onclick="addQuoteItemRow()">+ Add Item</button><hr><div>Shipping Cost: <input id="qcShipping" value="0"></div><div>Discount: <input id="qcDiscount" value="0"></div><div>Tax %: <input id="qcTax" value="0"></div><hr><div><strong>Total: $<span id="qcTotal">0.00</span></strong></div><button onclick="generateQuoteSimple()">Generate Quotation</button>`;
+container.innerHTML = `<h3>Create Quotation</h3><div>Client Name: <input id="qcName"></div><div>Client Phone: <input id="qcPhone"></div><div>Client Email: <input id="qcEmail"></div><div>Address: <input id="qcAddress"></div><hr><div id="quoteItems"><div class="quote-item"><input placeholder="Description"> <input placeholder="Qty" size="5"> <input placeholder="Price" size="8"></div></div><button onclick="addQuoteItemRow()">+ Add Item</button><hr><div>Shipping Cost: <input id="qcShipping" value="0"></div><div>Discount: <input id="qcDiscount" value="0"></div><div>Tax %: <input id="qcTax" value="0"></div><hr><div><strong>Total: $<span id="qcTotal">0.00</span></strong></div><button onclick="generateQuoteAndSave()">Generate & Save Quotation</button>`;
 window.addQuoteItemRow = () => {
 const div = document.createElement('div'); div.className = 'quote-item'; div.innerHTML = '<input placeholder="Description"> <input placeholder="Qty" size="5"> <input placeholder="Price" size="8">'; document.getElementById('quoteItems').appendChild(div);
 };
-window.generateQuoteSimple = async () => {
+window.generateQuoteAndSave = async () => {
 const client = { name: document.getElementById('qcName').value, phone: document.getElementById('qcPhone').value, email: document.getElementById('qcEmail').value, address: document.getElementById('qcAddress').value };
-const items = []; document.querySelectorAll('#quoteItems .quote-item').forEach(row => { const desc = row.children[0].value, qty = parseFloat(row.children[1].value)||0, price = parseFloat(row.children[2].value)||0; if(desc && qty>0 && price>0) items.push({desc,qty,price,subtotal:qty*price}); });
+const items = []; document.querySelectorAll('#quoteItems .quote-item').forEach(row => { const desc = row.children[0].value, qty = parseFloat(row.children[1].value)||0, price = parseFloat(row.children[2].value)||0; if(desc && qty>0 && price>0) items.push({desc, qty, price, subtotal: qty*price}); });
 const subtotal = items.reduce((s,i)=>s+i.subtotal,0);
 const shipping = parseFloat(document.getElementById('qcShipping').value)||0;
 const discount = parseFloat(document.getElementById('qcDiscount').value)||0;
@@ -751,18 +771,30 @@ const taxRate = parseFloat(document.getElementById('qcTax').value)||0;
 const afterDiscount = subtotal - discount + shipping;
 const tax = (taxRate/100)*afterDiscount;
 const total = afterDiscount + tax;
-document.getElementById('qcTotal').innerText = total.toFixed(2);
-const quoteData = { client, items, subtotal, discount, shipping, tax_rate: taxRate, total };
-const saved = await apiCall('/quotations', { method:'POST', body: JSON.stringify(quoteData) });
-alert('Quotation saved! Now send magic link manually via "Send OTP" feature.');
+const quoteData = { client, items, subtotal, discount, shipping, tax_rate: taxRate, total, issue_date: new Date().toISOString().split('T')[0] };
+await apiCall('/quotations', { method:'POST', body: JSON.stringify(quoteData) });
+alert('Quotation saved! It will appear in client portal.');
 closeModal('modalCreateQuotation');
 };
 }
 function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
 
-// ---------- UI helpers ----------
-function searchProducts() { /* stub – keep existing */ }
-function searchProductsHamburger() { /* stub */ }
+// ---------- Search with autocomplete across name, desc, category, subcat ----------
+document.getElementById('searchInput').addEventListener('input', function() {
+const term = this.value.toLowerCase();
+const list = document.getElementById('autocompleteList');
+if (!term) { list.innerHTML = ''; return; }
+const matches = allProducts.filter(p => p.name.toLowerCase().includes(term) || (p.description && p.description.toLowerCase().includes(term)) || (p.cat && p.cat.toLowerCase().includes(term)) || (p.subcat && p.subcat.toLowerCase().includes(term))).slice(0,8);
+list.innerHTML = matches.map(p => `<div onclick="openProduct(${p.id})">${p.name} (${p.cat})</div>`).join('');
+});
+function searchProducts() {
+const term = document.getElementById('searchInput').value.toLowerCase();
+if (!term) { displayProducts(allShuffled.slice(0, currentDisplayLimit)); return; }
+const filtered = allProducts.filter(p => p.name.toLowerCase().includes(term) || (p.description && p.description.toLowerCase().includes(term)) || (p.cat && p.cat.toLowerCase().includes(term)) || (p.subcat && p.subcat.toLowerCase().includes(term)));
+displayProducts(getShuffledWithPhoneBias(filtered).slice(0, currentDisplayLimit));
+}
+
+// ---------- Other UI functions ----------
 function switchPage(pageId) {
 document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
 document.getElementById(pageId).classList.add('active');
@@ -775,25 +807,36 @@ function goBackHome() { resetHome(); }
 function trackOrderCode(code) { document.getElementById('trackCode').value = code; switchPage('tracking'); setTimeout(trackOrder, 100); }
 async function showRandomPromo() { try { const promo = await apiCall('/promotions/random'); if (promo) { const popup = document.getElementById('popupPromo'); document.getElementById('popupContent').innerHTML = `<img src="${promo.image_url || 'https://picsum.photos/300/150'}"><div><strong>${promo.title}</strong><br>${promo.description}<br><a href="${promo.link}" target="_blank">Shop now</a></div>`; popup.style.display = 'block'; setTimeout(() => popup.style.display = 'none', 8000); } } catch(e) {} }
 function closePopup() { document.getElementById('popupPromo').style.display = 'none'; }
-async function subscribe() { const email = document.getElementById('subEmail').value, phone = document.getElementById('subPhone').value; if (!email && !phone) return alert('Enter email or phone'); try { await apiCall('/notifications/subscribe', { method:'POST', body: JSON.stringify({ email, phone, name: user?.name || '' }) }); alert('Subscribed successfully!'); } catch(e) { alert('Subscription failed'); } }
-function handleHash() { const hash = window.location.hash; if (hash.startsWith('#/product/')) { const id = hash.split('/').pop(); if (id && !isNaN(id)) openProduct(id); } }
+async function subscribe() {
+const email = document.getElementById('subEmail').value, phone = document.getElementById('subPhone').value;
+if (!email && !phone) return alert('Enter email or phone');
+try { await apiCall('/notifications/subscribe', { method:'POST', body: JSON.stringify({ email, phone, name: user?.name || '' }) }); alert('Subscribed successfully!'); } catch(e) { alert('Subscription failed'); }
+}
+function handleHash() {
+const hash = window.location.hash;
+if (hash.startsWith('#/product/')) {
+const id = hash.split('/').pop();
+if (id && !isNaN(id)) openProduct(id);
+} else {
+resetHome();
+}
+}
 window.addEventListener('hashchange', handleHash);
 function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&')return'&amp;';if(m==='<')return'&lt;';if(m==='>')return'&gt;';return m;}); }
 
-// ---------- Close stray modals on load ----------
-window.addEventListener('load', function() {
-document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
-});
+// ---------- Close stray modals and init ----------
 document.querySelectorAll('.close-modal').forEach(btn => {
 btn.addEventListener('click', function() { const modal = this.closest('.modal'); if(modal) modal.style.display = 'none'; });
 });
 window.addEventListener('click', (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; });
 document.getElementById('logoArea').addEventListener('dblclick', () => { switchPage('adminDashboard'); });
 
-// ---------- Start ----------
+window.addEventListener('load', function() {
+document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+resetHome(); // ensures home page is active and products are loaded
+});
 window.onload = () => {
 document.getElementById('searchInput').value = '';
-loadProducts();
 updateCartCount();
 initAdminCards();
 if (user) {
@@ -801,6 +844,7 @@ document.getElementById('loginBox').style.display='none';
 document.getElementById('dashboard').style.display='block';
 document.getElementById('userName').innerText = user.name;
 }
+resetHome();
 handleHash();
 };
 </script>
