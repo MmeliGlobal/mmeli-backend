@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const supabase = require('./supabase');
 
-// Import your routes (make sure all these files exist)
+// Import all route modules
 const authRoutes = require('./routes/auth');
 const productRoutes = require('./routes/products');
 const orderRoutes = require('./routes/orders');
@@ -23,64 +23,44 @@ const dashboardRoutes = require('./routes/dashboard');
 
 const app = express();
 
+// Basic middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// ---------------------------------------------------------------------
-// Helper to fetch product data for meta tags
-async function getProductForMeta(id) {
-  const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
-  if (error) return null;
-  return data;
-}
-
-// Middleware to inject dynamic Open Graph tags for social media crawlers
-app.use(async (req, res, next) => {
-  if (req.method !== 'GET') return next();
-
-  const userAgent = req.headers['user-agent'] || '';
-  const botKeywords = ['facebookexternalhit', 'WhatsApp', 'Twitterbot', 'LinkedInBot', 'Slackbot', 'Discordbot', 'TelegramBot', 'Googlebot', 'bingbot', 'Slurp', 'DuckDuckBot', 'baiduspider'];
-  const isCrawler = botKeywords.some(keyword => userAgent.toLowerCase().includes(keyword.toLowerCase()));
-  if (!isCrawler && !req.query._escaped_fragment_) return next();
-
-  // Extract product ID from the hash (e.g., /#/product/123)
-  let productId = null;
-  const hash = req.headers['x-hash'] || req.query._hash || '';
-  const match = hash.match(/\/product\/(\d+)/) || (req.url.match(/#!\/product\/(\d+)/));
-  if (match) productId = match[1];
-  if (!productId && req.query._escaped_fragment_) {
-    const fragMatch = req.query._escaped_fragment_.match(/\/product\/(\d+)/);
-    if (fragMatch) productId = fragMatch[1];
+// ========== PRODUCT PREVIEW FOR SOCIAL MEDIA ==========
+// Special route for product link previews (WhatsApp, Facebook, Twitter, etc.)
+app.get('/product/:id', async (req, res) => {
+  const productId = req.params.id;
+  const { data: product, error } = await supabase.from('products').select('*').eq('id', productId).single();
+  if (error || !product) {
+    return res.status(404).send('Product not found');
   }
-
-  if (productId) {
-    const product = await getProductForMeta(productId);
-    if (product) {
-      const indexPath = path.join(__dirname, '../frontend/index.html');
-      try {
-        let html = fs.readFileSync(indexPath, 'utf8');
-        // Replace meta tags
-        html = html.replace(/<meta property="og:title"[^>]*>/, `<meta property="og:title" content="${product.name} | Mmeli Global">`);
-        html = html.replace(/<meta property="og:description"[^>]*>/, `<meta property="og:description" content="${(product.description || 'Shop premium products.').substring(0,200)}">`);
-        html = html.replace(/<meta property="og:image"[^>]*>/, `<meta property="og:image" content="${product.main_image}">`);
-        html = html.replace(/<meta property="og:url"[^>]*>/, `<meta property="og:url" content="${req.protocol}://${req.get('host')}/#/product/${product.id}">`);
-        html = html.replace(/<meta name="twitter:title"[^>]*>/, `<meta name="twitter:title" content="${product.name}">`);
-        html = html.replace(/<meta name="twitter:description"[^>]*>/, `<meta name="twitter:description" content="${(product.description || 'Shop premium products.').substring(0,200)}">`);
-        html = html.replace(/<meta name="twitter:image"[^>]*>/, `<meta name="twitter:image" content="${product.main_image}">`);
-        return res.send(html);
-      } catch (err) {
-        console.error('Meta injection error:', err);
-      }
-    }
-  }
-  next();
+  const html = `<!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="UTF-8">
+    <meta property="og:title" content="${product.name} | Mmeli Global">
+    <meta property="og:description" content="${(product.description || 'Shop premium products').substring(0,200)}">
+    <meta property="og:image" content="${product.main_image}">
+    <meta property="og:url" content="https://mmeliglobal.com/#/product/${product.id}">
+    <meta property="og:type" content="product">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta http-equiv="refresh" content="0; url=/#/product/${product.id}">
+    <title>${product.name} | Mmeli Global</title>
+  </head>
+  <body>
+    <p>Redirecting to product...</p>
+  </body>
+  </html>`;
+  res.send(html);
 });
+// ======================================================
 
-// Serve static frontend
+// Serve static files (frontend)
 app.use(express.static(path.join(__dirname, '../frontend')));
 
-// API routes
+// Mount API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
@@ -96,11 +76,12 @@ app.use('/api/marketing', marketingRoutes);
 app.use('/api/returns', returnsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
-// Catch-all: send index.html for client-side routing
+// Catch-all: send index.html for any other request (handles client-side routing)
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
+// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
