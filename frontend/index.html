@@ -7,10 +7,16 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Open Graph meta tags (default) – will be updated dynamically -->
+  <meta property="og:title" content="Mmeli Global | Premium Products">
+  <meta property="og:description" content="Shop premium products, track shipments, get quotations, and manage your account.">
+  <meta property="og:image" content="https://mmeliglobal.com/logo.png">
+  <meta property="og:url" content="https://mmeliglobal.com">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
   <style>
-    /* (all styles same as before – unchanged) */
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family: 'Segoe UI', Roboto, sans-serif; background:#f8f9fa; padding-bottom:70px; }
+    body { font-family: 'Segoe UI', Roboto, sans-serif; background:#f8f9fa; padding-bottom:70px; touch-action: pan-x pan-y; /* disable pinch-zoom but allow panning */ }
     :root { --navy:#0a192f; --gold:#d4af37; --orange:#e67e22; }
     .header { background:var(--navy); color:white; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; }
     .logo { display:flex; align-items:center; gap:10px; cursor:pointer; }
@@ -87,6 +93,7 @@
     .quote-preview { font-family: monospace; padding:20px; background:white; border:1px solid #ccc; }
     .quote-preview table { width:100%; border-collapse:collapse; margin:10px 0; }
     .quote-preview th, .quote-preview td { border:1px solid #ddd; padding:8px; text-align:left; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -253,7 +260,7 @@
   let currentDisplayLimit = 150;
   let allShuffled = [];
 
-  // ---------- Category data (full, as in your original) ----------
+  // ---------- Category data (full) ----------
   const categoryHierarchy = {
     "Phones": { "Smartphones": ["Android Phones", "iPhones", "Rugged Phones"], "Feature Phones": ["Keypad Phones"], "Accessories": ["Chargers", "Power Banks", "Phone Cases", "Screen Protectors"] },
     "Cameras": { "Cameras": ["Digital Cameras", "DSLR Cameras", "Mirrorless Cameras"], "Video Equipment": ["Camcorders", "Action Cameras"], "Accessories": ["Tripods", "Lighting", "Microphones"] },
@@ -287,6 +294,54 @@
   };
   const defaultIcon = "https://cdn-icons-png.flaticon.com/512/456/456212.png";
 
+  // ---------- Dynamic meta tags for sharing ----------
+  function updateMetaTagsForProduct(product) {
+    let ogTitle = document.querySelector('meta[property="og:title"]');
+    let ogDesc = document.querySelector('meta[property="og:description"]');
+    let ogImage = document.querySelector('meta[property="og:image"]');
+    let ogUrl = document.querySelector('meta[property="og:url"]');
+    let twTitle = document.querySelector('meta[name="twitter:title"]');
+    let twDesc = document.querySelector('meta[name="twitter:description"]');
+    let twImage = document.querySelector('meta[name="twitter:image"]');
+
+    if (!ogTitle) { ogTitle = document.createElement('meta'); ogTitle.setAttribute('property', 'og:title'); document.head.appendChild(ogTitle); }
+    if (!ogDesc) { ogDesc = document.createElement('meta'); ogDesc.setAttribute('property', 'og:description'); document.head.appendChild(ogDesc); }
+    if (!ogImage) { ogImage = document.createElement('meta'); ogImage.setAttribute('property', 'og:image'); document.head.appendChild(ogImage); }
+    if (!ogUrl) { ogUrl = document.createElement('meta'); ogUrl.setAttribute('property', 'og:url'); document.head.appendChild(ogUrl); }
+    if (!twTitle) { twTitle = document.createElement('meta'); twTitle.setAttribute('name', 'twitter:title'); document.head.appendChild(twTitle); }
+    if (!twDesc) { twDesc = document.createElement('meta'); twDesc.setAttribute('name', 'twitter:description'); document.head.appendChild(twDesc); }
+    if (!twImage) { twImage = document.createElement('meta'); twImage.setAttribute('name', 'twitter:image'); document.head.appendChild(twImage); }
+
+    ogTitle.setAttribute('content', product.name + ' | Mmeli Global');
+    ogDesc.setAttribute('content', product.description ? product.description.substring(0, 200) : 'Shop premium products at Mmeli Global.');
+    ogImage.setAttribute('content', product.main_image);
+    ogUrl.setAttribute('content', window.location.href);
+    twTitle.setAttribute('content', product.name);
+    twDesc.setAttribute('content', product.description ? product.description.substring(0, 200) : 'Shop premium products at Mmeli Global.');
+    twImage.setAttribute('content', product.main_image);
+  }
+  function resetMetaTagsToDefault() {
+    const defaultTitle = 'Mmeli Global | Premium Products';
+    const defaultDesc = 'Shop premium products, track shipments, get quotations, and manage your account.';
+    const defaultImage = 'https://mmeliglobal.com/logo.png';
+    const defaultUrl = window.location.origin;
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    const ogDesc = document.querySelector('meta[property="og:description"]');
+    const ogImage = document.querySelector('meta[property="og:image"]');
+    const ogUrl = document.querySelector('meta[property="og:url"]');
+    const twTitle = document.querySelector('meta[name="twitter:title"]');
+    const twDesc = document.querySelector('meta[name="twitter:description"]');
+    const twImage = document.querySelector('meta[name="twitter:image"]');
+    if (ogTitle) ogTitle.setAttribute('content', defaultTitle);
+    if (ogDesc) ogDesc.setAttribute('content', defaultDesc);
+    if (ogImage) ogImage.setAttribute('content', defaultImage);
+    if (ogUrl) ogUrl.setAttribute('content', defaultUrl);
+    if (twTitle) twTitle.setAttribute('content', defaultTitle);
+    if (twDesc) twDesc.setAttribute('content', defaultDesc);
+    if (twImage) twImage.setAttribute('content', defaultImage);
+  }
+
+  // ---------- API helper ----------
   async function apiCall(endpoint, options = {}) {
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -314,6 +369,7 @@
     return shuffleArray([...selectedPhones, ...selectedNon]);
   }
 
+  // ---------- Product loading ----------
   async function loadProducts() {
     try {
       const res = await fetch(API + '/products');
@@ -389,7 +445,7 @@
     }
   }
 
-  // ---------- Product page with back/share over image ----------
+  // ---------- Product page ----------
   async function openProduct(id) {
     try {
       let product = allProducts.find(p => p.id == id);
@@ -398,6 +454,8 @@
       renderProductDetail(product);
       switchPage('productPage');
       history.pushState(null, '', `#/product/${id}`);
+      // Update meta tags for sharing
+      updateMetaTagsForProduct(product);
     } catch(e) { alert('Could not open product'); }
   }
   function renderProductDetail(p) {
@@ -546,7 +604,6 @@
       }
     } catch(e) { alert('Order not found'); }
   }
-  // Initialize default map on tracking page load
   function initDefaultMap() {
     if (map) map.remove();
     map = L.map('map').setView([-17.825,31.033], 6);
@@ -612,7 +669,7 @@
   function openShipmentTracking() { document.getElementById('shipmentTrackingModal').style.display = 'flex'; }
   function closeShipmentModal() { document.getElementById('shipmentTrackingModal').style.display = 'none'; }
 
-  // ---------- Admin dashboard (with fixed edit/add product) ----------
+  // ---------- Admin (fixed add/update) ----------
   async function adminLogin() {
     const email = document.getElementById('adminEmail').value, password = document.getElementById('adminPassword').value;
     try {
@@ -669,28 +726,66 @@
     body.innerHTML = `<h3>Edit Product</h3><img src="${p.main_image}" width="80"><br><input id="editName" value="${p.name}"><br><input id="editPrice" value="${p.price}"><br><input id="editImage" value="${p.main_image}"><br><label>Supporting Images (URLs, comma)</label><input id="editSubImages" value="${(p.sub_images || []).join(',')}"><br><textarea id="editDesc">${p.description||''}</textarea><br><input id="editCat" value="${p.cat}"><br><input id="editSubcat" value="${p.subcat}"><br><input id="editColors" value="${(p.colors||[]).join(',')}"><br><input id="editSizes" value="${(p.size_options||[]).map(s=>`${s.size}:${s.price}`).join(',')}"><br><button onclick="updateProduct(${id})">Update</button><button onclick="closeModal('modalManageProducts')">Cancel</button>`;
   }
   async function updateProduct(id) {
-    const name = document.getElementById('editName').value, price = parseFloat(document.getElementById('editPrice').value), main_image = document.getElementById('editImage').value, description = document.getElementById('editDesc').value, cat = document.getElementById('editCat').value, subcat = document.getElementById('editSubcat').value, colors = document.getElementById('editColors').value.split(',').map(c=>c.trim()), sizeStr = document.getElementById('editSizes').value, subImagesStr = document.getElementById('editSubImages').value;
-    let size_options = []; if (sizeStr) sizeStr.split(',').forEach(pair => { let [s,p] = pair.split(':'); if(s&&p) size_options.push({size:s.trim(), price:parseFloat(p)}); });
-    if (!size_options.length) size_options = [{size:'Standard', price}];
-    let sub_images = subImagesStr ? subImagesStr.split(',').map(u=>u.trim()).filter(u=>u) : [];
-    await apiCall(`/products/${id}`, { method:'PUT', body: JSON.stringify({ name, description, cat, subcat, price, colors, size_options, main_image, sub_images }) });
-    alert('Product updated');
-    closeModal('modalManageProducts');
-    openAdminModal('manageProducts'); // refresh the product list
+    const name = document.getElementById('editName').value;
+    const price = parseFloat(document.getElementById('editPrice').value);
+    const main_image = document.getElementById('editImage').value;
+    const description = document.getElementById('editDesc').value;
+    const cat = document.getElementById('editCat').value;
+    const subcat = document.getElementById('editSubcat').value;
+    const colors = document.getElementById('editColors').value.split(',').map(c=>c.trim()).filter(c=>c);
+    const sizeStr = document.getElementById('editSizes').value;
+    const subImagesStr = document.getElementById('editSubImages').value;
+    if (!name || isNaN(price) || !main_image || !cat || !subcat) { alert('Please fill required fields'); return; }
+    let size_options = [];
+    if (sizeStr) {
+      sizeStr.split(',').forEach(pair => {
+        let [s, p] = pair.split(':');
+        if (s && p) size_options.push({ size: s.trim(), price: parseFloat(p) });
+      });
+    }
+    if (size_options.length === 0) size_options = [{ size: 'Standard', price: price }];
+    let sub_images = subImagesStr ? subImagesStr.split(',').map(u => u.trim()).filter(u => u) : [];
+    const productData = { name, description, cat, subcat, price, colors, size_options, main_image, sub_images };
+    try {
+      await apiCall(`/products/${id}`, { method: 'PUT', body: JSON.stringify(productData) });
+      alert('Product updated successfully');
+      closeModal('modalManageProducts');
+      openAdminModal('manageProducts');
+      loadProducts(); // refresh home display
+    } catch (err) { alert('Update failed: ' + err.message); }
   }
-  async function deleteProduct(id) { if(confirm('Delete product?')) await apiCall(`/products/${id}`, { method:'DELETE' }); openAdminModal('manageProducts'); }
+  async function deleteProduct(id) { if(confirm('Delete product?')) await apiCall(`/products/${id}`, { method:'DELETE' }); openAdminModal('manageProducts'); loadProducts(); }
   function showAddProductForm(container) {
     container.innerHTML = `<h3>Add Product</h3><input id="prodName" placeholder="Name"><br><input id="prodPrice" placeholder="Price"><br><input id="prodImage" placeholder="Main Image URL"><br><label>Supporting Images (URLs, comma)</label><input id="prodSubImages"><br><textarea id="prodDesc" placeholder="Description"></textarea><br><input id="prodCat" placeholder="Category"><br><input id="prodSubcat" placeholder="Subcategory"><br><input id="prodColors" placeholder="Colors (comma)"><br><input id="prodSizes" placeholder="Sizes (size:price, comma)"><br><button onclick="addProduct()">Save</button><button onclick="closeModal('modalAddProduct')">Cancel</button>`;
   }
   async function addProduct() {
-    const name = document.getElementById('prodName').value, price = parseFloat(document.getElementById('prodPrice').value), main_image = document.getElementById('prodImage').value, description = document.getElementById('prodDesc').value, cat = document.getElementById('prodCat').value, subcat = document.getElementById('prodSubcat').value, colors = document.getElementById('prodColors').value.split(',').map(c=>c.trim()), sizeStr = document.getElementById('prodSizes').value, subImagesStr = document.getElementById('prodSubImages').value;
-    let size_options = []; if (sizeStr) sizeStr.split(',').forEach(pair => { let [s,p] = pair.split(':'); if(s&&p) size_options.push({size:s.trim(), price:parseFloat(p)}); });
-    if (!size_options.length) size_options = [{size:'Standard', price}];
-    let sub_images = subImagesStr ? subImagesStr.split(',').map(u=>u.trim()).filter(u=>u) : [];
-    await apiCall('/products', { method:'POST', body: JSON.stringify({ name, description, cat, subcat, price, colors, size_options, main_image, sub_images }) });
-    alert('Product added');
-    closeModal('modalAddProduct');
-    openAdminModal('manageProducts');
+    const name = document.getElementById('prodName').value;
+    const price = parseFloat(document.getElementById('prodPrice').value);
+    const main_image = document.getElementById('prodImage').value;
+    const description = document.getElementById('prodDesc').value;
+    const cat = document.getElementById('prodCat').value;
+    const subcat = document.getElementById('prodSubcat').value;
+    const colors = document.getElementById('prodColors').value.split(',').map(c=>c.trim()).filter(c=>c);
+    const sizeStr = document.getElementById('prodSizes').value;
+    const subImagesStr = document.getElementById('prodSubImages').value;
+    if (!name || isNaN(price) || !main_image || !cat || !subcat) { alert('Please fill required fields'); return; }
+    let size_options = [];
+    if (sizeStr) {
+      sizeStr.split(',').forEach(pair => {
+        let [s, p] = pair.split(':');
+        if (s && p) size_options.push({ size: s.trim(), price: parseFloat(p) });
+      });
+    }
+    if (size_options.length === 0) size_options = [{ size: 'Standard', price: price }];
+    let sub_images = subImagesStr ? subImagesStr.split(',').map(u => u.trim()).filter(u => u) : [];
+    const productData = { name, description, cat, subcat, price, colors, size_options, main_image, sub_images };
+    try {
+      await apiCall('/products', { method: 'POST', body: JSON.stringify(productData) });
+      alert('Product added successfully');
+      closeModal('modalAddProduct');
+      openAdminModal('manageProducts');
+      loadProducts();
+    } catch (err) { alert('Add failed: ' + err.message); }
   }
   async function loadOrdersModal(container) {
     const orders = await apiCall('/orders');
@@ -771,7 +866,6 @@
   async function sendBroadcast() {
     let message = document.getElementById('broadcastMsg').value;
     if (!message) return alert('Enter message');
-    // Removed logo link – only website link
     const fullMessage = `${message}\n\nCheck our website: ${window.location.origin}`;
     const data = await apiCall('/notifications/broadcast', { method:'POST', body: JSON.stringify({ message: fullMessage }) });
     document.getElementById('broadcastResult').innerHTML = `<a href="${data.waLink}" target="_blank">Click to send broadcast to ${data.count} subscribers</a>`;
@@ -799,7 +893,7 @@
   }
   function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
 
-  // ---------- Search with autocomplete across name, desc, category, subcat ----------
+  // ---------- Search with autocomplete ----------
   document.getElementById('searchInput').addEventListener('input', function() {
     const term = this.value.toLowerCase();
     const list = document.getElementById('autocompleteList');
@@ -814,18 +908,22 @@
     displayProducts(getShuffledWithPhoneBias(filtered).slice(0, currentDisplayLimit));
   }
 
-  // ---------- Other UI functions ----------
+  // ---------- UI helpers ----------
   function switchPage(pageId) {
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.getElementById(pageId).classList.add('active');
     if (pageId === 'cart') renderCart();
     if (pageId === 'home') loadProducts();
-    if (pageId === 'tracking') {
-      if (map) map.remove();
-      initDefaultMap();
-    }
+    if (pageId === 'tracking') { if (map) map.remove(); initDefaultMap(); }
   }
-  function resetHome() { currentDisplayLimit = 150; allShuffled = getShuffledWithPhoneBias(allProducts); displayProducts(allShuffled.slice(0, currentDisplayLimit)); document.getElementById('subMenu').innerHTML = ''; switchPage('home'); }
+  function resetHome() {
+    currentDisplayLimit = 150;
+    allShuffled = getShuffledWithPhoneBias(allProducts);
+    displayProducts(allShuffled.slice(0, currentDisplayLimit));
+    document.getElementById('subMenu').innerHTML = '';
+    switchPage('home');
+    resetMetaTagsToDefault(); // restore default share preview
+  }
   function goBackHome() { resetHome(); }
   function trackOrderCode(code) { document.getElementById('trackCode').value = code; switchPage('tracking'); setTimeout(trackOrder, 100); }
   async function showRandomPromo() { try { const promo = await apiCall('/promotions/random'); if (promo) { const popup = document.getElementById('popupPromo'); document.getElementById('popupContent').innerHTML = `<img src="${promo.image_url || 'https://picsum.photos/300/150'}"><div><strong>${promo.title}</strong><br>${promo.description}<br><a href="${promo.link}" target="_blank">Shop now</a></div>`; popup.style.display = 'block'; setTimeout(() => popup.style.display = 'none', 8000); } } catch(e) {} }
@@ -840,14 +938,12 @@
     if (hash.startsWith('#/product/')) {
       const id = hash.split('/').pop();
       if (id && !isNaN(id)) openProduct(id);
-    } else {
-      resetHome();
-    }
+    } else { resetHome(); }
   }
   window.addEventListener('hashchange', handleHash);
   function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&')return'&amp;';if(m==='<')return'&lt;';if(m==='>')return'&gt;';return m;}); }
 
-  // ---------- Close stray modals and init ----------
+  // ---------- Global modal close handlers ----------
   document.querySelectorAll('.close-modal').forEach(btn => {
     btn.addEventListener('click', function() { const modal = this.closest('.modal'); if(modal) modal.style.display = 'none'; });
   });
@@ -856,7 +952,7 @@
 
   window.addEventListener('load', function() {
     document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
-    resetHome(); // ensures home page is active and products are loaded
+    resetHome();
     if (document.getElementById('tracking').classList.contains('active')) initDefaultMap();
   });
   window.onload = () => {
