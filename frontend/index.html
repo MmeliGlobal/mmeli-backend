@@ -334,7 +334,11 @@
       displayProducts(allShuffled.slice(0, currentDisplayLimit));
       buildMainMenu();
       if (!sessionStorage.getItem('popupShown')) { showRandomPromo(); sessionStorage.setItem('popupShown', 'true'); }
-    } catch(e) { console.error(e); const cached = localStorage.getItem('cachedProducts'); if (cached) { allProducts = JSON.parse(cached); allShuffled = getShuffledWithPhoneBias(allProducts); displayProducts(allShuffled.slice(0, currentDisplayLimit)); buildMainMenu(); document.getElementById('productsContainer').innerHTML += '<p style="text-align:center;">Using cached products. Refresh later.</p>'; } else { document.getElementById('productsContainer').innerHTML = '<p>Error loading products. Check backend.</p>'; } }
+      // Ensure home is active after products load (if no product hash)
+      if (!window.location.hash.startsWith('#/product/')) {
+        resetHome();
+      }
+    } catch(e) { console.error(e); const cached = localStorage.getItem('cachedProducts'); if (cached) { allProducts = JSON.parse(cached); allShuffled = getShuffledWithPhoneBias(allProducts); displayProducts(allShuffled.slice(0, currentDisplayLimit)); buildMainMenu(); document.getElementById('productsContainer').innerHTML += '<p style="text-align:center;">Using cached products. Refresh later.</p>'; if (!window.location.hash.startsWith('#/product/')) resetHome(); } else { document.getElementById('productsContainer').innerHTML = '<p>Error loading products. Check backend.</p>'; } }
   }
   function displayProducts(products) {
     const container = document.getElementById('productsContainer');
@@ -407,7 +411,6 @@
       renderProductDetail(product);
       switchPage('productPage');
       history.pushState(null, '', `#/product/${id}`);
-      // Update hash so that server can serve correct meta tags (already done by pushState)
     } catch(e) { alert('Could not open product'); }
   }
   function renderProductDetail(p) {
@@ -881,7 +884,9 @@
     if (hash.startsWith('#/product/')) {
       const id = hash.split('/').pop();
       if (id && !isNaN(id)) openProduct(id);
-    } else { resetHome(); }
+    } else {
+      resetHome();
+    }
   }
   window.addEventListener('hashchange', handleHash);
   function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&')return'&amp;';if(m==='<')return'&lt;';if(m==='>')return'&gt;';return m;}); }
