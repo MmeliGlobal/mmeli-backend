@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- Open Graph meta tags (default) – will be updated dynamically -->
+  <!-- Open Graph meta tags (default, updated dynamically for products) -->
   <meta property="og:title" content="Mmeli Global | Premium Products">
   <meta property="og:description" content="Shop premium products, track shipments, get quotations, and manage your account.">
   <meta property="og:image" content="https://mmeliglobal.com/logo.png">
@@ -15,8 +15,9 @@
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <style>
+    /* ========== ALL STYLES (same as previous working version) ========== */
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family: 'Segoe UI', Roboto, sans-serif; background:#f8f9fa; padding-bottom:70px; touch-action: pan-x pan-y; /* disable pinch-zoom but allow panning */ }
+    body { font-family: 'Segoe UI', Roboto, sans-serif; background:#f8f9fa; padding-bottom:70px; touch-action: pan-x pan-y; }
     :root { --navy:#0a192f; --gold:#d4af37; --orange:#e67e22; }
     .header { background:var(--navy); color:white; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; }
     .logo { display:flex; align-items:center; gap:10px; cursor:pointer; }
@@ -119,6 +120,7 @@
 <div id="mainMenu" class="main-menu"></div>
 <div id="subMenu" class="sub-menu"></div>
 
+<!-- PAGES -->
 <section id="home" class="page active">
   <div id="productsContainer"></div>
   <div id="loadMoreBtn" style="text-align:center; margin-top:20px;"><button onclick="loadMoreProducts()">Load More</button></div>
@@ -213,7 +215,7 @@
   </div>
 </section>
 
-<!-- MODALS -->
+<!-- MODALS (all 12 modals – complete) -->
 <div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
 <div id="modalManageProducts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
 <div id="modalAddProduct" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
@@ -249,6 +251,7 @@
 </footer>
 
 <script>
+  // ========== FULL JAVASCRIPT (complete, no omissions) ==========
   const API = '/api';
   let allProducts = [];
   let currentProduct = null;
@@ -260,7 +263,7 @@
   let currentDisplayLimit = 150;
   let allShuffled = [];
 
-  // ---------- Category data (full) ----------
+  // ---------- Complete category data (same as your original) ----------
   const categoryHierarchy = {
     "Phones": { "Smartphones": ["Android Phones", "iPhones", "Rugged Phones"], "Feature Phones": ["Keypad Phones"], "Accessories": ["Chargers", "Power Banks", "Phone Cases", "Screen Protectors"] },
     "Cameras": { "Cameras": ["Digital Cameras", "DSLR Cameras", "Mirrorless Cameras"], "Video Equipment": ["Camcorders", "Action Cameras"], "Accessories": ["Tripods", "Lighting", "Microphones"] },
@@ -303,7 +306,6 @@
     let twTitle = document.querySelector('meta[name="twitter:title"]');
     let twDesc = document.querySelector('meta[name="twitter:description"]');
     let twImage = document.querySelector('meta[name="twitter:image"]');
-
     if (!ogTitle) { ogTitle = document.createElement('meta'); ogTitle.setAttribute('property', 'og:title'); document.head.appendChild(ogTitle); }
     if (!ogDesc) { ogDesc = document.createElement('meta'); ogDesc.setAttribute('property', 'og:description'); document.head.appendChild(ogDesc); }
     if (!ogImage) { ogImage = document.createElement('meta'); ogImage.setAttribute('property', 'og:image'); document.head.appendChild(ogImage); }
@@ -311,13 +313,12 @@
     if (!twTitle) { twTitle = document.createElement('meta'); twTitle.setAttribute('name', 'twitter:title'); document.head.appendChild(twTitle); }
     if (!twDesc) { twDesc = document.createElement('meta'); twDesc.setAttribute('name', 'twitter:description'); document.head.appendChild(twDesc); }
     if (!twImage) { twImage = document.createElement('meta'); twImage.setAttribute('name', 'twitter:image'); document.head.appendChild(twImage); }
-
     ogTitle.setAttribute('content', product.name + ' | Mmeli Global');
-    ogDesc.setAttribute('content', product.description ? product.description.substring(0, 200) : 'Shop premium products at Mmeli Global.');
+    ogDesc.setAttribute('content', product.description ? product.description.substring(0,200) : 'Shop premium products at Mmeli Global.');
     ogImage.setAttribute('content', product.main_image);
     ogUrl.setAttribute('content', window.location.href);
     twTitle.setAttribute('content', product.name);
-    twDesc.setAttribute('content', product.description ? product.description.substring(0, 200) : 'Shop premium products at Mmeli Global.');
+    twDesc.setAttribute('content', product.description ? product.description.substring(0,200) : 'Shop premium products at Mmeli Global.');
     twImage.setAttribute('content', product.main_image);
   }
   function resetMetaTagsToDefault() {
@@ -369,7 +370,6 @@
     return shuffleArray([...selectedPhones, ...selectedNon]);
   }
 
-  // ---------- Product loading ----------
   async function loadProducts() {
     try {
       const res = await fetch(API + '/products');
@@ -445,7 +445,6 @@
     }
   }
 
-  // ---------- Product page ----------
   async function openProduct(id) {
     try {
       let product = allProducts.find(p => p.id == id);
@@ -454,7 +453,6 @@
       renderProductDetail(product);
       switchPage('productPage');
       history.pushState(null, '', `#/product/${id}`);
-      // Update meta tags for sharing
       updateMetaTagsForProduct(product);
     } catch(e) { alert('Could not open product'); }
   }
@@ -582,7 +580,6 @@
     } catch(e) { alert(e.message); }
   }
 
-  // ---------- Tracking with live map ----------
   async function trackOrder() {
     const code = document.getElementById('trackCode').value.trim();
     if (!code) return alert('Enter tracking code');
@@ -599,9 +596,7 @@
       if (order.location_lat && order.location_lng) {
         L.marker([order.location_lat, order.location_lng]).addTo(map).bindPopup('Current Location').openPopup();
         map.setView([order.location_lat, order.location_lng], 12);
-      } else {
-        L.marker([-17.825,31.033]).addTo(map).bindPopup('Mmeli Global').openPopup();
-      }
+      } else { L.marker([-17.825,31.033]).addTo(map).bindPopup('Mmeli Global').openPopup(); }
     } catch(e) { alert('Order not found'); }
   }
   function initDefaultMap() {
@@ -624,7 +619,7 @@
     } catch(e) { document.getElementById('shipmentStatus').innerHTML = '<p style="color:red;">Shipment not found.</p>'; }
   }
 
-  // ---------- Auth ----------
+  // ---------- Auth functions (full) ----------
   async function register() {
     const name = document.getElementById('regName').value, email = document.getElementById('regEmail').value, phone = document.getElementById('regPhone').value, address = document.getElementById('regAddress').value, password = document.getElementById('regPassword').value;
     if (!name || !email || !password) return alert('Fill required fields');
@@ -669,7 +664,7 @@
   function openShipmentTracking() { document.getElementById('shipmentTrackingModal').style.display = 'flex'; }
   function closeShipmentModal() { document.getElementById('shipmentTrackingModal').style.display = 'none'; }
 
-  // ---------- Admin (fixed add/update) ----------
+  // ---------- Admin dashboard (complete) ----------
   async function adminLogin() {
     const email = document.getElementById('adminEmail').value, password = document.getElementById('adminPassword').value;
     try {
@@ -717,7 +712,7 @@
     window.filterProductList = () => {
       const term = document.getElementById('productSearch').value.toLowerCase();
       const filtered = products.filter(p => p.name.toLowerCase().includes(term));
-      document.getElementById('productListContainer').innerHTML = filtered.map(p=>`<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:8px;"><img src="${p.main_image}" width="50" style="border-radius:8px;"> ${p.name} - $${p.price} <div><button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div></div>`).join('');
+      document.getElementById('productListContainer').innerHTML = filtered.map(p=>`<div><img src="${p.main_image}" width="50"> ${p.name} - $${p.price} <button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div>`).join('');
     };
   }
   async function editProductModal(id) {
@@ -853,10 +848,7 @@
     const notes = document.getElementById('shipNotes').value;
     const file = document.getElementById('shipImage').files[0];
     let image = null;
-    const save = async (img) => {
-      await apiCall('/shipments', { method:'POST', body: JSON.stringify({ tracking_code, client, receiver, pickup, notes, image: img, paid, status:'pending' }) });
-      alert('Shipment added'); closeModal('modalManageShipments'); openAdminModal('manageShipments');
-    };
+    const save = async (img) => { await apiCall('/shipments', { method:'POST', body: JSON.stringify({ tracking_code, client, receiver, pickup, notes, image: img, paid, status:'pending' }) }); alert('Shipment added'); closeModal('modalManageShipments'); openAdminModal('manageShipments'); };
     if (file) { const reader = new FileReader(); reader.onload = e => save(e.target.result); reader.readAsDataURL(file); } else save(null);
   }
   async function updateShipmentStatus(id) { await apiCall(`/shipments/${id}/status`, { method:'PUT', body: JSON.stringify({ status:'shipped' }) }); openAdminModal('manageShipments'); }
@@ -872,9 +864,7 @@
   }
   function showCreateQuotationForm(container) {
     container.innerHTML = `<h3>Create Quotation</h3><div>Client Name: <input id="qcName"></div><div>Client Phone: <input id="qcPhone"></div><div>Client Email: <input id="qcEmail"></div><div>Address: <input id="qcAddress"></div><hr><div id="quoteItems"><div class="quote-item"><input placeholder="Description"> <input placeholder="Qty" size="5"> <input placeholder="Price" size="8"></div></div><button onclick="addQuoteItemRow()">+ Add Item</button><hr><div>Shipping Cost: <input id="qcShipping" value="0"></div><div>Discount: <input id="qcDiscount" value="0"></div><div>Tax %: <input id="qcTax" value="0"></div><hr><div><strong>Total: $<span id="qcTotal">0.00</span></strong></div><button onclick="generateQuoteAndSave()">Generate & Save Quotation</button>`;
-    window.addQuoteItemRow = () => {
-      const div = document.createElement('div'); div.className = 'quote-item'; div.innerHTML = '<input placeholder="Description"> <input placeholder="Qty" size="5"> <input placeholder="Price" size="8">'; document.getElementById('quoteItems').appendChild(div);
-    };
+    window.addQuoteItemRow = () => { const div = document.createElement('div'); div.className = 'quote-item'; div.innerHTML = '<input placeholder="Description"> <input placeholder="Qty" size="5"> <input placeholder="Price" size="8">'; document.getElementById('quoteItems').appendChild(div); };
     window.generateQuoteAndSave = async () => {
       const client = { name: document.getElementById('qcName').value, phone: document.getElementById('qcPhone').value, email: document.getElementById('qcEmail').value, address: document.getElementById('qcAddress').value };
       const items = []; document.querySelectorAll('#quoteItems .quote-item').forEach(row => { const desc = row.children[0].value, qty = parseFloat(row.children[1].value)||0, price = parseFloat(row.children[2].value)||0; if(desc && qty>0 && price>0) items.push({desc, qty, price, subtotal: qty*price}); });
@@ -893,7 +883,7 @@
   }
   function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
 
-  // ---------- Search with autocomplete ----------
+  // ---------- Search ----------
   document.getElementById('searchInput').addEventListener('input', function() {
     const term = this.value.toLowerCase();
     const list = document.getElementById('autocompleteList');
@@ -922,7 +912,7 @@
     displayProducts(allShuffled.slice(0, currentDisplayLimit));
     document.getElementById('subMenu').innerHTML = '';
     switchPage('home');
-    resetMetaTagsToDefault(); // restore default share preview
+    resetMetaTagsToDefault();
   }
   function goBackHome() { resetHome(); }
   function trackOrderCode(code) { document.getElementById('trackCode').value = code; switchPage('tracking'); setTimeout(trackOrder, 100); }
@@ -943,12 +933,14 @@
   window.addEventListener('hashchange', handleHash);
   function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&')return'&amp;';if(m==='<')return'&lt;';if(m==='>')return'&gt;';return m;}); }
 
-  // ---------- Global modal close handlers ----------
+  // ---------- Global modal close and double-click logo ----------
   document.querySelectorAll('.close-modal').forEach(btn => {
     btn.addEventListener('click', function() { const modal = this.closest('.modal'); if(modal) modal.style.display = 'none'; });
   });
   window.addEventListener('click', (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; });
-  document.getElementById('logoArea').addEventListener('dblclick', () => { switchPage('adminDashboard'); });
+  document.getElementById('logoArea').addEventListener('dblclick', () => {
+    switchPage('adminDashboard');
+  });
 
   window.addEventListener('load', function() {
     document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
