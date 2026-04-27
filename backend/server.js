@@ -28,26 +28,50 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// ========== PRODUCT PREVIEW FOR SOCIAL MEDIA ==========
-// Special route for product link previews (WhatsApp, Facebook, Twitter, etc.)
+// Serve static files for uploaded images (if your images are stored in 'uploads' folder)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// ========== PRODUCT PREVIEW FOR SOCIAL MEDIA – FIXED VERSION ==========
+// Converts relative image URLs to absolute, ensures rich previews on WhatsApp/Facebook/Twitter
 app.get('/product/:id', async (req, res) => {
   const productId = req.params.id;
   const { data: product, error } = await supabase.from('products').select('*').eq('id', productId).single();
   if (error || !product) {
     return res.status(404).send('Product not found');
   }
+  
+  // Convert relative image URL to absolute URL
+  let imageUrl = product.main_image;
+  if (imageUrl) {
+    if (!imageUrl.startsWith('http')) {
+      // Ensure leading slash
+      if (!imageUrl.startsWith('/')) imageUrl = '/' + imageUrl;
+      imageUrl = `https://mmeliglobal.com${imageUrl}`;
+    }
+  } else {
+    imageUrl = 'https://mmeliglobal.com/logo.png';
+  }
+  
+  // Escape special characters for HTML attributes
+  const safeName = product.name.replace(/"/g, '&quot;');
+  const safeDesc = (product.description || 'Shop premium products at Mmeli Global').substring(0, 200).replace(/"/g, '&quot;');
+  
   const html = `<!DOCTYPE html>
   <html>
   <head>
     <meta charset="UTF-8">
-    <meta property="og:title" content="${product.name} | Mmeli Global">
-    <meta property="og:description" content="${(product.description || 'Shop premium products').substring(0,200)}">
-    <meta property="og:image" content="${product.main_image}">
-    <meta property="og:url" content="https://mmeliglobal.com/#/product/${product.id}">
+    <title>${safeName} | Mmeli Global</title>
+    <meta property="og:title" content="${safeName} | Mmeli Global">
+    <meta property="og:description" content="${safeDesc}">
+    <meta property="og:image" content="${imageUrl}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:url" content="https://mmeliglobal.com/product/${productId}">
     <meta property="og:type" content="product">
     <meta name="twitter:card" content="summary_large_image">
-    <meta http-equiv="refresh" content="0; url=/#/product/${product.id}">
-    <title>${product.name} | Mmeli Global</title>
+    <meta name="twitter:title" content="${safeName}">
+    <meta name="twitter:image" content="${imageUrl}">
+    <meta http-equiv="refresh" content="0; url=/#/product/${productId}">
   </head>
   <body>
     <p>Redirecting to product...</p>
@@ -57,7 +81,7 @@ app.get('/product/:id', async (req, res) => {
 });
 // ======================================================
 
-// Serve static files (frontend)
+// Serve static files (your frontend HTML, CSS, JS)
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Mount API routes
