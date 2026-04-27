@@ -848,3 +848,14 @@ window.updateShipmentStatus = updateShipmentStatus;
 window.sendBroadcast = sendBroadcast;
 window.generateQuoteAndSave = (window.generateQuoteAndSave);
 window.addQuoteItemRow = (window.addQuoteItemRow);
+
+document.addEventListener('DOMContentLoaded', () => {
+  const logo = document.getElementById('logoArea');
+  if (logo) {
+    logo.addEventListener('dblclick', () => {
+      console.log("Double-click detected"); // Debugging line
+      switchPage('adminDashboard');
+    });
+  }
+});
+
