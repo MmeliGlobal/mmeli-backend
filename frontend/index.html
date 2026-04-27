@@ -4,14 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Mmeli Global – Premium E‑commerce</title>
-  <!-- Default meta (overridden by backend for product pages) -->
   <meta property="og:title" content="Mmeli Global | Premium Products">
   <meta property="og:description" content="Shop premium products, track shipments, get quotations, and manage your account.">
   <meta property="og:image" content="https://mmeliglobal.com/logo.png">
   <meta property="og:url" content="https://mmeliglobal.com">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <!-- External libraries -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link rel="stylesheet" href="style.css">
@@ -20,7 +18,8 @@
 <body>
 
 <header class="header">
-  <div class="logo" id="logoArea">
+  <!-- FIX #1: ondblclick added directly to the logo -->
+  <div class="logo" id="logoArea" ondblclick="switchPage('adminDashboard')">
     <img src="logo.png" alt="Mmeli Global Logo" onerror="this.src='https://placehold.co/40x40?text=M'">
     <span>Mmeli Global</span>
   </div>
@@ -40,7 +39,6 @@
 <div id="mainMenu" class="main-menu"></div>
 <div id="subMenu" class="sub-menu"></div>
 
-<!-- PAGES -->
 <section id="home" class="page active">
   <div id="productsContainer"></div>
   <div id="loadMoreBtn" style="text-align:center; margin-top:20px;"><button onclick="loadMoreProducts()">Load More</button></div>
