@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Mmeli Global – Premium E‑commerce</title>
-  <!-- Default meta tags (overwritten by backend for product pages) -->
+  <!-- Default meta (overridden by backend for product pages) -->
   <meta property="og:title" content="Mmeli Global | Premium Products">
   <meta property="og:description" content="Shop premium products, track shipments, get quotations, and manage your account.">
   <meta property="og:image" content="https://mmeliglobal.com/logo.png">
   <meta property="og:url" content="https://mmeliglobal.com">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <!-- Styles & external libs -->
+  <!-- External libraries -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link rel="stylesheet" href="style.css">
@@ -21,7 +21,7 @@
 
 <header class="header">
   <div class="logo" id="logoArea">
-    <img src="logo.png" alt="Mmeli Global Logo" id="siteLogo" onerror="this.src='https://placehold.co/40x40?text=M'">
+    <img src="logo.png" alt="Mmeli Global Logo" onerror="this.src='https://placehold.co/40x40?text=M'">
     <span>Mmeli Global</span>
   </div>
   <div class="cart-icon" onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i> <span id="cartCount">0</span></div>
@@ -41,7 +41,11 @@
 <div id="subMenu" class="sub-menu"></div>
 
 <!-- PAGES -->
-<section id="home" class="page active"><div id="productsContainer"></div><div id="loadMoreBtn" style="text-align:center; margin-top:20px;"><button onclick="loadMoreProducts()">Load More</button></div></section>
+<section id="home" class="page active">
+  <div id="productsContainer"></div>
+  <div id="loadMoreBtn" style="text-align:center; margin-top:20px;"><button onclick="loadMoreProducts()">Load More</button></div>
+</section>
+
 <section id="productPage" class="page"><div id="productDetailContainer"></div><div id="productRecommendations"></div></section>
 <section id="cart" class="page"><h3>Your Cart</h3><div id="cartList"></div><div class="cart-actions"><input type="text" id="promoCodeInput" placeholder="Discount code"><button onclick="applyDiscount()">Apply</button><button onclick="goToCheckout()" class="checkout-btn"><i class="fab fa-whatsapp"></i> Proceed</button></div><div id="cartRecommendations"></div></section>
 <section id="checkoutPage" class="page"><h3>Checkout</h3><div class="checkout-step active" id="stepShipping"><h4>Shipping Address</h4><input type="text" id="checkoutAddress" placeholder="Address"><button onclick="nextStep()">Next</button></div><div class="checkout-step" id="stepDelivery"><h4>Delivery Method</h4><label><input type="radio" name="delivery" value="standard" checked> Standard (3-5 days) – $5</label><label><input type="radio" name="delivery" value="express"> Express (1-2 days) – $15</label><button onclick="nextStep()">Next</button></div><div class="checkout-step" id="stepPayment"><h4>Payment</h4><p>You will be redirected to WhatsApp to confirm payment.</p><button onclick="completeCheckout()">Place Order</button></div></section>
