@@ -93,6 +93,7 @@
     .quote-preview table { width:100%; border-collapse:collapse; margin:10px 0; }
     .quote-preview th, .quote-preview td { border:1px solid #ddd; padding:8px; text-align:left; }
     button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .admin-footer-link { color: #d4af37 !important; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -212,7 +213,7 @@
   </div>
 </section>
 
-<!-- MODALS (all 12 – unchanged) -->
+<!-- MODALS (all 12) -->
 <div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
 <div id="modalManageProducts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
 <div id="modalAddProduct" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
@@ -240,7 +241,10 @@
 <footer class="footer">
   <div class="footer-grid">
     <div><h4>Mmeli Global</h4><p>Premium products delivered worldwide.</p><p><i class="fab fa-whatsapp"></i> +263 77 687 1711</p><p><i class="far fa-envelope"></i> info@mmeliglobal.com</p></div>
-    <div><h4>Quick Links</h4><a href="#" onclick="resetHome()">Home</a><a href="#" onclick="switchPage('promo')">Promotions</a><a href="#" onclick="switchPage('tracking')">Track Order</a><a href="#" onclick="switchPage('account')">My Account</a></div>
+    <div><h4>Quick Links</h4><a href="#" onclick="resetHome()">Home</a><a href="#" onclick="switchPage('promo')">Promotions</a><a href="#" onclick="switchPage('tracking')">Track Order</a><a href="#" onclick="switchPage('account')">My Account</a>
+      <!-- VISIBLE ADMIN BUTTON -->
+      <a href="#" onclick="switchPage('adminDashboard')" style="color: #d4af37; font-weight: bold; margin-top: 12px;">🔐 Admin Login</a>
+    </div>
     <div><h4>Policies</h4><a href="#" id="privacyLink">Privacy Policy</a><a href="#" id="termsLink">Terms of Service</a><a href="#" id="shippingLink">Shipping Info</a><a href="#" id="returnsLink">Returns & Refunds</a></div>
     <div><h4>Newsletter</h4><p>Get updates</p><input type="email" id="subEmail" placeholder="Email"><input type="tel" id="subPhone" placeholder="WhatsApp"><button onclick="subscribe()">Subscribe</button></div>
   </div>
@@ -248,7 +252,7 @@
 </footer>
 
 <script>
-  // ========== FULL JAVASCRIPT (FIXED VERSION) ==========
+  // ========== FULL JAVASCRIPT (FIXED WITH VISIBLE ADMIN BUTTON) ==========
   const API = '/api';
   let allProducts = [];
   let currentProduct = null;
@@ -294,7 +298,7 @@
   };
   const defaultIcon = "https://cdn-icons-png.flaticon.com/512/456/456212.png";
 
-  // ---------- API helper (fixed to use absolute path and handle errors) ----------
+  // ---------- API helper ----------
   async function apiCall(endpoint, options = {}) {
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -336,7 +340,9 @@
       displayProducts(allShuffled.slice(0, currentDisplayLimit));
       buildMainMenu();
       if (!sessionStorage.getItem('popupShown')) { showRandomPromo(); sessionStorage.setItem('popupShown', 'true'); }
-    } catch(e) { console.error(e); const cached = localStorage.getItem('cachedProducts'); if (cached) { allProducts = JSON.parse(cached); allShuffled = getShuffledWithPhoneBias(allProducts); displayProducts(allShuffled.slice(0, currentDisplayLimit)); buildMainMenu(); document.getElementById('productsContainer').innerHTML += '<p style="text-align:center;">Using cached products. Refresh later.</p>'; } else { document.getElementById('productsContainer').innerHTML = '<p>Error loading products. Check backend.</p>'; } }
+      // Cache products
+      localStorage.setItem('cachedProducts', JSON.stringify(allProducts));
+    } catch(e) { console.error(e); const cached = localStorage.getItem('cachedProducts'); if (cached) { allProducts = JSON.parse(cached); allShuffled = getShuffledWithPhoneBias(allProducts); displayProducts(allShuffled.slice(0, currentDisplayLimit)); buildMainMenu(); document.getElementById('productsContainer').innerHTML += '<p style="text-align:center;">Using cached products.</p>'; } else { document.getElementById('productsContainer').innerHTML = '<p>Error loading products. Check backend.</p>'; } }
   }
   function displayProducts(products) {
     const container = document.getElementById('productsContainer');
@@ -574,7 +580,7 @@
     } catch(e) { document.getElementById('shipmentStatus').innerHTML = '<p style="color:red;">Shipment not found.</p>'; }
   }
 
-  // ---------- Auth functions (unchanged but fixed login) ----------
+  // ---------- Auth functions ----------
   async function register() {
     const name = document.getElementById('regName').value, email = document.getElementById('regEmail').value, phone = document.getElementById('regPhone').value, address = document.getElementById('regAddress').value, password = document.getElementById('regPassword').value;
     if (!name || !email || !password) return alert('Fill required fields');
@@ -619,7 +625,7 @@
   function openShipmentTracking() { document.getElementById('shipmentTrackingModal').style.display = 'flex'; }
   function closeShipmentModal() { document.getElementById('shipmentTrackingModal').style.display = 'none'; }
 
-  // ========== ADMIN LOGIN (FIXED) ==========
+  // ========== ADMIN LOGIN (FIXED & CLEAR) ==========
   async function adminLogin() {
     const email = document.getElementById('adminEmail').value.trim();
     const password = document.getElementById('adminPassword').value;
@@ -638,18 +644,15 @@
         throw new Error(err.error || 'Login failed');
       }
       const data = await response.json();
-      // Check role
       if (!data.user || data.user.role !== 'admin') {
-        throw new Error('Not an admin account');
+        throw new Error('Not an admin account. Use admin@mmeliglobal.com');
       }
       token = data.token;
       user = data.user;
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
-      // Hide login, show admin panel
       document.getElementById('adminLoginDiv').style.display = 'none';
       document.getElementById('adminPanel').style.display = 'block';
-      // Re‑initialize admin card listeners (important)
       initAdminCards();
       alert('Admin login successful');
     } catch (err) {
@@ -657,10 +660,9 @@
     }
   }
 
-  // ---------- Admin dashboard (complete) ----------
+  // ---------- Admin dashboard (full) ----------
   function initAdminCards() {
     document.querySelectorAll('.admin-card').forEach(card => {
-      // Remove any existing listener to avoid duplication
       card.removeEventListener('click', card._listener);
       const handler = () => {
         const modalId = card.getAttribute('data-modal');
@@ -931,28 +933,24 @@
   window.addEventListener('click', (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; });
   document.querySelector('.close-popup')?.addEventListener('click', closePopup);
 
-  // ========== DOUBLE-CLICK LOGO – FIXED ==========
+  // ========== DOUBLE-CLICK LOGO (still works) + VISIBLE ADMIN LINK ==========
   const logoElem = document.getElementById('logoArea');
   if (logoElem) {
     logoElem.addEventListener('dblclick', function(e) {
       e.preventDefault();
-      console.log('Logo double-clicked – switching to admin dashboard');
       switchPage('adminDashboard');
     });
-  } else {
-    console.error('Logo element not found');
   }
 
   // ========== INITIALIZATION ==========
   window.addEventListener('load', function() {
     document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
     updateCartCount();
-    initAdminCards(); // for admin cards in case admin is already logged in
+    initAdminCards();
     if (user) {
       document.getElementById('loginBox').style.display='none';
       document.getElementById('dashboard').style.display='block';
       document.getElementById('userName').innerText = user.name;
-      // if admin, also update admin panel visibility
       if (user.role === 'admin') {
         document.getElementById('adminLoginDiv').style.display = 'none';
         document.getElementById('adminPanel').style.display = 'block';
