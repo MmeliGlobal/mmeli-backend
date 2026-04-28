@@ -16,7 +16,7 @@ let currentSubcategory = null;
 let currentSearchQuery = '';
 let checkoutData = { shippingAddress: '', deliveryMethod: 'standard', deliveryCost: 5 };
 
-// Category hierarchy
+// ======================== CATEGORY HIERARCHY (same as before) ========================
 const categoryHierarchy = {
   "Phones": { "Smartphones": ["Android Phones", "iPhones", "Rugged Phones"], "Feature Phones": ["Keypad Phones"], "Accessories": ["Chargers", "Power Banks", "Phone Cases", "Screen Protectors"] },
   "Cameras": { "Cameras": ["Digital Cameras", "DSLR Cameras", "Mirrorless Cameras"], "Video Equipment": ["Camcorders", "Action Cameras"], "Accessories": ["Tripods", "Lighting", "Microphones"] },
@@ -127,8 +127,14 @@ function switchPage(pageId, productId = null) {
   }
   if (pageId === 'tracking' && map === null) initMap();
   if (pageId === 'adminDashboard') {
-    if (localStorage.getItem('adminToken')) { document.getElementById('adminPanel').style.display = 'block'; document.getElementById('adminLoginDiv').style.display = 'none'; }
-    else { document.getElementById('adminPanel').style.display = 'none'; document.getElementById('adminLoginDiv').style.display = 'block'; }
+    if (localStorage.getItem('adminToken')) { 
+      document.getElementById('adminPanel').style.display = 'block'; 
+      document.getElementById('adminLoginDiv').style.display = 'none';
+      initAdminCards(); // ensure cards are clickable after showing admin panel
+    } else { 
+      document.getElementById('adminPanel').style.display = 'none'; 
+      document.getElementById('adminLoginDiv').style.display = 'block';
+    }
   }
   if (pageId === 'productPage' && productId) openProduct(productId, true);
   let hash = '#/' + pageId;
@@ -154,34 +160,53 @@ function resetHome() {
 // ======================== PRODUCT LOADING & DISPLAY ========================
 async function loadProducts() {
   showSpinner();
+  console.log('Loading products from API...');
   try {
     const res = await fetch(API + '/products');
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
     allProducts = await res.json();
+    console.log(`Loaded ${allProducts.length} products from API`);
     localStorage.setItem('cachedProducts', JSON.stringify(allProducts));
     setShuffledProductOrder();
     displayProducts(shuffledProductOrder.slice(0, currentDisplayCount));
     buildMainMenu();
     if (!sessionStorage.getItem('popupShown')) { showRandomPromo(); sessionStorage.setItem('popupShown','true'); }
   } catch(e) {
-    console.error(e);
+    console.error('Product load error:', e);
     const cached = localStorage.getItem('cachedProducts');
-    if (cached) { allProducts = JSON.parse(cached); setShuffledProductOrder(); displayProducts(shuffledProductOrder.slice(0, currentDisplayCount)); buildMainMenu(); document.getElementById('productsContainer').innerHTML += '<p style="color:orange;">Using cached products.</p>'; }
-    else document.getElementById('productsContainer').innerHTML = '<p>Error loading products.</p>';
+    if (cached) {
+      allProducts = JSON.parse(cached);
+      console.log(`Using ${allProducts.length} cached products`);
+      setShuffledProductOrder();
+      displayProducts(shuffledProductOrder.slice(0, currentDisplayCount));
+      buildMainMenu();
+      const container = document.getElementById('productsContainer');
+      if (container) container.innerHTML += '<p style="color:orange;">Using cached products. Check your network connection.</p>';
+    } else {
+      document.getElementById('productsContainer').innerHTML = '<p>Error loading products. Please refresh or contact support.</p>';
+    }
   } finally { hideSpinner(); }
 }
 async function openProduct(id, fromNav = false) {
   showSpinner();
   try {
     let product = allProducts.find(p => p.id == id);
-    if (!product) { const res = await fetch(API + `/products/${id}`); if (!res.ok) throw new Error(); product = await res.json(); }
+    if (!product) { 
+      console.log(`Product ${id} not in cache, fetching...`);
+      const res = await fetch(API + `/products/${id}`);
+      if (!res.ok) throw new Error();
+      product = await res.json();
+    }
     currentProduct = product;
     renderProductDetail(product);
     const prodPage = document.getElementById('productPage');
-    if (!prodPage.classList.contains('active')) { document.querySelectorAll('.page').forEach(p=>p.classList.remove('active')); prodPage.classList.add('active'); }
+    if (!prodPage.classList.contains('active')) { 
+      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active')); 
+      prodPage.classList.add('active'); 
+    }
     if (!fromNav) history.pushState(null, '', `#/product/${id}`);
     await loadProductRecommendations(product.cat, product.id);
-  } catch(e) { alert('Could not open product'); } finally { hideSpinner(); }
+  } catch(e) { console.error(e); alert('Could not open product'); } finally { hideSpinner(); }
 }
 function renderProductDetail(p) {
   const container = document.getElementById('productDetailContainer');
@@ -210,7 +235,7 @@ function loadRecommendationsForSection(containerId, excludeId) {
   if (cont) cont.innerHTML = `<h4>You may also like</h4><div class="recommend-grid">${recs.map(p=>`<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${p.main_image}" loading="lazy"><div>${escapeHtml(p.name)}<br><strong>$${p.price}</strong></div></div>`).join('')}</div>`;
 }
 
-// ======================== CART & CHECKOUT ========================
+// ======================== CART & CHECKOUT (condensed but complete) ========================
 function updateCartCount() { const cnt = document.getElementById('cartCount'); if (cnt) cnt.innerText = cart.length; }
 function renderCart() {
   const container = document.getElementById('cartList');
@@ -272,7 +297,7 @@ async function completeCheckout() {
     cart = []; appliedDiscount = null; localStorage.setItem('cart',JSON.stringify(cart)); updateCartCount();
     alert('Order placed! Check WhatsApp to complete payment.');
     switchPage('home');
-  } catch(e){ alert('Order failed'); } finally { hideSpinner(); }
+  } catch(e){ alert('Order failed: ' + e.message); } finally { hideSpinner(); }
 }
 
 // ======================== CATEGORY MENU ========================
@@ -431,23 +456,30 @@ async function adminLogin(){
     localStorage.setItem('adminToken',data.token);
     document.getElementById('adminLoginDiv').style.display='none';
     document.getElementById('adminPanel').style.display='block';
-    initAdminCards();
+    initAdminCards(); // attach click handlers to admin cards
     alert('Admin logged in');
   } catch(e){ alert('Admin login failed'); } finally{ hideSpinner(); }
 }
 function initAdminCards(){
   const cards=document.querySelectorAll('#adminCardsContainer .admin-card');
   cards.forEach(card=>{
-    card.removeEventListener('click',card._listener);
-    const listener=()=>{ const modalId=card.getAttribute('data-modal'); openAdminModal(modalId); };
-    card.addEventListener('click',listener);
+    // Remove any previous listener to avoid duplicates
+    if(card._listener) card.removeEventListener('click', card._listener);
+    const listener=()=>{ 
+      const modalId=card.getAttribute('data-modal'); 
+      if(modalId) openAdminModal(modalId); 
+      else console.warn('No data-modal attribute on card', card);
+    };
+    card.addEventListener('click', listener);
     card._listener=listener;
   });
+  console.log('Admin cards initialized:', cards.length);
 }
 function openAdminModal(modalId){
   const modal=document.getElementById(`modal${modalId.charAt(0).toUpperCase()+modalId.slice(1)}`);
-  if(!modal) return;
+  if(!modal){ console.error('Modal not found:', modalId); return; }
   const body=modal.querySelector('.modal-body');
+  if(!body){ console.error('Modal body not found'); return; }
   switch(modalId){
     case 'dashboardStats': loadDashboardStats(body); break;
     case 'manageProducts': loadProductsModal(body); break;
@@ -460,7 +492,7 @@ function openAdminModal(modalId){
     case 'manageShipments': loadShipmentsModal(body); break;
     case 'broadcast': loadBroadcastModal(body); break;
     case 'createQuotation': showCreateQuotationForm(body); break;
-    default: return;
+    default: console.warn('Unknown modal', modalId); return;
   }
   modal.style.display='flex';
 }
@@ -476,10 +508,11 @@ async function loadProductsModal(container){
 }
 async function editProductModal(id){
   showSpinner();
-  const p=await adminApiCall(`/products/${id}`);
-  const body=document.getElementById('modalManageProducts').querySelector('.modal-body');
-  body.innerHTML=`<h3>Edit Product</h3><input id="editName" value="${p.name}"><br><input id="editPrice" value="${p.price}"><br><input id="editImage" value="${p.main_image}"><br><input id="editSubImages" value="${(p.sub_images||[]).join(',')}"><br><textarea id="editDesc">${p.description||''}</textarea><br><input id="editCat" value="${p.cat}"><br><input id="editSubcat" value="${p.subcat}"><br><input id="editColors" value="${(p.colors||[]).join(',')}"><br><input id="editSizes" value="${(p.size_options||[]).map(s=>`${s.size}:${s.price}`).join(',')}"><br><button onclick="updateProduct(${id})">Update</button><button onclick="closeModal('modalManageProducts')">Cancel</button>`;
-  hideSpinner();
+  try{
+    const p=await adminApiCall(`/products/${id}`);
+    const body=document.getElementById('modalManageProducts').querySelector('.modal-body');
+    body.innerHTML=`<h3>Edit Product</h3><input id="editName" value="${p.name}"><br><input id="editPrice" value="${p.price}"><br><input id="editImage" value="${p.main_image}"><br><input id="editSubImages" value="${(p.sub_images||[]).join(',')}"><br><textarea id="editDesc">${p.description||''}</textarea><br><input id="editCat" value="${p.cat}"><br><input id="editSubcat" value="${p.subcat}"><br><input id="editColors" value="${(p.colors||[]).join(',')}"><br><input id="editSizes" value="${(p.size_options||[]).map(s=>`${s.size}:${s.price}`).join(',')}"><br><button onclick="updateProduct(${id})">Update</button><button onclick="closeModal('modalManageProducts')">Cancel</button>`;
+  } catch(e){ alert('Error loading product'); } finally{ hideSpinner(); }
 }
 async function updateProduct(id){
   const name=document.getElementById('editName').value, price=parseFloat(document.getElementById('editPrice').value), main_image=document.getElementById('editImage').value, description=document.getElementById('editDesc').value, cat=document.getElementById('editCat').value, subcat=document.getElementById('editSubcat').value, colors=document.getElementById('editColors').value.split(',').map(c=>c.trim()), sizeStr=document.getElementById('editSizes').value, subImagesStr=document.getElementById('editSubImages').value;
@@ -585,7 +618,15 @@ window.onload = () => {
   loadProducts();
   updateCartCount();
   if(user){ const lb=document.getElementById('loginBox'); const db=document.getElementById('dashboard'); if(lb) lb.style.display='none'; if(db){ db.style.display='block'; document.getElementById('userName').innerText=user.name; } }
-  if(localStorage.getItem('adminToken')){ document.getElementById('adminLoginDiv').style.display='none'; document.getElementById('adminPanel').style.display='block'; initAdminCards(); }
+  if(localStorage.getItem('adminToken')){ 
+    document.getElementById('adminLoginDiv').style.display='none'; 
+    document.getElementById('adminPanel').style.display='block'; 
+    initAdminCards(); 
+  } else {
+    // Ensure admin panel is hidden and login shown
+    document.getElementById('adminPanel').style.display='none';
+    document.getElementById('adminLoginDiv').style.display='block';
+  }
   window.addEventListener('popstate', handleHash);
   handleHash();
 };
