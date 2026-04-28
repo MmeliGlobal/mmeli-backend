@@ -28,11 +28,10 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve static files for uploaded images (if your images are stored in 'uploads' folder)
+// Serve static files for uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ========== PRODUCT PREVIEW FOR SOCIAL MEDIA – FIXED VERSION ==========
-// Converts relative image URLs to absolute, ensures rich previews on WhatsApp/Facebook/Twitter
 app.get('/product/:id', async (req, res) => {
   const productId = req.params.id;
   const { data: product, error } = await supabase.from('products').select('*').eq('id', productId).single();
@@ -44,7 +43,6 @@ app.get('/product/:id', async (req, res) => {
   let imageUrl = product.main_image;
   if (imageUrl) {
     if (!imageUrl.startsWith('http')) {
-      // Ensure leading slash
       if (!imageUrl.startsWith('/')) imageUrl = '/' + imageUrl;
       imageUrl = `https://mmeliglobal.com${imageUrl}`;
     }
@@ -64,6 +62,7 @@ app.get('/product/:id', async (req, res) => {
     <meta property="og:title" content="${safeName} | Mmeli Global">
     <meta property="og:description" content="${safeDesc}">
     <meta property="og:image" content="${imageUrl}">
+    <meta property="og:image:secure_url" content="${imageUrl}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:url" content="https://mmeliglobal.com/product/${productId}">
@@ -79,7 +78,6 @@ app.get('/product/:id', async (req, res) => {
   </html>`;
   res.send(html);
 });
-// ======================================================
 
 // Serve static files (your frontend HTML, CSS, JS)
 app.use(express.static(path.join(__dirname, '../frontend')));
