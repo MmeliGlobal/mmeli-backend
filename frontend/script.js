@@ -10,7 +10,7 @@ let appliedDiscount = null;
 let currentDisplayLimit = 150;
 let allShuffled = [];
 
-// Category hierarchy (full)
+// ---------- Category data ----------
 const categoryHierarchy = {
   "Phones": { "Smartphones": ["Android Phones", "iPhones", "Rugged Phones"], "Feature Phones": ["Keypad Phones"], "Accessories": ["Chargers", "Power Banks", "Phone Cases", "Screen Protectors"] },
   "Cameras": { "Cameras": ["Digital Cameras", "DSLR Cameras", "Mirrorless Cameras"], "Video Equipment": ["Camcorders", "Action Cameras"], "Accessories": ["Tripods", "Lighting", "Microphones"] },
@@ -29,7 +29,6 @@ const categoryHierarchy = {
   "Animal": { "Poultry Equipment": ["Incubators", "Feeders"], "Livestock Equipment": ["Drinkers", "Housing"] },
   "Packaging": { "Packaging": ["Cartons", "Plastic Packaging"], "Handling": ["Trolleys", "Pallet Equipment"] }
 };
-
 const subcategoryIcons = {
   "Smartphones": "https://cdn-icons-png.flaticon.com/512/1055/1055685.png", "Feature Phones": "https://cdn-icons-png.flaticon.com/512/180/180027.png", "Accessories": "https://cdn-icons-png.flaticon.com/512/1510/1510665.png",
   "Cameras": "https://cdn-icons-png.flaticon.com/512/1046/1046773.png", "Video Equipment": "https://cdn-icons-png.flaticon.com/512/1686/1686802.png", "Farm Machinery": "https://cdn-icons-png.flaticon.com/512/2964/2964420.png",
@@ -45,7 +44,7 @@ const subcategoryIcons = {
 };
 const defaultIcon = "https://cdn-icons-png.flaticon.com/512/456/456212.png";
 
-// ========== API HELPER ==========
+// ---------- API helper ----------
 async function apiCall(endpoint, options = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -57,7 +56,6 @@ async function apiCall(endpoint, options = {}) {
   return res.json();
 }
 
-// ========== PRODUCT UTILITIES ==========
 function shuffleArray(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -77,7 +75,6 @@ function getShuffledWithPhoneBias(products) {
   return shuffleArray([...selectedPhones, ...selectedNon]);
 }
 
-// ========== LOAD & DISPLAY PRODUCTS ==========
 async function loadProducts() {
   try {
     const res = await fetch(API + '/products');
@@ -97,6 +94,7 @@ async function loadProducts() {
       allShuffled = getShuffledWithPhoneBias(allProducts);
       displayProducts(allShuffled.slice(0, currentDisplayLimit));
       buildMainMenu();
+      document.getElementById('productsContainer').innerHTML += '<p style="text-align:center;">Using cached products.</p>';
     } else {
       document.getElementById('productsContainer').innerHTML = '<p>Error loading products. Check backend.</p>';
     }
@@ -110,7 +108,7 @@ function displayProducts(products) {
   products.forEach(p => {
     const card = document.createElement('div');
     card.className = 'product-card';
-    card.innerHTML = `<img src="${p.main_image || 'https://picsum.photos/300/200'}" alt="${escapeHtml(p.name)}" loading="lazy"><div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div><div class="product-price">$${p.price}</div></div>`;
+    card.innerHTML = `<img src="${p.main_image || 'https://picsum.photos/300/200'}" alt="${escapeHtml(p.name)}"><div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div><div class="product-price">$${p.price}</div></div>`;
     card.onclick = (e) => { e.stopPropagation(); openProduct(p.id); };
     container.appendChild(card);
   });
@@ -121,7 +119,6 @@ function loadMoreProducts() {
   if (currentDisplayLimit >= allShuffled.length) document.getElementById('loadMoreBtn').style.display = 'none';
 }
 
-// ========== MENU ==========
 function buildMainMenu() {
   const mainMenu = document.getElementById('mainMenu');
   mainMenu.innerHTML = '';
@@ -166,7 +163,6 @@ function selectSubCategory(cat, sub) {
   }
 }
 
-// ========== PRODUCT DETAIL ==========
 async function openProduct(id) {
   try {
     let product = allProducts.find(p => p.id == id);
@@ -215,7 +211,9 @@ function shareProduct() {
   if (navigator.share) navigator.share({ title: currentProduct.name, text, url });
   else {
     const wa = `https://wa.me/263776871711?text=${encodeURIComponent(text + ' ' + url)}`;
-    alert(`Share via WhatsApp: ${wa}`);
+    const fb = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+    const tw = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+    alert(`Share via:\nWhatsApp: ${wa}\nFacebook: ${fb}\nTwitter: ${tw}`);
   }
 }
 function addToCartFromDetail() {
@@ -299,7 +297,6 @@ async function applyDiscount() {
   } catch(e) { alert(e.message); }
 }
 
-// ========== TRACKING ==========
 async function trackOrder() {
   const code = document.getElementById('trackCode').value.trim();
   if (!code) return alert('Enter tracking code');
@@ -325,6 +322,7 @@ function initDefaultMap() {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
   L.marker([-17.825,31.033]).addTo(map).bindPopup('Mmeli Global').openPopup();
 }
+
 async function fetchShipmentStatus() {
   const code = document.getElementById('shipmentCode').value.trim();
   if (!code) return alert('Enter tracking code');
@@ -337,19 +335,8 @@ async function fetchShipmentStatus() {
     } else timelineDiv.innerHTML = '';
   } catch(e) { document.getElementById('shipmentStatus').innerHTML = '<p style="color:red;">Shipment not found.</p>'; }
 }
-function fetchCustomerShipment() {
-  const code = document.getElementById('customerShipmentCode').value.trim();
-  if (!code) return alert('Enter tracking code');
-  fetchShipmentStatusDirect(code);
-}
-async function fetchShipmentStatusDirect(code) {
-  try {
-    const shipment = await apiCall(`/shipments/track/${code}`);
-    document.getElementById('customerShipmentStatus').innerHTML = `<strong>Status:</strong> ${shipment.status}<br><strong>Client:</strong> ${shipment.client.name}<br><strong>Receiver:</strong> ${shipment.receiver.name}<br><strong>Notes:</strong> ${shipment.notes || '—'}`;
-  } catch(e) { document.getElementById('customerShipmentStatus').innerHTML = '<p style="color:red;">Shipment not found.</p>'; }
-}
 
-// ========== AUTH & CUSTOMER PORTAL ==========
+// ---------- Auth functions ----------
 async function register() {
   const name = document.getElementById('regName').value, email = document.getElementById('regEmail').value, phone = document.getElementById('regPhone').value, address = document.getElementById('regAddress').value, password = document.getElementById('regPassword').value;
   if (!name || !email || !password) return alert('Fill required fields');
@@ -370,77 +357,66 @@ async function login() {
   } catch(e) { alert('Login failed: '+e.message); }
 }
 function logout() { token=null; user=null; localStorage.clear(); location.reload(); }
-
-function switchToCustomerPage(page) {
-  switch(page) {
-    case 'orders':
-      showMyOrdersInPage();
-      switchPage('customerOrders');
-      break;
-    case 'quotations':
-      showMyQuotationsInPage();
-      switchPage('customerQuotations');
-      break;
-    case 'returns':
-      showMyReturnsInPage();
-      switchPage('customerReturns');
-      break;
-    case 'profile':
-      showProfileInPage();
-      switchPage('customerProfile');
-      break;
-    case 'trackShipment':
-      switchPage('customerTrackShipment');
-      break;
-  }
-}
-async function showMyOrdersInPage() {
+async function showMyOrders() {
   const orders = await apiCall('/orders/my-orders');
-  document.getElementById('ordersList').innerHTML = orders.map(o=>`<div style="border:1px solid #ddd; padding:8px; margin:8px 0; border-radius:12px;"><strong>${o.tracking_code}</strong> - ${o.status} - $${o.total} <button onclick="trackOrderCode('${o.tracking_code}')">Track</button></div>`).join('');
+  document.getElementById('customerData').innerHTML = `<h4>My Orders</h4>${orders.map(o=>`<div style="border:1px solid #ddd; padding:8px; margin:8px 0; border-radius:12px;"><strong>${o.tracking_code}</strong> - ${o.status} - $${o.total} <button onclick="trackOrderCode('${o.tracking_code}')">Track</button></div>`).join('')}`;
 }
-async function showMyQuotationsInPage() {
+async function showMyQuotations() {
   try {
     const quotes = await apiCall('/quotations/my-quotations');
-    document.getElementById('quotationsList').innerHTML = quotes.map(q=>`<div style="border:1px solid #ddd; padding:8px; margin:8px 0; border-radius:12px;">${q.quote_number} - $${q.total} <button onclick="viewQuote(${q.id})">View</button></div>`).join('');
-  } catch(e) { document.getElementById('quotationsList').innerHTML = '<p>No quotations yet.</p>'; }
-}
-async function showMyReturnsInPage() {
-  try {
-    const returns = await apiCall('/returns/my-returns');
-    document.getElementById('returnsList').innerHTML = returns.map(r=>`<div>Return for order #${r.order_id}: ${r.status} - ${r.reason}</div>`).join('');
-  } catch(e) { document.getElementById('returnsList').innerHTML = '<p>No returns yet.</p>'; }
-}
-function showProfileInPage() {
-  document.getElementById('profileForm').innerHTML = `<input id="editName" value="${user.name}"><br><input id="editPhone" value="${user.phone || ''}"><br><input id="editAddress" value="${user.address || ''}"><br><button onclick="updateProfileInPage()">Save Changes</button>`;
-}
-async function updateProfileInPage() {
-  const name = document.getElementById('editName').value, phone = document.getElementById('editPhone').value, address = document.getElementById('editAddress').value;
-  const updated = await apiCall('/users/profile', { method:'PUT', body: JSON.stringify({ name, phone, address }) });
-  user = updated; localStorage.setItem('user',JSON.stringify(user)); document.getElementById('userName').innerText = user.name; alert('Profile updated'); showProfileInPage();
+    document.getElementById('customerData').innerHTML = `<h4>My Quotations</h4>${quotes.map(q=>`<div style="border:1px solid #ddd; padding:8px; margin:8px 0; border-radius:12px;">${q.quote_number} - $${q.total} <button onclick="viewQuote(${q.id})">View</button></div>`).join('')}`;
+  } catch(e) { document.getElementById('customerData').innerHTML = '<p>No quotations yet.</p>'; }
 }
 async function viewQuote(id) { const q = await apiCall(`/quotations/${id}`); document.getElementById('quotePreview').innerHTML = `<pre>${JSON.stringify(q,null,2)}</pre>`; document.getElementById('quoteModal').style.display='flex'; }
 function closeQuoteModal() { document.getElementById('quoteModal').style.display='none'; }
+async function showMyReturns() { try { const returns = await apiCall('/returns/my-returns'); document.getElementById('customerData').innerHTML = `<h4>My Returns</h4>${returns.map(r=>`<div>Return for order #${r.order_id}: ${r.status} - ${r.reason}</div>`).join('')}`; } catch(e) { document.getElementById('customerData').innerHTML = '<p>No returns yet.</p>'; } }
+function showProfile() {
+  document.getElementById('customerData').innerHTML = `<h4>Edit Profile</h4><input id="editName" value="${user.name}"><br><input id="editPhone" value="${user.phone || ''}"><br><input id="editAddress" value="${user.address || ''}"><br><button onclick="updateProfile()">Save Changes</button>`;
+}
+async function updateProfile() {
+  const name = document.getElementById('editName').value, phone = document.getElementById('editPhone').value, address = document.getElementById('editAddress').value;
+  const updated = await apiCall('/users/profile', { method:'PUT', body: JSON.stringify({ name, phone, address }) });
+  user = updated; localStorage.setItem('user',JSON.stringify(user)); document.getElementById('userName').innerText = user.name; alert('Profile updated'); showProfile();
+}
 function openShipmentTracking() { document.getElementById('shipmentTrackingModal').style.display = 'flex'; }
 function closeShipmentModal() { document.getElementById('shipmentTrackingModal').style.display = 'none'; }
-function trackOrderCode(code) { document.getElementById('trackCode').value = code; switchPage('tracking'); setTimeout(trackOrder, 100); }
 
 // ========== ADMIN LOGIN ==========
 async function adminLogin() {
   const email = document.getElementById('adminEmail').value.trim();
   const password = document.getElementById('adminPassword').value;
-  if (!email || !password) { alert('Please enter email and password'); return; }
+  if (!email || !password) {
+    alert('Please enter email and password');
+    return;
+  }
   try {
-    const response = await fetch(API + '/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
-    if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Login failed'); }
+    const response = await fetch(API + '/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Login failed');
+    }
     const data = await response.json();
-    if (!data.user || data.user.role !== 'admin') throw new Error('Not an admin account. Use admin@mmeliglobal.com');
-    token = data.token; user = data.user; localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user));
-    document.getElementById('adminLoginDiv').style.display = 'none'; document.getElementById('adminPanel').style.display = 'block';
-    initAdminCards(); alert('Admin login successful');
-  } catch(err) { alert('Admin login failed: ' + err.message); }
+    if (!data.user || data.user.role !== 'admin') {
+      throw new Error('Not an admin account. Use admin@mmeliglobal.com');
+    }
+    token = data.token;
+    user = data.user;
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    document.getElementById('adminLoginDiv').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+    initAdminCards();
+    alert('Admin login successful');
+  } catch (err) {
+    alert('Admin login failed: ' + err.message);
+  }
 }
 
-// ========== ADMIN DASHBOARD ==========
+// ---------- Admin dashboard ----------
 function initAdminCards() {
   document.querySelectorAll('.admin-card').forEach(card => {
     card.removeEventListener('click', card._listener);
@@ -598,7 +574,7 @@ async function updateStock(id) {
 }
 async function loadPoliciesModal(container) {
   const policies = await apiCall('/policies');
-  container.innerHTML = `<h3>Policies</h3><div>${policies.map(p => `<div><strong>${p.title}</strong><textarea id="policy_${p.key}" rows="3">${p.content || ''}</textarea><button onclick="updatePolicy('${p.key}')">Save</button></div>`).join('')}</div><button onclick="closeModal('modalManagePolicies')">Close</button>`;
+  container.innerHTML = `<h3>Policies</h3>${policies.map(p => `<div><strong>${p.title}</strong><textarea id="policy_${p.key}" rows="3">${p.content || ''}</textarea><button onclick="updatePolicy('${p.key}')">Save</button></div>`).join('')}<button onclick="closeModal('modalManagePolicies')">Close</button>`;
   window.updatePolicy = async (key) => { const content = document.getElementById(`policy_${key}`).value; await apiCall(`/policies/${key}`, { method:'PUT', body: JSON.stringify({ content }) }); alert('Policy updated'); openAdminModal('managePolicies'); };
 }
 async function loadShipmentsModal(container) {
@@ -653,34 +629,7 @@ function showCreateQuotationForm(container) {
 }
 function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
 
-// ========== POLICY MODAL ==========
-async function showPolicy(type) {
-  let title = '', key = '';
-  switch(type) {
-    case 'privacy': title = 'Privacy Policy'; key = 'privacy'; break;
-    case 'terms': title = 'Terms of Service'; key = 'terms'; break;
-    case 'shipping': title = 'Shipping Information'; key = 'shipping'; break;
-    case 'returns': title = 'Returns & Refunds'; key = 'returns'; break;
-    default: return;
-  }
-  try {
-    const policy = await apiCall(`/policies/${key}`);
-    document.getElementById('policyTitle').innerText = title;
-    document.getElementById('policyContent').innerHTML = policy.content || 'Content not available.';
-  } catch(e) {
-    const fallback = {
-      privacy: 'We value your privacy. Your personal data is used only for order processing and will never be shared.',
-      terms: 'By using our site, you agree to our terms and conditions. All sales are final unless damaged.',
-      shipping: 'Standard shipping takes 3-5 business days. Express shipping takes 1-2 days. International rates apply.',
-      returns: 'Returns accepted within 14 days of delivery. Items must be unused and in original packaging.'
-    };
-    document.getElementById('policyTitle').innerText = title;
-    document.getElementById('policyContent').innerHTML = fallback[type];
-  }
-  document.getElementById('policyModal').style.display = 'flex';
-}
-
-// ========== SEARCH ==========
+// ---------- Search ----------
 document.getElementById('searchInput').addEventListener('input', function() {
   const term = this.value.toLowerCase();
   const list = document.getElementById('autocompleteList');
@@ -695,7 +644,7 @@ function searchProducts() {
   displayProducts(getShuffledWithPhoneBias(filtered).slice(0, currentDisplayLimit));
 }
 
-// ========== UI HELPERS ==========
+// ---------- UI helpers ----------
 function switchPage(pageId) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById(pageId).classList.add('active');
@@ -711,7 +660,8 @@ function resetHome() {
   switchPage('home');
 }
 function goBackHome() { resetHome(); }
-async function showRandomPromo() { try { const promo = await apiCall('/promotions/random'); if (promo) { const popup = document.getElementById('popupPromo'); document.getElementById('popupContent').innerHTML = `<img src="${promo.image_url || 'https://picsum.photos/300/150'}" style="width:100%; border-radius:8px;"><div><strong>${promo.title}</strong><br>${promo.description}<br><a href="${promo.link}" target="_blank">Shop now</a></div>`; popup.style.display = 'block'; setTimeout(() => popup.style.display = 'none', 8000); } } catch(e) {} }
+function trackOrderCode(code) { document.getElementById('trackCode').value = code; switchPage('tracking'); setTimeout(trackOrder, 100); }
+async function showRandomPromo() { try { const promo = await apiCall('/promotions/random'); if (promo) { const popup = document.getElementById('popupPromo'); document.getElementById('popupContent').innerHTML = `<img src="${promo.image_url || 'https://picsum.photos/300/150'}"><div><strong>${promo.title}</strong><br>${promo.description}<br><a href="${promo.link}" target="_blank">Shop now</a></div>`; popup.style.display = 'block'; setTimeout(() => popup.style.display = 'none', 8000); } } catch(e) {} }
 function closePopup() { document.getElementById('popupPromo').style.display = 'none'; }
 async function subscribe() {
   const email = document.getElementById('subEmail').value, phone = document.getElementById('subPhone').value;
@@ -720,23 +670,33 @@ async function subscribe() {
 }
 function handleHash() {
   const hash = window.location.hash;
-  if (!hash || hash === '#/home' || hash === '#/') resetHome();
-  else if (hash.startsWith('#/product/')) { const id = hash.split('/').pop(); if (id && !isNaN(id)) openProduct(id); }
-  else resetHome();
+  if (!hash || hash === '#/home' || hash === '#/') {
+    resetHome();
+  } else if (hash.startsWith('#/product/')) {
+    const id = hash.split('/').pop();
+    if (id && !isNaN(id)) openProduct(id);
+  } else {
+    resetHome();
+  }
 }
 window.addEventListener('hashchange', handleHash);
 function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&')return'&amp;';if(m==='<')return'&lt;';if(m==='>')return'&gt;';return m;}); }
 
-// ========== GLOBAL MODAL CLOSE ==========
+// ---------- Global modal close ----------
 document.querySelectorAll('.close-modal').forEach(btn => {
   btn.addEventListener('click', function() { const modal = this.closest('.modal'); if(modal) modal.style.display = 'none'; });
 });
 window.addEventListener('click', (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; });
 document.querySelector('.close-popup')?.addEventListener('click', closePopup);
 
-// ========== DOUBLE-CLICK LOGO ==========
+// ========== DOUBLE-CLICK LOGO (fallback) ==========
 const logoElem = document.getElementById('logoArea');
-if (logoElem) logoElem.addEventListener('dblclick', (e) => { e.preventDefault(); switchPage('adminDashboard'); });
+if (logoElem) {
+  logoElem.addEventListener('dblclick', function(e) {
+    e.preventDefault();
+    switchPage('adminDashboard');
+  });
+}
 
 // ========== INITIALIZATION ==========
 window.addEventListener('load', function() {
@@ -747,7 +707,10 @@ window.addEventListener('load', function() {
     document.getElementById('loginBox').style.display='none';
     document.getElementById('dashboard').style.display='block';
     document.getElementById('userName').innerText = user.name;
-    if (user.role === 'admin') { document.getElementById('adminLoginDiv').style.display = 'none'; document.getElementById('adminPanel').style.display = 'block'; }
+    if (user.role === 'admin') {
+      document.getElementById('adminLoginDiv').style.display = 'none';
+      document.getElementById('adminPanel').style.display = 'block';
+    }
   }
   resetHome();
   handleHash();
