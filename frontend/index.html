@@ -1,175 +1,153 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-<title>Mmeli Global – Premium E‑commerce</title>
-<meta name="description" content="Shop premium products, track shipments, get quotations, and manage your account at Mmeli Global. Fast shipping worldwide.">
-<meta property="og:title" content="Mmeli Global | Premium Products" />
-<meta property="og:description" content="Shop premium products, track shipments, get quotations, and manage your account at Mmeli Global." />
-<meta property="og:image" content="https://mmeliglobal.com/logo.png" />
-<meta property="og:url" content="https://mmeliglobal.com" />
-<meta property="og:type" content="website" />
-<meta name="twitter:card" content="summary_large_image" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="stylesheet" href="style.css">
-<style>
-  #loadingSpinner { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.7); color: white; padding: 10px 20px; border-radius: 30px; z-index: 9999; display: none; font-size: 1rem; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Mmeli Global – Premium E‑commerce</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: 'Segoe UI', Roboto, sans-serif; background:#f8f9fa; padding-bottom:70px; }
+    :root { --navy:#0a192f; --gold:#d4af37; --orange:#e67e22; }
+    .header { background:var(--navy); color:white; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; }
+    .logo { display:flex; align-items:center; gap:10px; cursor:pointer; }
+    .logo img { height:40px; width:auto; background:#fff; border-radius:30px; padding:4px; }
+    .logo span { font-size:1.5rem; font-weight:bold; background:linear-gradient(135deg,var(--gold),var(--orange)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .cart-icon { background:var(--orange); padding:6px 14px; border-radius:30px; cursor:pointer; display:flex; align-items:center; gap:6px; }
+    .search-bar { background:white; padding:6px 20px; border-bottom:2px solid var(--gold); position:relative; }
+    .search-wrapper { display:flex; gap:8px; align-items:center; background:#f1f3f5; border-radius:40px; padding:4px 12px; }
+    .search-wrapper input { flex:1; border:none; background:transparent; font-size:14px; outline:none; padding:6px 0; }
+    .search-wrapper i { font-size:1rem; cursor:pointer; color:#666; }
+    .autocomplete-items { position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ddd; border-radius:8px; max-height:200px; overflow-y:auto; z-index:1000; }
+    .main-menu, .sub-menu { display:flex; gap:12px; padding:10px 16px; background:white; overflow-x:auto; white-space:nowrap; border-bottom:1px solid #eee; }
+    .main-menu div, .sub-menu div { background:#f1f3f5; padding:5px 14px; border-radius:30px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+    .page { display:none; padding:16px; }
+    .page.active { display:block; }
+    #productsContainer { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:16px; }
+    .product-card { background:white; border-radius:16px; overflow:hidden; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.1); transition:0.2s; }
+    .product-card img { width:100%; aspect-ratio:1; object-fit:cover; }
+    .product-info { padding:12px; text-align:center; }
+    .product-name { font-weight:bold; }
+    .product-price { color:var(--orange); font-weight:bold; }
+    .bottom-nav { position:fixed; bottom:0; width:100%; background:var(--navy); display:flex; justify-content:space-around; padding:10px 0; z-index:100; }
+    .bottom-nav div { font-size:24px; cursor:pointer; color:#d4af37; }
+    .footer { background:var(--navy); color:#ccc; padding:20px; margin-top:30px; border-top:3px solid var(--gold); }
+    .footer-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; }
+    button { background:var(--orange); border:none; color:white; padding:8px 16px; border-radius:40px; cursor:pointer; }
+    .admin-cards-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin:20px 0; }
+    .admin-card { background:white; border-radius:16px; padding:16px; cursor:pointer; text-align:center; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+    .modal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:1000; }
+    .modal-content { background:white; max-width:90%; width:700px; border-radius:16px; padding:20px; max-height:85vh; overflow-y:auto; }
+    .close-modal { float:right; font-size:28px; cursor:pointer; }
+    .cart-item { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #ccc; }
+    .recommend-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(120px,1fr)); gap:12px; margin-top:10px; }
+    .recommend-card { background:white; border-radius:12px; padding:8px; cursor:pointer; text-align:center; }
+    .checkout-step { display:none; background:white; padding:20px; border-radius:16px; margin-top:20px; }
+    .checkout-step.active { display:block; }
+    #map { height:250px; background:#e9ecef; border-radius:16px; margin-bottom:10px; }
+    @media (max-width:600px) { .footer-grid { grid-template-columns:1fr; } }
+  </style>
 </head>
 <body>
+<header class="header"><div class="logo" id="logoArea"><img src="https://placehold.co/400x400?text=Mmeli" alt="Logo"><span>Mmeli Global</span></div><div class="cart-icon" onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i> <span id="cartCount">0</span></div></header>
+<div class="search-bar"><div class="search-wrapper"><input type="text" id="searchInput" placeholder="Search products..."><i class="fas fa-search" onclick="searchProducts()"></i></div><div id="autocompleteList" class="autocomplete-items"></div></div>
+<div id="mainMenu" class="main-menu"></div><div id="subMenu" class="sub-menu"></div>
 
-<div id="loadingSpinner"><i class="fas fa-spinner fa-pulse"></i> Loading...</div>
+<section id="home" class="page active"><div id="productsContainer"></div><div style="text-align:center; margin:20px;"><button onclick="loadMoreProducts()">Load More</button></div></section>
+<section id="productPage" class="page"><div><button onclick="goBackHome()"><i class="fas fa-arrow-left"></i> Back</button> <button onclick="shareProduct()"><i class="fas fa-share-alt"></i> Share</button></div><div id="productDetailContainer"></div><div id="productRecommendations" class="recommendations"></div></section>
+<section id="cart" class="page"><h3>Your Cart</h3><div id="cartList"></div><div><input type="text" id="promoCodeInput" placeholder="Discount code"><button onclick="applyDiscount()">Apply</button><button onclick="goToCheckout()" class="checkout-btn">Proceed to Checkout</button></div><div id="cartRecommendations"></div></section>
+<section id="checkoutPage" class="page"><h3>Checkout</h3><div class="checkout-step active" id="stepShipping"><h4>Shipping Address</h4><input type="text" id="checkoutAddress" placeholder="Address"><button onclick="nextStep()">Next</button></div><div class="checkout-step" id="stepDelivery"><h4>Delivery</h4><label><input type="radio" name="delivery" value="standard" checked> Standard $5</label><label><input type="radio" name="delivery" value="express"> Express $15</label><button onclick="nextStep()">Next</button></div><div class="checkout-step" id="stepPayment"><h4>Payment</h4><p>Confirm via WhatsApp</p><button onclick="completeCheckout()">Place Order</button></div></section>
+<section id="tracking" class="page"><h3>Track Order</h3><div id="map"></div><input type="text" id="trackCode" placeholder="Tracking code"><button onclick="trackOrder()">Track</button><div id="trackInfo"></div><div id="trackTimeline"></div></section>
+<section id="promo" class="page"><h3>Special Offers</h3><div id="promoList">🎉 10% OFF on first order! Use WELCOME10</div></section>
+<section id="account" class="page"><div id="loginBox"><h3>Login</h3><input type="email" id="loginEmail" placeholder="Email"><input type="password" id="loginPassword" placeholder="Password"><button onclick="login()">Login</button><hr><h3>Register</h3><input type="text" id="regName" placeholder="Full Name"><input type="email" id="regEmail" placeholder="Email"><input type="tel" id="regPhone" placeholder="Phone"><input type="text" id="regAddress" placeholder="Address"><input type="password" id="regPassword" placeholder="Password"><button onclick="register()">Register</button></div><div id="dashboard" style="display:none;"><h3>Welcome, <span id="userName"></span></h3><div class="admin-cards-grid" style="grid-template-columns:repeat(2,1fr);"><button onclick="showMyOrders()">My Orders</button><button onclick="showMyQuotations()">My Quotations</button><button onclick="showMyReturns()">My Returns</button><button onclick="logout()">Logout</button></div><div id="customerData"></div></div></section>
+<section id="adminDashboard" class="page"><div id="adminLoginDiv"><h3>Admin Login</h3><input type="email" id="adminEmail" placeholder="admin@mmeli.com"><input type="password" id="adminPassword" placeholder="password"><button onclick="adminLogin()">Login</button></div><div id="adminPanel" style="display:none;"><h3>Admin Dashboard</h3><div class="admin-cards-grid"><div class="admin-card" data-modal="dashboardStats">📊 Dashboard</div><div class="admin-card" data-modal="manageProducts">🛍️ Products</div><div class="admin-card" data-modal="addProduct">➕ Add Product</div><div class="admin-card" data-modal="manageOrders">📦 Orders</div><div class="admin-card" data-modal="discounts">🏷️ Discounts</div><div class="admin-card" data-modal="returns">🔄 Returns</div><div class="admin-card" data-modal="inventory">📦 Inventory</div><div class="admin-card" data-modal="managePolicies">📜 Policies</div><div class="admin-card" data-modal="manageShipments">🚚 Shipments</div><div class="admin-card" data-modal="broadcast">📢 Broadcast</div><div class="admin-card" data-modal="createQuotation">📄 Create Quotation</div></div><button onclick="switchPage('account')">Back to Site</button></div></section>
 
-<header class="header">
-<div class="logo" id="logoArea">
-<img src="logo.png" alt="Mmeli Global Logo" id="siteLogo" style="height:40px;">
-<span>Mmeli Global</span>
-</div>
-<div class="cart-icon" onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i> <span id="cartCount">0</span></div>
-</header>
+<!-- Modals -->
+<div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalManageProducts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalAddProduct" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalManageOrders" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalDiscounts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalReturns" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalInventory" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalManagePolicies" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalManageShipments" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalBroadcast" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalCreateQuotation" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="shipmentTrackingModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeShipmentModal()">&times;</span><h3>Track Shipment</h3><input id="shipmentCode" placeholder="Tracking code"><button onclick="fetchShipmentStatus()">Track</button><div id="shipmentStatus"></div></div></div>
+<div id="quoteModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div id="quotePreview"></div></div></div>
 
-<div class="search-bar">
-<div class="search-wrapper">
-<input type="text" id="searchInput" placeholder="Search products..." autocomplete="off" onkeyup="searchProducts()">
-<i class="fas fa-search" onclick="searchProducts()"></i>
-<label for="scanInput" style="cursor:pointer;"><i class="fas fa-camera"></i></label>
-<input type="file" id="scanInput" hidden accept="image/*" onchange="handleScan(this)">
-</div>
-<div id="autocompleteList" class="autocomplete-items"></div>
-</div>
+<nav class="bottom-nav"><div onclick="resetHome()"><i class="fas fa-home"></i></div><div onclick="switchPage('promo')"><i class="fas fa-fire"></i></div><div onclick="switchPage('tracking')"><i class="fas fa-map-marker-alt"></i></div><div onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i></div><div onclick="switchPage('account')"><i class="fas fa-user"></i></div></nav>
+<footer class="footer"><div class="footer-grid"><div><h4>Mmeli Global</h4><p><i class="fab fa-whatsapp"></i> +263 77 687 1711</p></div><div><h4>Links</h4><a href="#" onclick="resetHome()">Home</a></div><div><h4>Policies</h4><a href="#" id="privacyLink">Privacy</a></div><div><h4>Newsletter</h4><input type="email" id="subEmail" placeholder="Email"><button onclick="subscribe()">Subscribe</button></div></div></footer>
 
-<div id="mainMenu" class="main-menu"></div>
-<div id="subMenu" class="sub-menu"></div>
+<script>
+// ---------- FAKE API & STORAGE ----------
+let allProducts = [], cart = JSON.parse(localStorage.getItem('cart')||'[]'), currentProduct = null, user = JSON.parse(localStorage.getItem('user')||'null'), token = user ? 'dummy' : null;
+let productDisplayLimit = 150, currentDisplayCount = 150, appliedDiscount = null, checkoutData = {};
 
-<section id="home" class="page active">
-<div id="productsContainer"></div>
-<div id="loadMoreBtn" style="text-align:center; margin-top:20px;"><button onclick="loadMoreProducts()">Load More</button></div>
-</section>
+const defaultProducts = [
+  { id:1, name:"iPhone 14 Pro", price:999, cat:"Phones", subcat:"Smartphones", main_image:"https://placehold.co/600x400?text=iPhone", colors:["Silver","Black"], size_options:[{size:"128GB",price:999},{size:"256GB",price:1099}], stock:10 },
+  { id:2, name:"Samsung S23", price:849, cat:"Phones", subcat:"Smartphones", main_image:"https://placehold.co/600x400?text=Samsung", colors:["Green"], size_options:[{size:"128GB",price:849}], stock:5 },
+  { id:3, name:"MacBook Air", price:1199, cat:"Electronics", subcat:"Consumer Electronics", main_image:"https://placehold.co/600x400?text=MacBook", colors:["Space Gray"], size_options:[{size:"13inch",price:1199}], stock:3 }
+];
 
-<section id="productPage" class="page">
-<div class="product-actions-top">
-<button class="back-btn-top" onclick="goBackHome()"><i class="fas fa-arrow-left"></i> Back</button>
-<button class="share-btn-top" onclick="shareProduct()"><i class="fas fa-share-alt"></i> Share</button>
-</div>
-<div id="productDetailContainer"></div>
-<div id="productRecommendations" class="recommendations"></div>
-</section>
+function initData() { if(!localStorage.getItem('products')) localStorage.setItem('products', JSON.stringify(defaultProducts)); allProducts = JSON.parse(localStorage.getItem('products')); if(!localStorage.getItem('orders')) localStorage.setItem('orders','[]'); if(!localStorage.getItem('returns')) localStorage.setItem('returns','[]'); if(!localStorage.getItem('shipments')) localStorage.setItem('shipments','[]'); if(!localStorage.getItem('policies')) localStorage.setItem('policies',JSON.stringify([{key:"privacy",title:"Privacy Policy",content:"We value your privacy."},{key:"terms",title:"Terms",content:"Terms of service"}])); if(!localStorage.getItem('discounts')) localStorage.setItem('discounts','[]'); if(!localStorage.getItem('subscribers')) localStorage.setItem('subscribers','[]'); if(!localStorage.getItem('users')) localStorage.setItem('users',JSON.stringify([{id:1,name:"Admin",email:"admin@mmeli.com",password:"admin123",role:"admin"}])); }
 
-<section id="cart" class="page">
-<h3>Your Cart</h3>
-<div id="cartList"></div>
-<div class="cart-actions">
-<input type="text" id="promoCodeInput" placeholder="Discount code">
-<button onclick="applyDiscount()">Apply</button>
-<button onclick="goToCheckout()" class="checkout-btn"><i class="fab fa-whatsapp"></i> Proceed to Checkout</button>
-</div>
-<div id="cartRecommendations" class="recommendations"></div>
-</section>
+function saveProducts() { localStorage.setItem('products', JSON.stringify(allProducts)); }
+function updateCartCount() { document.getElementById('cartCount').innerText = cart.length; }
+function shuffle(arr) { for(let i=arr.length-1;i>0;i--){ let j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
+function displayProducts(products) { let container = document.getElementById('productsContainer'); container.innerHTML = ''; products.slice(0,currentDisplayCount).forEach(p=>{ let card = document.createElement('div'); card.className='product-card'; card.innerHTML=`<img src="${p.main_image}" alt="${p.name}"><div class="product-info"><div class="product-name">${p.name}</div><div class="product-price">$${p.price}</div></div>`; card.onclick=()=>openProduct(p.id); container.appendChild(card); }); }
+function loadMoreProducts() { currentDisplayCount+=150; displayProducts(shuffle([...allProducts])); }
+function buildMainMenu() { let cats = [...new Set(allProducts.map(p=>p.cat))]; let menuDiv = document.getElementById('mainMenu'); menuDiv.innerHTML = cats.map(c=>`<div onclick="filterByCategory('${c}')">📁 ${c}</div>`).join(''); }
+function filterByCategory(cat) { displayProducts(allProducts.filter(p=>p.cat===cat)); document.getElementById('subMenu').innerHTML = ''; }
+function openProduct(id) { currentProduct = allProducts.find(p=>p.id==id); renderProductDetail(); switchPage('productPage'); loadProductRecommendations(); }
+function renderProductDetail() { let p = currentProduct; let container = document.getElementById('productDetailContainer'); container.innerHTML = `<div><img src="${p.main_image}" width="100%"><h2>${p.name}</h2><p>${p.description||'Premium item'}</p><div><label>Color:</label><select id="productColor">${(p.colors||['Default']).map(c=>`<option>${c}</option>`)}</select></div><div><label>Size:</label><select id="productSize">${(p.size_options||[{size:'Standard',price:p.price}]).map(s=>`<option value="${s.price}">${s.size} - $${s.price}</option>`)}</select></div><button onclick="addToCartFromDetail()">Add to Cart</button></div><div id="productRecommendationsGrid"></div>`; }
+async function loadProductRecommendations() { let recs = allProducts.filter(p=>p.id !== currentProduct.id).slice(0,6); document.getElementById('productRecommendationsGrid').innerHTML = `<h4>You may also like</h4><div class="recommend-grid">${recs.map(r=>`<div class="recommend-card" onclick="openProduct(${r.id})"><img src="${r.main_image}" width="100%"><div>${r.name}<br>$${r.price}</div></div>`).join('')}</div>`; }
+function addToCartFromDetail() { let sizeSelect = document.getElementById('productSize'); let price = sizeSelect ? parseFloat(sizeSelect.value) : currentProduct.price; let size = sizeSelect ? sizeSelect.options[sizeSelect.selectedIndex].text.split(' - ')[0] : 'Standard'; let color = document.getElementById('productColor')?.value||'Default'; cart.push({id:currentProduct.id, name:currentProduct.name, price, size, color, image:currentProduct.main_image}); localStorage.setItem('cart',JSON.stringify(cart)); updateCartCount(); alert('Added'); }
+function renderCart() { let container = document.getElementById('cartList'); if(!cart.length){ container.innerHTML='<p>Cart empty</p>'; return; } let html='',total=0; cart.forEach((item,i)=>{ total+=item.price; html+=`<div class="cart-item"><div><img src="${item.image}" width="40"> ${item.name} (${item.size})</div><div>$${item.price} <button onclick="removeFromCart(${i})">Remove</button></div></div>`; }); html+=`<div><strong>Total: $${total}</strong></div>`; container.innerHTML=html; document.getElementById('cartRecommendations').innerHTML = `<h4>Recommended</h4><div class="recommend-grid">${allProducts.slice(0,3).map(r=>`<div class="recommend-card" onclick="openProduct(${r.id})">${r.name}</div>`).join('')}</div>`; }
+function removeFromCart(i){ cart.splice(i,1); localStorage.setItem('cart',JSON.stringify(cart)); updateCartCount(); renderCart(); }
+function applyDiscount() { let code = document.getElementById('promoCodeInput').value; if(code==='SAVE10'){ appliedDiscount=0.1; alert('10% discount applied'); renderCart();} else alert('Invalid'); }
+function goToCheckout() { checkoutData = { address: '', delivery: 'standard', cost:5 }; switchPage('checkoutPage'); }
+function nextStep() { let steps = ['stepShipping','stepDelivery','stepPayment']; let current = document.querySelector('.checkout-step.active'); let idx = steps.indexOf(current.id); if(idx===0) checkoutData.address = document.getElementById('checkoutAddress').value; if(idx===1) checkoutData.delivery = document.querySelector('input[name="delivery"]:checked').value, checkoutData.cost = checkoutData.delivery==='express'?15:5; if(idx<2){ current.classList.remove('active'); document.getElementById(steps[idx+1]).classList.add('active'); } }
+function completeCheckout() { let total = cart.reduce((s,i)=>s+i.price,0) + checkoutData.cost; if(appliedDiscount) total*=0.9; let order = { id:Date.now(), items:cart, total, address:checkoutData.address, status:'Pending', date:new Date().toISOString(), user: user?.email || 'guest' }; let orders = JSON.parse(localStorage.getItem('orders')); orders.push(order); localStorage.setItem('orders',JSON.stringify(orders)); let msg = `New order from Mmeli Global\nTotal: $${total}\nItems: ${cart.map(i=>i.name).join(',')}\nAddress: ${checkoutData.address}`; window.open(`https://wa.me/263776871711?text=${encodeURIComponent(msg)}`); cart=[]; localStorage.setItem('cart','[]'); updateCartCount(); alert('Order placed!'); resetHome(); }
+function trackOrder() { let code = document.getElementById('trackCode').value; let orders = JSON.parse(localStorage.getItem('orders')); let order = orders.find(o=>o.id==code); if(order) document.getElementById('trackInfo').innerHTML = `Status: ${order.status}<br>Total: $${order.total}`; else document.getElementById('trackInfo').innerHTML = 'Not found'; }
+function searchProducts() { let term = document.getElementById('searchInput').value.toLowerCase(); let filtered = allProducts.filter(p=>p.name.toLowerCase().includes(term)); displayProducts(filtered); }
+async function register() { let name=document.getElementById('regName').value, email=document.getElementById('regEmail').value, phone=document.getElementById('regPhone').value, addr=document.getElementById('regAddress').value, pass=document.getElementById('regPassword').value; if(!name||!email||!pass) return alert('Fill all'); let users=JSON.parse(localStorage.getItem('users')); if(users.find(u=>u.email===email)) return alert('User exists'); let newUser={id:Date.now(),name,email,password:pass,phone,address:addr,role:'user'}; users.push(newUser); localStorage.setItem('users',JSON.stringify(users)); alert('Registered! Please login'); }
+async function login() { let email=document.getElementById('loginEmail').value, pass=document.getElementById('loginPassword').value; let users=JSON.parse(localStorage.getItem('users')); let found=users.find(u=>u.email===email && u.password===pass); if(found){ user=found; localStorage.setItem('user',JSON.stringify(user)); token='dummy'; document.getElementById('loginBox').style.display='none'; document.getElementById('dashboard').style.display='block'; document.getElementById('userName').innerHTML=user.name; switchPage('account'); } else alert('Invalid'); }
+function logout() { localStorage.removeItem('user'); location.reload(); }
+function showMyOrders() { let orders=JSON.parse(localStorage.getItem('orders')); let my=orders.filter(o=>o.user===user?.email); document.getElementById('customerData').innerHTML = `<h4>Orders</h4>${my.map(o=>`<div>Order #${o.id} - $${o.total} - ${o.status}</div>`).join('')}`; }
+function showMyQuotations() { let quotes=JSON.parse(localStorage.getItem('quotations')||'[]'); let my=quotes.filter(q=>q.client_email===user?.email); document.getElementById('customerData').innerHTML = `<h4>Quotations</h4>${my.map(q=>`<div>${q.client_name} - $${q.total}</div>`).join('')}`; }
+function showMyReturns() { let returns=JSON.parse(localStorage.getItem('returns')||'[]'); let my=returns.filter(r=>r.email===user?.email); document.getElementById('customerData').innerHTML = `<h4>Returns</h4>${my.map(r=>`<div>Order ${r.orderId} - Reason: ${r.reason}</div>`).join('')}`; }
+function shareProduct() { if(currentProduct) alert(`Share: ${currentProduct.name} at Mmeli Global`); }
+function goBackHome() { resetHome(); }
+function resetHome() { currentDisplayCount=150; displayProducts(shuffle([...allProducts])); switchPage('home'); }
+function switchPage(pageId) { document.querySelectorAll('.page').forEach(p=>p.classList.remove('active')); document.getElementById(pageId).classList.add('active'); if(pageId==='cart') renderCart(); }
+function subscribe() { let email=document.getElementById('subEmail').value; let subs=JSON.parse(localStorage.getItem('subscribers')); subs.push(email); localStorage.setItem('subscribers',JSON.stringify(subs)); alert('Subscribed'); }
 
-<section id="checkoutPage" class="page">
-<h3>Checkout</h3>
-<div class="checkout-step active" id="stepShipping">
-<h4>Shipping Address</h4>
-<input type="text" id="checkoutAddress" placeholder="Address"><button onclick="nextStep()">Next</button>
-</div>
-<div class="checkout-step" id="stepDelivery">
-<h4>Delivery Method</h4>
-<label><input type="radio" name="delivery" value="standard" checked> Standard (3-5 days) – $5</label>
-<label><input type="radio" name="delivery" value="express"> Express (1-2 days) – $15</label>
-<button onclick="nextStep()">Next</button>
-</div>
-<div class="checkout-step" id="stepPayment">
-<h4>Payment</h4>
-<p>You will be redirected to WhatsApp to confirm payment.</p>
-<button onclick="completeCheckout()">Place Order</button>
-</div>
-</section>
+// Admin functions
+function adminLogin() { let email=document.getElementById('adminEmail').value, pass=document.getElementById('adminPassword').value; if(email==='admin@mmeli.com' && pass==='admin123'){ document.getElementById('adminLoginDiv').style.display='none'; document.getElementById('adminPanel').style.display='block'; initAdminCards(); } else alert('Invalid'); }
+function initAdminCards() { document.querySelectorAll('.admin-card').forEach(card=>{ card.onclick=()=>{ let modalId = card.dataset.modal; openAdminModal(modalId); }; }); }
+function openAdminModal(modalId) { let modal = document.getElementById(`modal${modalId.charAt(0).toUpperCase()+modalId.slice(1)}`); if(!modal) return; let body = modal.querySelector('.modal-body'); if(modalId==='dashboardStats') body.innerHTML = `<h3>Stats</h3><p>Total Products: ${allProducts.length}</p><p>Orders: ${JSON.parse(localStorage.getItem('orders')).length}</p>`; else if(modalId==='manageProducts'){ body.innerHTML = `<h3>Products</h3><div id="prodList"></div>`; let list = body.querySelector('#prodList'); list.innerHTML = allProducts.map(p=>`<div>${p.name} - $${p.price} <button onclick="editProduct(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div>`).join(''); } else if(modalId==='addProduct'){ body.innerHTML = `<h3>Add Product</h3><input id="pName" placeholder="Name"><input id="pPrice" placeholder="Price"><input id="pCat" placeholder="Category"><input id="pImage" placeholder="Image URL"><button onclick="addProduct()">Save</button>`; } else if(modalId==='manageOrders'){ let orders=JSON.parse(localStorage.getItem('orders')); body.innerHTML = `<h3>Orders</h3>${orders.map(o=>`<div>#${o.id} - $${o.total} - ${o.status} <button onclick="updateOrderStatus(${o.id})">Mark Shipped</button></div>`).join('')}`; } else if(modalId==='discounts') body.innerHTML = `<h3>Discounts</h3><input id="discCode" placeholder="Code"><input id="discValue" placeholder="%"><button onclick="saveDiscount()">Save</button>`; else if(modalId==='returns'){ let returns=JSON.parse(localStorage.getItem('returns')); body.innerHTML = `<h3>Returns</h3>${returns.map(r=>`<div>Order ${r.orderId}: ${r.reason} - <button onclick="approveReturn(${r.id})">Approve</button></div>`).join('')}`; } else if(modalId==='inventory'){ body.innerHTML = `<h3>Inventory</h3>${allProducts.map(p=>`<div>${p.name} | Stock: ${p.stock||0} <button onclick="updateStock(${p.id})">Update</button></div>`).join('')}`; } else if(modalId==='managePolicies'){ let policies=JSON.parse(localStorage.getItem('policies')); body.innerHTML = `<h3>Policies</h3>${policies.map(p=>`<div><b>${p.title}</b><textarea id="policy_${p.key}">${p.content}</textarea><button onclick="savePolicy('${p.key}')">Save</button></div>`).join('')}`; } else if(modalId==='manageShipments'){ let shipments=JSON.parse(localStorage.getItem('shipments')); body.innerHTML = `<h3>Shipments</h3><button onclick="showAddShipmentForm()">+ Add</button><div>${shipments.map(s=>`<div>${s.tracking_code} - ${s.status} <button onclick="addShipmentUpdate('${s.id}')">Update</button></div>`).join('')}</div>`; } else if(modalId==='broadcast'){ body.innerHTML = `<textarea id="broadMsg" placeholder="Message"></textarea><button onclick="sendBroadcast()">Send WhatsApp Broadcast</button>`; } else if(modalId==='createQuotation'){ body.innerHTML = `<h3>Create Quotation</h3><input id="qcName" placeholder="Client Name"><input id="qcPhone" placeholder="Phone"><input id="qcEmail" placeholder="Email"><input id="qcItem" placeholder="Item desc"><input id="qcQty" placeholder="Qty"><input id="qcPrice" placeholder="Unit Price"><button onclick="generateQuotation()">Generate & Send</button>`; }
+  modal.style.display = 'flex'; modal.querySelector('.close-modal').onclick = ()=>modal.style.display='none';
+}
+function editProduct(id){ let p = allProducts.find(x=>x.id==id); let newName=prompt('Name',p.name); if(newName){ p.name=newName; saveProducts(); openAdminModal('manageProducts'); alert('updated'); } }
+function deleteProduct(id){ allProducts=allProducts.filter(p=>p.id!==id); saveProducts(); openAdminModal('manageProducts'); }
+function addProduct(){ let name=document.getElementById('pName').value, price=parseFloat(document.getElementById('pPrice').value), cat=document.getElementById('pCat').value, img=document.getElementById('pImage').value; let newId=Date.now(); allProducts.push({id:newId,name,price,cat,main_image:img||'https://placehold.co/400',size_options:[{size:'One',price}],stock:5}); saveProducts(); alert('Added'); openAdminModal('manageProducts'); }
+function updateOrderStatus(id){ let orders=JSON.parse(localStorage.getItem('orders')); let o=orders.find(o=>o.id==id); if(o){ o.status='Shipped'; localStorage.setItem('orders',JSON.stringify(orders)); alert('Updated'); openAdminModal('manageOrders'); } }
+function saveDiscount(){ let code=document.getElementById('discCode').value, val=document.getElementById('discValue').value; localStorage.setItem('activeDiscount',JSON.stringify({code,val})); alert('Discount saved'); }
+function approveReturn(id){ alert('Return approved'); }
+function updateStock(id){ let newStock=prompt('New stock'); let p=allProducts.find(p=>p.id==id); p.stock=parseInt(newStock); saveProducts(); openAdminModal('inventory'); }
+function savePolicy(key){ let content=document.getElementById(`policy_${key}`).value; let policies=JSON.parse(localStorage.getItem('policies')); let pol=policies.find(p=>p.key===key); if(pol) pol.content=content; localStorage.setItem('policies',JSON.stringify(policies)); alert('Saved'); }
+function showAddShipmentForm(){ let track='SHIP'+Date.now(); let shipments=JSON.parse(localStorage.getItem('shipments')); shipments.push({id:Date.now(),tracking_code:track,status:'pending'}); localStorage.setItem('shipments',JSON.stringify(shipments)); alert('Shipment added'); openAdminModal('manageShipments'); }
+function addShipmentUpdate(id){ let status=prompt('New status (in_transit/delivered)'); let shipments=JSON.parse(localStorage.getItem('shipments')); let s=shipments.find(s=>s.id==id); if(s) s.status=status; localStorage.setItem('shipments',JSON.stringify(shipments)); openAdminModal('manageShipments'); }
+function sendBroadcast(){ let msg=document.getElementById('broadMsg').value; let subs=JSON.parse(localStorage.getItem('subscribers')); alert(`Broadcast would send to ${subs.length} subscribers: ${msg}`); }
+function generateQuotation(){ let name=document.getElementById('qcName').value, phone=document.getElementById('qcPhone').value, email=document.getElementById('qcEmail').value, item=document.getElementById('qcItem').value, qty=document.getElementById('qcQty').value, price=document.getElementById('qcPrice').value; let total = (parseFloat(qty)||1)*(parseFloat(price)||0); let quotes=JSON.parse(localStorage.getItem('quotations')||'[]'); quotes.push({id:Date.now(),client_name:name,client_email:email,total}); localStorage.setItem('quotations',JSON.stringify(quotes)); let link=`https://wa.me/${phone}?text=Quotation: ${item} x ${qty} = $${total}`; window.open(link); alert('Quotation sent'); closeModal('modalCreateQuotation'); }
+function closeModal(id){ document.getElementById(id).style.display='none'; }
+function fetchShipmentStatus(){ let code=document.getElementById('shipmentCode').value; let shipments=JSON.parse(localStorage.getItem('shipments')); let s=shipments.find(s=>s.tracking_code===code); if(s) document.getElementById('shipmentStatus').innerHTML=`Status: ${s.status}`; else alert('Not found'); }
+function closeShipmentModal(){ document.getElementById('shipmentTrackingModal').style.display='none'; }
 
-<section id="tracking" class="page"><h3>Track Your Order</h3><div id="map"></div><input type="text" id="trackCode" placeholder="Enter Tracking Code"><button onclick="trackOrder()"><i class="fas fa-search"></i> Track</button><div id="trackInfo"></div><div id="trackTimeline" class="timeline"></div></section>
-
-<section id="promo" class="page"><h3>Special Offers</h3><div id="promoList"></div></section>
-
-<section id="account" class="page">
-<div id="loginBox">
-<h3>Customer Login</h3>
-<input type="email" id="loginEmail" placeholder="Email"><input type="password" id="loginPassword" placeholder="Password"><button onclick="login()">Login</button>
-<hr><h3>New Customer? Register</h3>
-<input type="text" id="regName" placeholder="Full Name"><input type="email" id="regEmail" placeholder="Email"><input type="tel" id="regPhone" placeholder="Phone"><input type="text" id="regAddress" placeholder="Address"><input type="password" id="regPassword" placeholder="Password"><button onclick="register()">Register</button>
-</div>
-<div id="dashboard" style="display:none;">
-<h3>Welcome, <span id="userName"></span></h3>
-<div class="customer-buttons">
-<button onclick="showMyOrders()"><i class="fas fa-box"></i> My Orders</button>
-<button onclick="showMyQuotations()"><i class="fas fa-file-invoice"></i> My Quotations</button>
-<button onclick="showMyReturns()"><i class="fas fa-undo-alt"></i> My Returns</button>
-<button onclick="openShipmentTracking()"><i class="fas fa-shipping-fast"></i> Track Shipment</button>
-<button onclick="showProfile()"><i class="fas fa-user-edit"></i> Edit Profile</button>
-<button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
-</div>
-<div id="customerData"></div>
-<div id="customerRecommendations" class="recommendations"></div>
-</div>
-</section>
-
-<section id="adminDashboard" class="page">
-<div id="adminLoginDiv"><h3>Admin Login</h3><input type="email" id="adminEmail" placeholder="Email"><input type="password" id="adminPassword" placeholder="Password"><button onclick="adminLogin()">Login</button></div>
-<div id="adminPanel" style="display:none;">
-<h3>Admin Dashboard</h3>
-<div class="admin-cards-grid two-columns" id="adminCardsContainer">
-<div class="admin-card" data-modal="dashboardStats">📊 Dashboard</div>
-<div class="admin-card" data-modal="manageProducts">🛍️ Products</div>
-<div class="admin-card" data-modal="addProduct">➕ Add Product</div>
-<div class="admin-card" data-modal="manageOrders">📦 Orders</div>
-<div class="admin-card" data-modal="discounts">🏷️ Discounts</div>
-<div class="admin-card" data-modal="returns">🔄 Returns</div>
-<div class="admin-card" data-modal="inventory">📦 Inventory</div>
-<div class="admin-card" data-modal="managePolicies">📜 Policies</div>
-<div class="admin-card" data-modal="manageShipments">🚚 Shipments</div>
-<div class="admin-card" data-modal="broadcast">📢 Broadcast</div>
-<div class="admin-card" data-modal="createQuotation">📄 Create Quotation</div>
-</div>
-<button onclick="switchPage('home')"><i class="fas fa-arrow-left"></i> Back to Site</button>
-</div>
-</section>
-
-<!-- MODALS -->
-<div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal('modalDashboardStats')">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalManageProducts" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal('modalManageProducts')">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalAddProduct" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal('modalAddProduct')">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalManageOrders" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal('modalManageOrders')">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalDiscounts" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal('modalDiscounts')">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalReturns" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal('modalReturns')">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalInventory" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal('modalInventory')">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalManagePolicies" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal('modalManagePolicies')">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalManageShipments" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal('modalManageShipments')">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalBroadcast" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal('modalBroadcast')">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalCreateQuotation" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal('modalCreateQuotation')">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalQuotationPreview" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal('modalQuotationPreview')">&times;</span><div id="quotationPreviewContent"></div></div></div>
-<div id="shipmentTrackingModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeShipmentModal()">&times;</span><h3>Track Your Shipment</h3><input type="text" id="shipmentCode" placeholder="Enter tracking code"><button onclick="fetchShipmentStatus()">Track</button><div id="shipmentStatus"></div><div id="shipmentTimeline"></div></div></div>
-<div id="quoteModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal('quoteModal')">&times;</span><div id="quotePreview"></div></div></div>
-<div id="popupPromo" class="popup-promo"><span class="close-popup" onclick="closePromoPopup()">&times;</span><div id="popupContent"></div></div>
-
-<nav class="bottom-nav">
-<div onclick="switchPage('home')"><i class="fas fa-home"></i></div>
-<div onclick="switchPage('promo')"><i class="fas fa-fire"></i></div>
-<div onclick="switchPage('tracking')"><i class="fas fa-map-marker-alt"></i></div>
-<div onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i></div>
-<div onclick="switchPage('account')"><i class="fas fa-user"></i></div>
-</nav>
-
-<footer class="footer">
-<div class="footer-grid">
-<div><h4>Mmeli Global</h4><p>Premium products delivered worldwide.</p><p><i class="fab fa-whatsapp"></i> +263 77 687 1711</p><p><i class="far fa-envelope"></i> info@mmeliglobal.com</p></div>
-<div><h4>Quick Links</h4><a href="#" onclick="switchPage('home')">Home</a><a href="#" onclick="switchPage('promo')">Promotions</a><a href="#" onclick="switchPage('tracking')">Track Order</a><a href="#" onclick="switchPage('account')">My Account</a></div>
-<div><h4>Policies</h4><a href="#" id="privacyLink">Privacy Policy</a><a href="#" id="termsLink">Terms of Service</a><a href="#" id="shippingLink">Shipping Info</a><a href="#" id="returnsLink">Returns & Refunds</a></div>
-<div><h4>Newsletter</h4><p>Get updates</p><input type="email" id="subEmail" placeholder="Email"><input type="tel" id="subPhone" placeholder="WhatsApp"><button onclick="subscribe()">Subscribe</button></div>
-</div>
-<div class="footer-bottom">&copy; 2025 Mmeli Global. All rights reserved.</div>
-</footer>
-
-<script src="script.js"></script>
+window.onload = () => { initData(); allProducts = JSON.parse(localStorage.getItem('products')); displayProducts(shuffle([...allProducts]).slice(0,150)); buildMainMenu(); updateCartCount(); if(user) { document.getElementById('loginBox').style.display='none'; document.getElementById('dashboard').style.display='block'; document.getElementById('userName').innerHTML=user.name; } };
+</script>
 </body>
 </html>
