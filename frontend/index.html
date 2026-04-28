@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Mmeli Global – Premium E‑commerce</title>
-  <!-- These meta tags will be overwritten by the server for product pages, but used as defaults -->
   <meta property="og:title" content="Mmeli Global | Premium Products">
   <meta property="og:description" content="Shop premium products, track shipments, get quotations, and manage your account.">
   <meta property="og:image" content="logo.png">
@@ -15,7 +14,6 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    /* ========== ALL STYLES (same as your final working version) ========== */
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family: 'Segoe UI', Roboto, sans-serif; background:#f8f9fa; padding-bottom:70px; touch-action: pan-x pan-y; }
     :root { --navy:#0a192f; --gold:#d4af37; --orange:#e67e22; }
@@ -214,7 +212,7 @@
   </div>
 </section>
 
-<!-- MODALS (all 12 – complete) -->
+<!-- MODALS (all 12 – unchanged) -->
 <div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
 <div id="modalManageProducts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
 <div id="modalAddProduct" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
@@ -229,7 +227,7 @@
 <div id="modalQuotationPreview" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div id="quotationPreviewContent"></div></div></div>
 <div id="shipmentTrackingModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeShipmentModal()">&times;</span><h3>Track Your Shipment</h3><input type="text" id="shipmentCode" placeholder="Enter tracking code"><button onclick="fetchShipmentStatus()">Track</button><div id="shipmentStatus"></div><div id="shipmentTimeline"></div></div></div>
 <div id="quoteModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div id="quotePreview"></div></div></div>
-<div id="popupPromo" class="popup-promo"><span class="close-popup">&times;</span><div id="popupContent"></div></div>
+<div id="popupPromo" class="popup-promo" style="position:fixed; bottom:20px; right:20px; background:white; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.2); display:none; z-index:1100; max-width:280px;"><span class="close-popup" style="float:right; cursor:pointer;">&times;</span><div id="popupContent"></div></div>
 
 <nav class="bottom-nav">
   <div onclick="resetHome()"><i class="fas fa-home"></i></div>
@@ -250,7 +248,7 @@
 </footer>
 
 <script>
-  // ========== FULL JAVASCRIPT (same as last working version, with fixes) ==========
+  // ========== FULL JAVASCRIPT (FIXED VERSION) ==========
   const API = '/api';
   let allProducts = [];
   let currentProduct = null;
@@ -262,7 +260,7 @@
   let currentDisplayLimit = 150;
   let allShuffled = [];
 
-  // ---------- Category data (full) ----------
+  // ---------- Category data (unchanged) ----------
   const categoryHierarchy = {
     "Phones": { "Smartphones": ["Android Phones", "iPhones", "Rugged Phones"], "Feature Phones": ["Keypad Phones"], "Accessories": ["Chargers", "Power Banks", "Phone Cases", "Screen Protectors"] },
     "Cameras": { "Cameras": ["Digital Cameras", "DSLR Cameras", "Mirrorless Cameras"], "Video Equipment": ["Camcorders", "Action Cameras"], "Accessories": ["Tripods", "Lighting", "Microphones"] },
@@ -296,12 +294,16 @@
   };
   const defaultIcon = "https://cdn-icons-png.flaticon.com/512/456/456212.png";
 
-  // ---------- API helper ----------
+  // ---------- API helper (fixed to use absolute path and handle errors) ----------
   async function apiCall(endpoint, options = {}) {
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(API + endpoint, { ...options, headers });
-    if (!res.ok) throw new Error((await res.json()).error || 'Request failed');
+    const url = API + endpoint;
+    const res = await fetch(url, { ...options, headers });
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText || 'Request failed');
+    }
     return res.json();
   }
 
@@ -572,7 +574,7 @@
     } catch(e) { document.getElementById('shipmentStatus').innerHTML = '<p style="color:red;">Shipment not found.</p>'; }
   }
 
-  // ---------- Auth functions (full) ----------
+  // ---------- Auth functions (unchanged but fixed login) ----------
   async function register() {
     const name = document.getElementById('regName').value, email = document.getElementById('regEmail').value, phone = document.getElementById('regPhone').value, address = document.getElementById('regAddress').value, password = document.getElementById('regPassword').value;
     if (!name || !email || !password) return alert('Fill required fields');
@@ -617,22 +619,55 @@
   function openShipmentTracking() { document.getElementById('shipmentTrackingModal').style.display = 'flex'; }
   function closeShipmentModal() { document.getElementById('shipmentTrackingModal').style.display = 'none'; }
 
-  // ---------- Admin dashboard (complete) ----------
+  // ========== ADMIN LOGIN (FIXED) ==========
   async function adminLogin() {
-    const email = document.getElementById('adminEmail').value, password = document.getElementById('adminPassword').value;
+    const email = document.getElementById('adminEmail').value.trim();
+    const password = document.getElementById('adminPassword').value;
+    if (!email || !password) {
+      alert('Please enter email and password');
+      return;
+    }
     try {
-      const data = await apiCall('/auth/login', { method:'POST', body: JSON.stringify({ email, password }) });
-      if (!data.user || data.user.role !== 'admin') throw new Error('Not admin');
-      token = data.token; user = data.user; localStorage.setItem('token',token); localStorage.setItem('user',JSON.stringify(user));
-      document.getElementById('adminLoginDiv').style.display='none'; document.getElementById('adminPanel').style.display='block';
-    } catch(e) { alert('Admin login failed: ' + e.message); }
+      const response = await fetch(API + '/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Login failed');
+      }
+      const data = await response.json();
+      // Check role
+      if (!data.user || data.user.role !== 'admin') {
+        throw new Error('Not an admin account');
+      }
+      token = data.token;
+      user = data.user;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      // Hide login, show admin panel
+      document.getElementById('adminLoginDiv').style.display = 'none';
+      document.getElementById('adminPanel').style.display = 'block';
+      // Re‑initialize admin card listeners (important)
+      initAdminCards();
+      alert('Admin login successful');
+    } catch (err) {
+      alert('Admin login failed: ' + err.message);
+    }
   }
+
+  // ---------- Admin dashboard (complete) ----------
   function initAdminCards() {
     document.querySelectorAll('.admin-card').forEach(card => {
-      card.addEventListener('click', () => {
+      // Remove any existing listener to avoid duplication
+      card.removeEventListener('click', card._listener);
+      const handler = () => {
         const modalId = card.getAttribute('data-modal');
         if (modalId) openAdminModal(modalId);
-      });
+      };
+      card.addEventListener('click', handler);
+      card._listener = handler;
     });
   }
   function openAdminModal(modalId) {
@@ -699,7 +734,7 @@
       alert('Product updated successfully');
       closeModal('modalManageProducts');
       openAdminModal('manageProducts');
-      loadProducts(); // refresh home display
+      loadProducts();
     } catch (err) { alert('Update failed: ' + err.message); }
   }
   async function deleteProduct(id) { if(confirm('Delete product?')) await apiCall(`/products/${id}`, { method:'DELETE' }); openAdminModal('manageProducts'); loadProducts(); }
@@ -889,38 +924,43 @@
   window.addEventListener('hashchange', handleHash);
   function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&')return'&amp;';if(m==='<')return'&lt;';if(m==='>')return'&gt;';return m;}); }
 
-  // ---------- Global modal close and double-click logo ----------
+  // ---------- Global modal close ----------
   document.querySelectorAll('.close-modal').forEach(btn => {
     btn.addEventListener('click', function() { const modal = this.closest('.modal'); if(modal) modal.style.display = 'none'; });
   });
   window.addEventListener('click', (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; });
+  document.querySelector('.close-popup')?.addEventListener('click', closePopup);
 
-  // Ensure double-click logo works
+  // ========== DOUBLE-CLICK LOGO – FIXED ==========
   const logoElem = document.getElementById('logoArea');
   if (logoElem) {
-    logoElem.addEventListener('dblclick', () => switchPage('adminDashboard'));
+    logoElem.addEventListener('dblclick', function(e) {
+      e.preventDefault();
+      console.log('Logo double-clicked – switching to admin dashboard');
+      switchPage('adminDashboard');
+    });
+  } else {
+    console.error('Logo element not found');
   }
 
+  // ========== INITIALIZATION ==========
   window.addEventListener('load', function() {
     document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
-    resetHome();
-    if (document.getElementById('tracking').classList.contains('active')) initDefaultMap();
-  });
-  window.onload = () => {
-    document.getElementById('searchInput').value = '';
     updateCartCount();
-    initAdminCards();
+    initAdminCards(); // for admin cards in case admin is already logged in
     if (user) {
       document.getElementById('loginBox').style.display='none';
       document.getElementById('dashboard').style.display='block';
       document.getElementById('userName').innerText = user.name;
+      // if admin, also update admin panel visibility
+      if (user.role === 'admin') {
+        document.getElementById('adminLoginDiv').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'block';
+      }
     }
     resetHome();
     handleHash();
-    // Double-click logo (again to be safe)
-    const logo = document.getElementById('logoArea');
-    if (logo) logo.addEventListener('dblclick', () => switchPage('adminDashboard'));
-  };
+  });
 </script>
 </body>
 </html>
