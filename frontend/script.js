@@ -6,9 +6,15 @@ let cart = JSON.parse(localStorage.getItem('cart') || '[]');
 let token = localStorage.getItem('token');
 let user = JSON.parse(localStorage.getItem('user') || 'null');
 let map = null;
+let currentMapMarker = null;
 let appliedDiscount = null;
 let currentDisplayCount = 150;
-let shuffledProductOrder = []; // store shuffled order once
+let shuffledProductOrder = [];
+let currentFilteredProducts = []; // for load more with filters
+let currentFilterType = 'all'; // 'all', 'category', 'subcategory', 'search'
+let currentCategory = null;
+let currentSubcategory = null;
+let currentSearchQuery = '';
 let checkoutData = { shippingAddress: '', deliveryMethod: 'standard', deliveryCost: 5 };
 
 // Category hierarchy (same as original)
@@ -46,6 +52,9 @@ const subcategoryIcons = {
 const defaultIcon = "https://cdn-icons-png.flaticon.com/512/456/456212.png";
 
 // ======================== HELPER FUNCTIONS ========================
+function showSpinner() { document.getElementById('loadingSpinner').style.display = 'block'; }
+function hideSpinner() { document.getElementById('loadingSpinner').style.display = 'none'; }
+
 function escapeHtml(str) {
   if (!str) return '';
   return str.replace(/[&<>]/g, function(m) {
@@ -53,6 +62,8 @@ function escapeHtml(str) {
     if (m === '<') return '&lt;';
     if (m === '>') return '&gt;';
     return m;
+  }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
+    return c;
   });
 }
 
@@ -63,6 +74,18 @@ async function apiCall(endpoint, options = {}) {
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
     throw new Error(error.error || 'Request failed');
+  }
+  return res.json();
+}
+
+async function adminApiCall(endpoint, options = {}) {
+  const adminToken = localStorage.getItem('adminToken');
+  if (!adminToken) throw new Error('Admin not logged in');
+  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` };
+  const res = await fetch(API + endpoint, { ...options, headers });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Admin request failed');
   }
   return res.json();
 }
@@ -87,7 +110,6 @@ function getShuffledProductsWithPhoneBias(products) {
   return shuffleArray([...selectedPhones, ...selectedNonPhones]);
 }
 
-// Store shuffled order once after loading
 function setShuffledProductOrder() {
   if (allProducts.length) {
     shuffledProductOrder = getShuffledProductsWithPhoneBias(allProducts);
@@ -110,14 +132,30 @@ function displayProducts(products) {
 
 function loadMoreProducts() {
   currentDisplayCount += 150;
-  displayProducts(shuffledProductOrder.slice(0, currentDisplayCount));
-  if (currentDisplayCount >= shuffledProductOrder.length) {
+  let productsToShow = [];
+  if (currentFilterType === 'all') {
+    productsToShow = shuffledProductOrder.slice(0, currentDisplayCount);
+  } else if (currentFilterType === 'category') {
+    const filtered = allProducts.filter(p => p.cat === currentCategory);
+    productsToShow = filtered.slice(0, currentDisplayCount);
+  } else if (currentFilterType === 'subcategory') {
+    const leafs = categoryHierarchy[currentCategory][currentSubcategory];
+    const filtered = allProducts.filter(p => p.cat === currentCategory && leafs.includes(p.subcat));
+    productsToShow = filtered.slice(0, currentDisplayCount);
+  } else if (currentFilterType === 'search') {
+    const filtered = allProducts.filter(p => p.name.toLowerCase().includes(currentSearchQuery) || (p.description && p.description.toLowerCase().includes(currentSearchQuery)));
+    productsToShow = filtered.slice(0, currentDisplayCount);
+  }
+  displayProducts(productsToShow);
+  if (productsToShow.length === allProducts.filter(p => true).length) {
     document.getElementById('loadMoreBtn').style.display = 'none';
+  } else {
+    document.getElementById('loadMoreBtn').style.display = 'block';
   }
 }
 
-// ======================== PAGE NAVIGATION ========================
-function switchPage(pageId) {
+// ======================== PAGE NAVIGATION & DEEP LINKING ========================
+function switchPage(pageId, productId = null) {
   document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
   document.getElementById(pageId).classList.add('active');
   if (pageId === 'cart') renderCart();
@@ -136,7 +174,33 @@ function switchPage(pageId) {
     if (localStorage.getItem('adminToken')) document.getElementById('adminPanel').style.display = 'block';
     else document.getElementById('adminLoginDiv').style.display = 'block';
   }
-  history.pushState(null, '', `#/${pageId}`);
+  if (pageId === 'productPage' && productId) {
+    openProduct(productId);
+  }
+  let hash = '#/' + pageId;
+  if (productId) hash += '/product/' + productId;
+  history.pushState(null, '', hash);
+}
+
+function handleHash() {
+  const hash = window.location.hash.slice(2); // remove #/
+  if (!hash) {
+    resetHome();
+    return;
+  }
+  const parts = hash.split('/');
+  if (parts[0] === 'product' && parts[1]) {
+    const productId = parseInt(parts[1]);
+    if (productId && !isNaN(productId)) {
+      switchPage('productPage', productId);
+    } else {
+      resetHome();
+    }
+  } else if (['home', 'cart', 'tracking', 'promo', 'account', 'adminDashboard', 'checkoutPage'].includes(parts[0])) {
+    switchPage(parts[0]);
+  } else {
+    resetHome();
+  }
 }
 
 function goBackHome() {
@@ -144,6 +208,7 @@ function goBackHome() {
 }
 
 function resetHome() {
+  currentFilterType = 'all';
   currentDisplayCount = 150;
   displayProducts(shuffledProductOrder.slice(0, currentDisplayCount));
   document.getElementById('subMenu').innerHTML = '';
@@ -152,6 +217,7 @@ function resetHome() {
 
 // ======================== PRODUCT LOADING & DISPLAY ========================
 async function loadProducts() {
+  showSpinner();
   try {
     const res = await fetch(API + '/products');
     if (!res.ok) throw new Error(await res.text());
@@ -169,14 +235,17 @@ async function loadProducts() {
       setShuffledProductOrder();
       displayProducts(shuffledProductOrder.slice(0, currentDisplayCount));
       buildMainMenu();
-      document.getElementById('productsContainer').innerHTML = '<p>Using cached products. Refresh later.</p>';
+      document.getElementById('productsContainer').innerHTML += '<p style="color:orange;">Using cached products. Refresh later.</p>';
     } else {
       document.getElementById('productsContainer').innerHTML = '<p>Error loading products.</p>';
     }
+  } finally {
+    hideSpinner();
   }
 }
 
 async function openProduct(id) {
+  showSpinner();
   try {
     let product = allProducts.find(p => p.id == id);
     if (!product) {
@@ -186,10 +255,10 @@ async function openProduct(id) {
     }
     currentProduct = product;
     renderProductDetail(product);
-    switchPage('productPage');
-    history.pushState(null, '', `#/product/${id}`);
-    loadProductRecommendations(product.cat, product.id);
+    switchPage('productPage', id);
+    await loadProductRecommendations(product.cat, product.id);
   } catch(e) { console.error(e); alert('Could not open product'); }
+  finally { hideSpinner(); }
 }
 
 function renderProductDetail(p) {
@@ -203,21 +272,24 @@ function renderProductDetail(p) {
         <div><label>Color:</label> <select id="productColor">${(p.colors || ['Default']).map(c => `<option>${escapeHtml(c)}</option>`).join('')}</select></div>
         <div><label>Size:</label> <select id="productSize">${(p.size_options || [{size:'Standard',price:p.price}]).map(s => `<option value="${s.price}">${escapeHtml(s.size)} - $${s.price}</option>`).join('')}</select></div>
       </div>
-      <div class="add-to-cart-center"><button onclick="addToCartFromDetail()"><i class="fas fa-cart-plus"></i> Add to Cart</button></div>
+      <div class="add-to-cart-center"><button id="addToCartDetailBtn"><i class="fas fa-cart-plus"></i> Add to Cart</button></div>
     </div>
     <div class="product-detail-right">
       <h4>You may also like</h4>
       <div id="productRecommendationsGrid" class="recommend-grid"></div>
     </div>
   </div>`;
+  const btn = document.getElementById('addToCartDetailBtn');
+  if (btn) btn.onclick = () => addToCartFromDetail();
   if (p.size_options && p.size_options.length) {
     document.getElementById('productSize')?.addEventListener('change', () => {
-      document.querySelector('.add-to-cart-center button').innerHTML = `<i class="fas fa-cart-plus"></i> Add to Cart ($${document.getElementById('productSize').value})`;
+      if (btn) btn.innerHTML = `<i class="fas fa-cart-plus"></i> Add to Cart ($${document.getElementById('productSize').value})`;
     });
   }
 }
 
 async function loadProductRecommendations(category, excludeId) {
+  if (!allProducts.length) return;
   let recs = allProducts.filter(p => p.cat === category && p.id !== excludeId).slice(0, 20);
   if (recs.length < 20) recs = allProducts.filter(p => p.id !== excludeId).slice(0, 20);
   const container = document.getElementById('productRecommendationsGrid');
@@ -227,6 +299,7 @@ async function loadProductRecommendations(category, excludeId) {
 }
 
 function loadRecommendationsForSection(containerId, excludeId) {
+  if (!allProducts.length) return;
   let recs = allProducts.filter(p => p.id !== excludeId).slice(0, 20);
   const container = document.getElementById(containerId);
   if (container) {
@@ -241,13 +314,25 @@ function updateCartCount() {
 
 function renderCart() {
   const container = document.getElementById('cartList');
-  if (!cart.length) { container.innerHTML = '<p>Cart is empty.</p>'; return; }
-  let html = '', total = 0;
+  if (!cart.length) { container.innerHTML = '<p>Cart is empty.</p>'; loadRecommendationsForSection('cartRecommendations', null); return; }
+  let subtotal = 0;
+  cart.forEach(item => { subtotal += item.price; });
+  let discountAmount = 0;
+  let finalTotal = subtotal;
+  if (appliedDiscount) {
+    if (appliedDiscount.type === 'percentage') discountAmount = (appliedDiscount.amount / 100) * subtotal;
+    else discountAmount = appliedDiscount.amount;
+    finalTotal = subtotal - discountAmount;
+  }
+  let html = '';
   cart.forEach((item, i) => {
-    total += item.price;
     html += `<div class="cart-item"><div><img src="${item.image}" width="50" style="border-radius:8px;"> ${escapeHtml(item.name)} (${escapeHtml(item.size)}, ${escapeHtml(item.color)})</div><div>$${item.price} <button onclick="removeFromCart(${i})">Remove</button></div></div>`;
   });
-  html += `<div class="cart-item"><strong>Total: $${total.toFixed(2)}</strong></div>`;
+  html += `<div class="cart-item"><strong>Subtotal: $${subtotal.toFixed(2)}</strong></div>`;
+  if (appliedDiscount) {
+    html += `<div class="cart-item"><strong>Discount: -$${discountAmount.toFixed(2)}</strong></div>`;
+  }
+  html += `<div class="cart-item"><strong>Total: $${finalTotal.toFixed(2)}</strong></div>`;
   container.innerHTML = html;
   loadRecommendationsForSection('cartRecommendations', null);
 }
@@ -273,12 +358,14 @@ function addToCartFromDetail() {
 async function applyDiscount() {
   const code = document.getElementById('promoCodeInput').value.trim();
   if (!code) { alert('Enter promo code'); return; }
+  showSpinner();
   try {
     const res = await apiCall('/discounts/validate', { method: 'POST', body: JSON.stringify({ code }) });
     appliedDiscount = res;
     alert(`Discount applied: ${res.description || ''}`);
     renderCart();
   } catch(e) { alert('Invalid discount code'); }
+  finally { hideSpinner(); }
 }
 
 // ======================== CHECKOUT ========================
@@ -313,8 +400,13 @@ function nextStep() {
 
 async function completeCheckout() {
   if (!checkoutData.shippingAddress) { alert('Enter shipping address'); return; }
-  const total = cart.reduce((sum, i) => sum + i.price, 0) + checkoutData.deliveryCost;
-  if (appliedDiscount) total -= appliedDiscount.amount;
+  let subtotal = cart.reduce((sum, i) => sum + i.price, 0);
+  let discountAmount = 0;
+  if (appliedDiscount) {
+    if (appliedDiscount.type === 'percentage') discountAmount = (appliedDiscount.amount / 100) * subtotal;
+    else discountAmount = appliedDiscount.amount;
+  }
+  let total = subtotal - discountAmount + checkoutData.deliveryCost;
   const orderData = {
     items: cart,
     address: checkoutData.shippingAddress,
@@ -322,16 +414,19 @@ async function completeCheckout() {
     total: total,
     discount: appliedDiscount
   };
+  showSpinner();
   try {
     const order = await apiCall('/orders', { method: 'POST', body: JSON.stringify(orderData) });
-    const waMsg = `New order #${order.id}\nTotal: $${total}\nAddress: ${checkoutData.shippingAddress}\nPlease confirm payment.`;
+    const waMsg = `New order #${order.id}\nTotal: $${total.toFixed(2)}\nAddress: ${checkoutData.shippingAddress}\nPlease confirm payment.`;
     window.open(`https://wa.me/263776871711?text=${encodeURIComponent(waMsg)}`);
     cart = [];
+    appliedDiscount = null;
     localStorage.setItem('cart', JSON.stringify(cart));
     updateCartCount();
     alert('Order placed! Check WhatsApp to complete payment.');
     switchPage('home');
   } catch(e) { alert('Order failed: ' + e.message); }
+  finally { hideSpinner(); }
 }
 
 // ======================== CATEGORY MENU ========================
@@ -348,6 +443,11 @@ function buildMainMenu() {
 }
 
 function selectMainCategory(category) {
+  currentFilterType = 'category';
+  currentCategory = category;
+  currentDisplayCount = 150;
+  const filtered = allProducts.filter(p => p.cat === category);
+  displayProducts(filtered.slice(0, currentDisplayCount));
   const subContainer = document.getElementById('subMenu');
   subContainer.innerHTML = '';
   const subs = categoryHierarchy[category];
@@ -357,12 +457,13 @@ function selectMainCategory(category) {
     div.onclick = () => selectSubCategory(category, sub);
     subContainer.appendChild(div);
   }
-  // Filter products by main category
-  const filtered = allProducts.filter(p => p.cat === category);
-  displayProducts(filtered.slice(0, currentDisplayCount));
 }
 
 function selectSubCategory(category, sub) {
+  currentFilterType = 'subcategory';
+  currentCategory = category;
+  currentSubcategory = sub;
+  currentDisplayCount = 150;
   const leafs = categoryHierarchy[category][sub];
   const filtered = allProducts.filter(p => p.cat === category && leafs.includes(p.subcat));
   displayProducts(filtered.slice(0, currentDisplayCount));
@@ -372,9 +473,11 @@ function selectSubCategory(category, sub) {
 function searchProducts() {
   const query = document.getElementById('searchInput').value.trim().toLowerCase();
   if (!query) { resetHome(); return; }
+  currentFilterType = 'search';
+  currentSearchQuery = query;
+  currentDisplayCount = 150;
   const filtered = allProducts.filter(p => p.name.toLowerCase().includes(query) || (p.description && p.description.toLowerCase().includes(query)));
   displayProducts(filtered.slice(0, currentDisplayCount));
-  // Autocomplete
   const autocomplete = document.getElementById('autocompleteList');
   autocomplete.innerHTML = '';
   const matches = allProducts.filter(p => p.name.toLowerCase().startsWith(query)).slice(0,5);
@@ -387,7 +490,6 @@ function searchProducts() {
 }
 
 function handleScan(input) {
-  // Simulate barcode scan: just search for the file name as product name
   if (input.files.length) {
     const fakeCode = input.files[0].name.split('.')[0];
     document.getElementById('searchInput').value = fakeCode;
@@ -403,6 +505,7 @@ async function register() {
   const address = document.getElementById('regAddress').value;
   const password = document.getElementById('regPassword').value;
   if (!name || !email || !phone || !password) { alert('Fill all fields'); return; }
+  showSpinner();
   try {
     const res = await apiCall('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, phone, address, password }) });
     token = res.token;
@@ -412,12 +515,14 @@ async function register() {
     alert('Registration successful');
     switchPage('account');
   } catch(e) { alert(e.message); }
+  finally { hideSpinner(); }
 }
 
 async function login() {
   const email = document.getElementById('loginEmail').value;
   const password = document.getElementById('loginPassword').value;
   if (!email || !password) { alert('Enter email and password'); return; }
+  showSpinner();
   try {
     const res = await apiCall('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
     token = res.token;
@@ -427,6 +532,7 @@ async function login() {
     alert('Login successful');
     switchPage('account');
   } catch(e) { alert('Invalid credentials'); }
+  finally { hideSpinner(); }
 }
 
 function logout() {
@@ -441,6 +547,7 @@ function logout() {
 async function showMyOrders() {
   const container = document.getElementById('customerData');
   if (!container) return;
+  showSpinner();
   try {
     const orders = await apiCall('/orders');
     if (!orders.length) { container.innerHTML = '<p>No orders yet.</p>'; return; }
@@ -449,10 +556,12 @@ async function showMyOrders() {
     html += '</ul>';
     container.innerHTML = html;
   } catch(e) { container.innerHTML = '<p>Error loading orders.</p>'; }
+  finally { hideSpinner(); }
 }
 
 async function showMyQuotations() {
   const container = document.getElementById('customerData');
+  showSpinner();
   try {
     const quotes = await apiCall('/quotations');
     if (!quotes.length) { container.innerHTML = '<p>No quotations.</p>'; return; }
@@ -461,10 +570,12 @@ async function showMyQuotations() {
     html += '</ul>';
     container.innerHTML = html;
   } catch(e) { container.innerHTML = '<p>Error loading quotations.</p>'; }
+  finally { hideSpinner(); }
 }
 
 async function showMyReturns() {
   const container = document.getElementById('customerData');
+  showSpinner();
   try {
     const returns = await apiCall('/returns');
     if (!returns.length) { container.innerHTML = '<p>No returns.</p>'; return; }
@@ -473,15 +584,18 @@ async function showMyReturns() {
     html += '</ul>';
     container.innerHTML = html;
   } catch(e) { container.innerHTML = '<p>Error loading returns.</p>'; }
+  finally { hideSpinner(); }
 }
 
 async function viewQuote(id) {
+  showSpinner();
   try {
     const quote = await apiCall(`/quotations/${id}`);
     const modal = document.getElementById('quoteModal');
     document.getElementById('quotePreview').innerHTML = `<pre>${JSON.stringify(quote, null, 2)}</pre>`;
     modal.style.display = 'flex';
   } catch(e) { alert('Cannot load quote'); }
+  finally { hideSpinner(); }
 }
 
 function showProfile() {
@@ -499,6 +613,7 @@ async function updateProfile() {
   const email = document.getElementById('editEmail').value;
   const phone = document.getElementById('editPhone').value;
   const address = document.getElementById('editAddress').value;
+  showSpinner();
   try {
     const updated = await apiCall('/auth/profile', { method: 'PUT', body: JSON.stringify({ name, email, phone, address }) });
     user = updated;
@@ -506,6 +621,7 @@ async function updateProfile() {
     alert('Profile updated');
     showProfile();
   } catch(e) { alert('Update failed'); }
+  finally { hideSpinner(); }
 }
 
 function openShipmentTracking() {
@@ -518,7 +634,7 @@ function closeShipmentModal() {
 
 // ======================== TRACKING & MAP ========================
 function initMap() {
-  if (document.getElementById('map') && typeof L !== 'undefined') {
+  if (document.getElementById('map') && typeof L !== 'undefined' && !map) {
     map = L.map('map').setView([-17.825, 31.033], 6);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors'
@@ -529,28 +645,33 @@ function initMap() {
 async function trackOrder() {
   const code = document.getElementById('trackCode').value.trim();
   if (!code) { alert('Enter tracking code'); return; }
+  showSpinner();
   try {
     const shipment = await apiCall(`/shipments/track/${code}`);
     document.getElementById('trackInfo').innerHTML = `<p>Status: ${shipment.status}<br>Location: ${shipment.current_location || 'N/A'}</p>`;
     if (map && shipment.lat && shipment.lng) {
       map.setView([shipment.lat, shipment.lng], 12);
-      L.marker([shipment.lat, shipment.lng]).addTo(map).bindPopup(shipment.status).openPopup();
+      if (currentMapMarker) map.removeLayer(currentMapMarker);
+      currentMapMarker = L.marker([shipment.lat, shipment.lng]).addTo(map).bindPopup(shipment.status).openPopup();
     }
     const timeline = shipment.updates || [];
     const timelineHtml = `<div class="timeline">${timeline.map(u => `<div class="timeline-step completed">${u.status}<br><small>${u.location}</small></div>`).join('')}</div>`;
     document.getElementById('trackTimeline').innerHTML = timelineHtml;
   } catch(e) { document.getElementById('trackInfo').innerHTML = '<p>Tracking not found.</p>'; }
+  finally { hideSpinner(); }
 }
 
 async function fetchShipmentStatus() {
   const code = document.getElementById('shipmentCode').value.trim();
   if (!code) { alert('Enter tracking code'); return; }
+  showSpinner();
   try {
     const shipment = await apiCall(`/shipments/track/${code}`);
     document.getElementById('shipmentStatus').innerHTML = `<p>Status: ${shipment.status}</p>`;
     const timeline = shipment.updates || [];
     document.getElementById('shipmentTimeline').innerHTML = `<div class="timeline">${timeline.map(u => `<div class="timeline-step completed">${u.status}<br><small>${u.location}</small></div>`).join('')}</div>`;
   } catch(e) { document.getElementById('shipmentStatus').innerHTML = '<p>Not found.</p>'; }
+  finally { hideSpinner(); }
 }
 
 // ======================== PROMO & NEWSLETTER ========================
@@ -575,23 +696,34 @@ async function subscribe() {
   const email = document.getElementById('subEmail').value;
   const phone = document.getElementById('subPhone').value;
   if (!email && !phone) { alert('Enter email or phone'); return; }
+  showSpinner();
   try {
     await apiCall('/newsletter/subscribe', { method: 'POST', body: JSON.stringify({ email, phone }) });
     alert('Subscribed!');
   } catch(e) { alert('Subscription failed'); }
+  finally { hideSpinner(); }
 }
 
 // ======================== ADMIN DASHBOARD ========================
 async function adminLogin() {
   const email = document.getElementById('adminEmail').value;
   const password = document.getElementById('adminPassword').value;
+  showSpinner();
   try {
-    const res = await apiCall('/admin/login', { method: 'POST', body: JSON.stringify({ email, password }) });
-    localStorage.setItem('adminToken', res.token);
+    const res = await fetch(API + '/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    if (!res.ok) throw new Error('Invalid credentials');
+    const data = await res.json();
+    localStorage.setItem('adminToken', data.token);
     document.getElementById('adminLoginDiv').style.display = 'none';
     document.getElementById('adminPanel').style.display = 'block';
     initAdminCards();
+    alert('Admin login successful');
   } catch(e) { alert('Admin login failed'); }
+  finally { hideSpinner(); }
 }
 
 function initAdminCards() {
@@ -629,8 +761,9 @@ function openAdminModal(modalId) {
 }
 
 async function loadDashboardStats(container) {
+  showSpinner();
   try {
-    const stats = await apiCall('/admin/stats');
+    const stats = await adminApiCall('/admin/stats');
     container.innerHTML = `<div class="stats-grid">
       <div class="stats-card">Products: ${stats.products}</div>
       <div class="stats-card">Orders: ${stats.orders}</div>
@@ -638,11 +771,13 @@ async function loadDashboardStats(container) {
       <div class="stats-card">Revenue: $${stats.revenue}</div>
     </div>`;
   } catch(e) { container.innerHTML = '<p>Error loading stats</p>'; }
+  finally { hideSpinner(); }
 }
 
 async function loadProductsModal(container) {
+  showSpinner();
   try {
-    const products = await apiCall('/products');
+    const products = await adminApiCall('/products');
     let html = '<h3>Manage Products</h3><ul>';
     products.forEach(p => {
       html += `<li>${p.name} - $${p.price} <button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></li>`;
@@ -650,10 +785,12 @@ async function loadProductsModal(container) {
     html += '</ul><button onclick="closeModal(\'modalManageProducts\')">Close</button>';
     container.innerHTML = html;
   } catch(e) { container.innerHTML = '<p>Error</p>'; }
+  finally { hideSpinner(); }
 }
 
 async function editProductModal(id) {
-  const p = await apiCall(`/products/${id}`);
+  showSpinner();
+  const p = await adminApiCall(`/products/${id}`);
   const body = document.getElementById('modalManageProducts').querySelector('.modal-body');
   body.innerHTML = `<h3>Edit Product</h3>
     <input id="editName" value="${p.name}"><br>
@@ -667,6 +804,7 @@ async function editProductModal(id) {
     <input id="editSizes" value="${(p.size_options||[]).map(s=>`${s.size}:${s.price}`).join(',')}"><br>
     <button onclick="updateProduct(${id})">Update</button>
     <button onclick="closeModal('modalManageProducts')">Cancel</button>`;
+  hideSpinner();
 }
 
 async function updateProduct(id) {
@@ -683,17 +821,25 @@ async function updateProduct(id) {
   if (!size_options.length) size_options = [{size:'Standard', price}];
   const sub_images = document.getElementById('editSubImages').value.split(',').map(u=>u.trim()).filter(u=>u);
   const productData = { name, description, cat, subcat, price, colors, size_options, main_image, sub_images };
-  await apiCall(`/products/${id}`, { method:'PUT', body: JSON.stringify(productData) });
-  alert('Product updated');
-  closeModal('modalManageProducts');
-  openAdminModal('manageProducts');
+  showSpinner();
+  try {
+    await adminApiCall(`/products/${id}`, { method:'PUT', body: JSON.stringify(productData) });
+    alert('Product updated');
+    closeModal('modalManageProducts');
+    openAdminModal('manageProducts');
+  } catch(e) { alert('Update failed'); }
+  finally { hideSpinner(); }
 }
 
 async function deleteProduct(id) {
   if (confirm('Delete product?')) {
-    await apiCall(`/products/${id}`, { method:'DELETE' });
-    alert('Deleted');
-    openAdminModal('manageProducts');
+    showSpinner();
+    try {
+      await adminApiCall(`/products/${id}`, { method:'DELETE' });
+      alert('Deleted');
+      openAdminModal('manageProducts');
+    } catch(e) { alert('Delete failed'); }
+    finally { hideSpinner(); }
   }
 }
 
@@ -726,99 +872,153 @@ async function addProduct() {
   if (!size_options.length) size_options = [{size:'Standard', price}];
   const sub_images = document.getElementById('prodSubImages').value.split(',').map(u=>u.trim()).filter(u=>u);
   const product = { name, description, cat, subcat, price, colors, size_options, main_image, sub_images };
-  await apiCall('/products', { method:'POST', body: JSON.stringify(product) });
-  alert('Product added');
-  closeModal('modalAddProduct');
-  openAdminModal('manageProducts');
+  showSpinner();
+  try {
+    await adminApiCall('/products', { method:'POST', body: JSON.stringify(product) });
+    alert('Product added');
+    closeModal('modalAddProduct');
+    openAdminModal('manageProducts');
+  } catch(e) { alert('Add failed'); }
+  finally { hideSpinner(); }
 }
 
 async function loadOrdersModal(container) {
-  const orders = await apiCall('/admin/orders');
-  let html = '<h3>Orders</h3><ul>';
-  orders.forEach(o => { html += `<li>Order #${o.id} - $${o.total} - ${o.status} <button onclick="updateOrderStatus(${o.id}, 'shipped')">Mark Shipped</button></li>`; });
-  html += '</ul><button onclick="closeModal(\'modalManageOrders\')">Close</button>';
-  container.innerHTML = html;
+  showSpinner();
+  try {
+    const orders = await adminApiCall('/admin/orders');
+    let html = '<h3>Orders</h3><ul>';
+    orders.forEach(o => { html += `<li>Order #${o.id} - $${o.total} - ${o.status} <button onclick="updateOrderStatus(${o.id}, 'shipped')">Mark Shipped</button></li>`; });
+    html += '</ul><button onclick="closeModal(\'modalManageOrders\')">Close</button>';
+    container.innerHTML = html;
+  } catch(e) { container.innerHTML = '<p>Error loading orders</p>'; }
+  finally { hideSpinner(); }
 }
 
 async function updateOrderStatus(orderId, status) {
-  await apiCall(`/admin/orders/${orderId}`, { method:'PUT', body: JSON.stringify({ status }) });
-  alert('Order updated');
-  openAdminModal('manageOrders');
+  showSpinner();
+  try {
+    await adminApiCall(`/admin/orders/${orderId}`, { method:'PUT', body: JSON.stringify({ status }) });
+    alert('Order updated');
+    openAdminModal('manageOrders');
+  } catch(e) { alert('Update failed'); }
+  finally { hideSpinner(); }
 }
 
 async function loadDiscountsModal(container) {
-  const discounts = await apiCall('/admin/discounts');
-  let html = '<h3>Discounts</h3><ul>';
-  discounts.forEach(d => { html += `<li>${d.code} - ${d.amount}% <button onclick="deleteDiscount('${d.code}')">Delete</button></li>`; });
-  html += '</ul><input id="newCode" placeholder="Code"><input id="newAmount" placeholder="Amount %"><button onclick="addDiscount()">Add</button><button onclick="closeModal(\'modalDiscounts\')">Close</button>';
-  container.innerHTML = html;
+  showSpinner();
+  try {
+    const discounts = await adminApiCall('/admin/discounts');
+    let html = '<h3>Discounts</h3><ul>';
+    discounts.forEach(d => { html += `<li>${d.code} - ${d.amount}% <button onclick="deleteDiscount('${d.code}')">Delete</button></li>`; });
+    html += '</ul><input id="newCode" placeholder="Code"><input id="newAmount" placeholder="Amount %"><button onclick="addDiscount()">Add</button><button onclick="closeModal(\'modalDiscounts\')">Close</button>';
+    container.innerHTML = html;
+  } catch(e) { container.innerHTML = '<p>Error</p>'; }
+  finally { hideSpinner(); }
 }
 
 async function addDiscount() {
   const code = document.getElementById('newCode').value;
   const amount = parseFloat(document.getElementById('newAmount').value);
-  await apiCall('/admin/discounts', { method:'POST', body: JSON.stringify({ code, amount }) });
-  alert('Discount added');
-  openAdminModal('discounts');
+  showSpinner();
+  try {
+    await adminApiCall('/admin/discounts', { method:'POST', body: JSON.stringify({ code, amount }) });
+    alert('Discount added');
+    openAdminModal('discounts');
+  } catch(e) { alert('Add failed'); }
+  finally { hideSpinner(); }
 }
 
 async function deleteDiscount(code) {
-  await apiCall(`/admin/discounts/${code}`, { method:'DELETE' });
-  openAdminModal('discounts');
+  showSpinner();
+  try {
+    await adminApiCall(`/admin/discounts/${code}`, { method:'DELETE' });
+    openAdminModal('discounts');
+  } catch(e) { alert('Delete failed'); }
+  finally { hideSpinner(); }
 }
 
 async function loadReturnsModal(container) {
-  const returns = await apiCall('/admin/returns');
-  let html = '<h3>Returns</h3><ul>';
-  returns.forEach(r => { html += `<li>Return #${r.id} - ${r.status} <button onclick="approveReturn(${r.id})">Approve</button></li>`; });
-  html += '</ul><button onclick="closeModal(\'modalReturns\')">Close</button>';
-  container.innerHTML = html;
+  showSpinner();
+  try {
+    const returns = await adminApiCall('/admin/returns');
+    let html = '<h3>Returns</h3><ul>';
+    returns.forEach(r => { html += `<li>Return #${r.id} - ${r.status} <button onclick="approveReturn(${r.id})">Approve</button></li>`; });
+    html += '</ul><button onclick="closeModal(\'modalReturns\')">Close</button>';
+    container.innerHTML = html;
+  } catch(e) { container.innerHTML = '<p>Error</p>'; }
+  finally { hideSpinner(); }
 }
 
 async function approveReturn(id) {
-  await apiCall(`/admin/returns/${id}/approve`, { method:'PUT' });
-  alert('Return approved');
-  openAdminModal('returns');
+  showSpinner();
+  try {
+    await adminApiCall(`/admin/returns/${id}/approve`, { method:'PUT' });
+    alert('Return approved');
+    openAdminModal('returns');
+  } catch(e) { alert('Approval failed'); }
+  finally { hideSpinner(); }
 }
 
 async function loadInventoryModal(container) {
-  const products = await apiCall('/products');
-  let html = '<h3>Inventory</h3><ul>';
-  products.forEach(p => { html += `<li>${p.name} - Stock: <input id="stock_${p.id}" value="${p.stock || 0}"> <button onclick="updateStock(${p.id})">Update</button></li>`; });
-  html += '</ul><button onclick="closeModal(\'modalInventory\')">Close</button>';
-  container.innerHTML = html;
+  showSpinner();
+  try {
+    const products = await adminApiCall('/products');
+    let html = '<h3>Inventory</h3><ul>';
+    products.forEach(p => { html += `<li>${p.name} - Stock: <input id="stock_${p.id}" value="${p.stock || 0}"> <button onclick="updateStock(${p.id})">Update</button></li>`; });
+    html += '</ul><button onclick="closeModal(\'modalInventory\')">Close</button>';
+    container.innerHTML = html;
+  } catch(e) { container.innerHTML = '<p>Error</p>'; }
+  finally { hideSpinner(); }
 }
 
 async function updateStock(id) {
   const stock = document.getElementById(`stock_${id}`).value;
-  await apiCall(`/admin/products/${id}/stock`, { method:'PUT', body: JSON.stringify({ stock }) });
-  alert('Stock updated');
+  showSpinner();
+  try {
+    await adminApiCall(`/admin/products/${id}/stock`, { method:'PUT', body: JSON.stringify({ stock }) });
+    alert('Stock updated');
+    openAdminModal('inventory');
+  } catch(e) { alert('Update failed'); }
+  finally { hideSpinner(); }
 }
 
 async function loadPoliciesModal(container) {
-  const policies = await apiCall('/policies');
-  let html = '<h3>Policies</h3>';
-  policies.forEach(p => {
-    html += `<div><strong>${p.title}</strong><textarea id="policy_${p.key}" rows="3">${p.content || ''}</textarea><button onclick="updatePolicy('${p.key}')">Save</button></div>`;
-  });
-  html += '<button onclick="closeModal(\'modalManagePolicies\')">Close</button>';
-  container.innerHTML = html;
+  showSpinner();
+  try {
+    const policies = await adminApiCall('/policies');
+    let html = '<h3>Policies</h3>';
+    policies.forEach(p => {
+      html += `<div><strong>${p.title}</strong><textarea id="policy_${p.key}" rows="3">${p.content || ''}</textarea><button onclick="updatePolicy('${p.key}')">Save</button></div>`;
+    });
+    html += '<button onclick="closeModal(\'modalManagePolicies\')">Close</button>';
+    container.innerHTML = html;
+  } catch(e) { container.innerHTML = '<p>Error</p>'; }
+  finally { hideSpinner(); }
 }
 
 async function updatePolicy(key) {
   const content = document.getElementById(`policy_${key}`).value;
-  await apiCall(`/policies/${key}`, { method:'PUT', body: JSON.stringify({ content }) });
-  alert('Policy updated');
+  showSpinner();
+  try {
+    await adminApiCall(`/policies/${key}`, { method:'PUT', body: JSON.stringify({ content }) });
+    alert('Policy updated');
+    openAdminModal('managePolicies');
+  } catch(e) { alert('Update failed'); }
+  finally { hideSpinner(); }
 }
 
 async function loadShipmentsModal(container) {
-  const shipments = await apiCall('/admin/shipments');
-  let html = '<h3>Shipments</h3><button onclick="showAddShipmentForm()">+ Add Shipment</button><div>';
-  shipments.forEach(s => {
-    html += `<div><strong>${s.tracking_code}</strong> - ${s.status}<br>Client: ${s.client.name}<br><button onclick="addShipmentUpdate('${s.id}')">Add Update</button></div>`;
-  });
-  html += '</div><button onclick="closeModal(\'modalManageShipments\')">Close</button>';
-  container.innerHTML = html;
+  showSpinner();
+  try {
+    const shipments = await adminApiCall('/admin/shipments');
+    let html = '<h3>Shipments</h3><button onclick="showAddShipmentForm()">+ Add Shipment</button><div>';
+    shipments.forEach(s => {
+      html += `<div><strong>${s.tracking_code}</strong> - ${s.status}<br>Client: ${s.client.name}<br><button onclick="addShipmentUpdate('${s.id}')">Add Update</button></div>`;
+    });
+    html += '</div><button onclick="closeModal(\'modalManageShipments\')">Close</button>';
+    container.innerHTML = html;
+  } catch(e) { container.innerHTML = '<p>Error</p>'; }
+  finally { hideSpinner(); }
 }
 
 function showAddShipmentForm() {
@@ -843,18 +1043,26 @@ async function addShipment() {
   const pickup = document.getElementById('shipPickup').value;
   const paid = document.getElementById('shipPaid').value === 'true';
   const notes = document.getElementById('shipNotes').value;
-  await apiCall('/admin/shipments', { method:'POST', body: JSON.stringify({ tracking_code, client, receiver, pickup, notes, paid, status:'pending' }) });
-  alert('Shipment added');
-  closeModal('modalManageShipments');
-  openAdminModal('manageShipments');
+  showSpinner();
+  try {
+    await adminApiCall('/admin/shipments', { method:'POST', body: JSON.stringify({ tracking_code, client, receiver, pickup, notes, paid, status:'pending' }) });
+    alert('Shipment added');
+    closeModal('modalManageShipments');
+    openAdminModal('manageShipments');
+  } catch(e) { alert('Add failed'); }
+  finally { hideSpinner(); }
 }
 
 async function addShipmentUpdate(shipmentId) {
   const location = prompt('Location');
   const status = prompt('Status (pickup/in_transit/delivered)');
   if (location && status) {
-    await apiCall(`/admin/shipments/${shipmentId}/updates`, { method:'POST', body: JSON.stringify({ location, status }) });
-    openAdminModal('manageShipments');
+    showSpinner();
+    try {
+      await adminApiCall(`/admin/shipments/${shipmentId}/updates`, { method:'POST', body: JSON.stringify({ location, status }) });
+      openAdminModal('manageShipments');
+    } catch(e) { alert('Update failed'); }
+    finally { hideSpinner(); }
   }
 }
 
@@ -868,9 +1076,13 @@ function loadBroadcastModal(container) {
 async function sendBroadcast() {
   const message = document.getElementById('broadcastMsg').value;
   if (!message) { alert('Enter message'); return; }
-  await apiCall('/notifications/broadcast', { method:'POST', body: JSON.stringify({ message }) });
-  alert('Broadcast sent');
-  closeModal('modalBroadcast');
+  showSpinner();
+  try {
+    await adminApiCall('/notifications/broadcast', { method:'POST', body: JSON.stringify({ message }) });
+    alert('Broadcast sent');
+    closeModal('modalBroadcast');
+  } catch(e) { alert('Broadcast failed'); }
+  finally { hideSpinner(); }
 }
 
 function showCreateQuotationForm(container) {
@@ -890,6 +1102,13 @@ function showCreateQuotationForm(container) {
     <textarea id="quoteNotes" placeholder="Notes"></textarea><br>
     <button onclick="generateProfessionalQuote()">Generate Quotation</button>
     <button onclick="closeModal('modalCreateQuotation')">Cancel</button>`;
+  
+  // Attach remove listener to initial row
+  const initialRow = document.querySelector('#quoteItemsContainer .quote-item-row');
+  if (initialRow) {
+    const rmBtn = initialRow.querySelector('.remove-item');
+    if (rmBtn) rmBtn.onclick = () => initialRow.remove();
+  }
   document.getElementById('addQuoteItem')?.addEventListener('click', () => {
     const containerDiv = document.getElementById('quoteItemsContainer');
     const row = document.createElement('div'); row.className = 'quote-item-row';
@@ -924,12 +1143,16 @@ async function generateProfessionalQuote() {
   const total = afterDiscount + taxAmount;
   const notes = document.getElementById('quoteNotes').value;
   const quoteData = { client_name, client_phone, client_email, shipping_address, items, subtotal, discount_type: discountType, discount_value: discountValue, discount_amount: discountAmount, shipping_cost: shipping, tax_rate: taxRate, tax_amount: taxAmount, total, notes };
-  const created = await apiCall('/admin/quotations', { method:'POST', body: JSON.stringify(quoteData) });
-  const magicLink = await apiCall('/magic-auth/send-otp', { method:'POST', body: JSON.stringify({ phone: client_phone, quotation_id: created.id }) });
-  const waMsg = `Hello ${client_name}, your quotation from Mmeli Global is ready. View it here: ${magicLink.magicLink}`;
-  window.open(`https://wa.me/${client_phone.replace(/[^0-9]/g,'')}?text=${encodeURIComponent(waMsg)}`);
-  alert('Quotation created and WhatsApp link generated');
-  closeModal('modalCreateQuotation');
+  showSpinner();
+  try {
+    const created = await adminApiCall('/admin/quotations', { method:'POST', body: JSON.stringify(quoteData) });
+    const magicLink = await adminApiCall('/magic-auth/send-otp', { method:'POST', body: JSON.stringify({ phone: client_phone, quotation_id: created.id }) });
+    const waMsg = `Hello ${client_name}, your quotation from Mmeli Global is ready. View it here: ${magicLink.magicLink}`;
+    window.open(`https://wa.me/${client_phone.replace(/[^0-9]/g,'')}?text=${encodeURIComponent(waMsg)}`);
+    alert('Quotation created and WhatsApp link generated');
+    closeModal('modalCreateQuotation');
+  } catch(e) { alert('Quotation failed: ' + e.message); }
+  finally { hideSpinner(); }
 }
 
 function closeModal(modalId) {
@@ -959,11 +1182,6 @@ window.onload = () => {
     document.getElementById('adminPanel').style.display = 'block';
     initAdminCards();
   }
-  // Handle initial hash
-  const hash = window.location.hash.slice(2);
-  if (hash && ['home','cart','tracking','promo','account','adminDashboard','productPage','checkoutPage'].includes(hash)) {
-    switchPage(hash);
-  } else {
-    switchPage('home');
-  }
+  window.addEventListener('popstate', handleHash);
+  handleHash();
 };
