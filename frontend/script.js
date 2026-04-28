@@ -336,26 +336,53 @@ async function fetchShipmentStatus() {
   } catch(e) { document.getElementById('shipmentStatus').innerHTML = '<p style="color:red;">Shipment not found.</p>'; }
 }
 
-// ---------- Auth functions ----------
+// ========== AUTH FUNCTIONS – PHONE-BASED ==========
 async function register() {
-  const name = document.getElementById('regName').value, email = document.getElementById('regEmail').value, phone = document.getElementById('regPhone').value, address = document.getElementById('regAddress').value, password = document.getElementById('regPassword').value;
-  if (!name || !email || !password) return alert('Fill required fields');
+  const name = document.getElementById('regName').value;
+  const phone = document.getElementById('regPhone').value;
+  const email = document.getElementById('regEmail').value;
+  const address = document.getElementById('regAddress').value;
+  const password = document.getElementById('regPassword').value;
+  if (!name || !phone || !password) return alert('Name, phone, and password required');
   try {
-    const data = await apiCall('/auth/register', { method:'POST', body: JSON.stringify({ name, surname: '', email, phone, address, password }) });
-    token = data.token; user = data.user; localStorage.setItem('token',token); localStorage.setItem('user',JSON.stringify(user));
-    document.getElementById('loginBox').style.display='none'; document.getElementById('dashboard').style.display='block'; document.getElementById('userName').innerText = user.name;
-    alert('Registration successful!');
-  } catch(e) { alert('Registration failed: '+e.message); }
+    const data = await apiCall('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ name, phone, email, address, password })
+    });
+    token = data.token;
+    user = data.user;
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    document.getElementById('loginBox').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('userName').innerText = user.name;
+    alert('Registration successful! Login with your phone number.');
+  } catch (e) {
+    alert('Registration failed: ' + e.message);
+  }
 }
+
 async function login() {
-  const email = document.getElementById('loginEmail').value, password = document.getElementById('loginPassword').value;
-  if (!email || !password) return alert('Enter credentials');
+  const phone = document.getElementById('loginEmail').value; // field now used for phone
+  const password = document.getElementById('loginPassword').value;
+  if (!phone || !password) return alert('Enter phone number and password');
   try {
-    const data = await apiCall('/auth/login', { method:'POST', body: JSON.stringify({ email, password }) });
-    token = data.token; user = data.user; localStorage.setItem('token',token); localStorage.setItem('user',JSON.stringify(user));
-    document.getElementById('loginBox').style.display='none'; document.getElementById('dashboard').style.display='block'; document.getElementById('userName').innerText = user.name;
-  } catch(e) { alert('Login failed: '+e.message); }
+    const data = await apiCall('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ phone, password })
+    });
+    token = data.token;
+    user = data.user;
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    document.getElementById('loginBox').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('userName').innerText = user.name;
+  } catch (e) {
+    alert('Login failed: ' + e.message);
+  }
 }
+
 function logout() { token=null; user=null; localStorage.clear(); location.reload(); }
 async function showMyOrders() {
   const orders = await apiCall('/orders/my-orders');
@@ -608,25 +635,48 @@ async function sendBroadcast() {
   const data = await apiCall('/notifications/broadcast', { method:'POST', body: JSON.stringify({ message: fullMessage }) });
   document.getElementById('broadcastResult').innerHTML = `<a href="${data.waLink}" target="_blank">Click to send broadcast to ${data.count} subscribers</a>`;
 }
+
+// ========== QUOTATION CREATION WITH AUTO‑REGISTRATION (PHONE) ==========
 function showCreateQuotationForm(container) {
   container.innerHTML = `<h3>Create Quotation</h3><div>Client Name: <input id="qcName"></div><div>Client Phone: <input id="qcPhone"></div><div>Client Email: <input id="qcEmail"></div><div>Address: <input id="qcAddress"></div><hr><div id="quoteItems"><div class="quote-item"><input placeholder="Description"> <input placeholder="Qty" size="5"> <input placeholder="Price" size="8"></div></div><button onclick="addQuoteItemRow()">+ Add Item</button><hr><div>Shipping Cost: <input id="qcShipping" value="0"></div><div>Discount: <input id="qcDiscount" value="0"></div><div>Tax %: <input id="qcTax" value="0"></div><hr><div><strong>Total: $<span id="qcTotal">0.00</span></strong></div><button onclick="generateQuoteAndSave()">Generate & Save Quotation</button>`;
   window.addQuoteItemRow = () => { const div = document.createElement('div'); div.className = 'quote-item'; div.innerHTML = '<input placeholder="Description"> <input placeholder="Qty" size="5"> <input placeholder="Price" size="8">'; document.getElementById('quoteItems').appendChild(div); };
+  
   window.generateQuoteAndSave = async () => {
-    const client = { name: document.getElementById('qcName').value, phone: document.getElementById('qcPhone').value, email: document.getElementById('qcEmail').value, address: document.getElementById('qcAddress').value };
-    const items = []; document.querySelectorAll('#quoteItems .quote-item').forEach(row => { const desc = row.children[0].value, qty = parseFloat(row.children[1].value)||0, price = parseFloat(row.children[2].value)||0; if(desc && qty>0 && price>0) items.push({desc, qty, price, subtotal: qty*price}); });
-    const subtotal = items.reduce((s,i)=>s+i.subtotal,0);
-    const shipping = parseFloat(document.getElementById('qcShipping').value)||0;
-    const discount = parseFloat(document.getElementById('qcDiscount').value)||0;
-    const taxRate = parseFloat(document.getElementById('qcTax').value)||0;
+    const client = {
+      name: document.getElementById('qcName').value,
+      phone: document.getElementById('qcPhone').value,
+      email: document.getElementById('qcEmail').value,
+      address: document.getElementById('qcAddress').value
+    };
+    if (!client.phone) { alert('Client phone number is required'); return; }
+    const items = [];
+    document.querySelectorAll('#quoteItems .quote-item').forEach(row => {
+      const desc = row.children[0].value,
+            qty = parseFloat(row.children[1].value) || 0,
+            price = parseFloat(row.children[2].value) || 0;
+      if (desc && qty > 0 && price > 0) items.push({ desc, qty, price, subtotal: qty * price });
+    });
+    if (items.length === 0) { alert('Add at least one item'); return; }
+    const subtotal = items.reduce((s, i) => s + i.subtotal, 0);
+    const shipping = parseFloat(document.getElementById('qcShipping').value) || 0;
+    const discount = parseFloat(document.getElementById('qcDiscount').value) || 0;
+    const taxRate = parseFloat(document.getElementById('qcTax').value) || 0;
     const afterDiscount = subtotal - discount + shipping;
-    const tax = (taxRate/100)*afterDiscount;
+    const tax = (taxRate / 100) * afterDiscount;
     const total = afterDiscount + tax;
-    const quoteData = { client, items, subtotal, discount, shipping, tax_rate: taxRate, total, issue_date: new Date().toISOString().split('T')[0] };
-    await apiCall('/quotations', { method:'POST', body: JSON.stringify(quoteData) });
-    alert('Quotation saved! It will appear in client portal.');
-    closeModal('modalCreateQuotation');
+    try {
+      const result = await apiCall('/quotations', {
+        method: 'POST',
+        body: JSON.stringify({ client, items, subtotal, discount, shipping, tax_rate: taxRate, total })
+      });
+      alert(`Quotation saved! ${result.new_user_created ? 'Client has been registered and login credentials sent via WhatsApp.' : 'Client notified.'}`);
+      closeModal('modalCreateQuotation');
+    } catch (err) {
+      alert('Failed to create quotation: ' + err.message);
+    }
   };
 }
+
 function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
 
 // ---------- Search ----------
