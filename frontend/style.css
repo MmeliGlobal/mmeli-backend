@@ -51,7 +51,7 @@ body {
 }
 
 .cart-icon {
-  background: var(--orange);
+  background: var(--gold);
   padding: 6px 14px;
   border-radius: 30px;
   cursor: pointer;
@@ -201,7 +201,7 @@ body {
   position: fixed;
   bottom: 0;
   width: 100%;
-  background: var(--yellow);
+  background: var(--navy);
   display: flex;
   justify-content: space-around;
   padding: 10px 0;
