@@ -6,20 +6,22 @@
 
 body {
   font-family: 'Segoe UI', Roboto, sans-serif;
-  background: #f4f7fc;
+  background: #f5f7fa;
   padding-bottom: 70px;
   touch-action: pan-x pan-y;
 }
 
 :root {
-  --navy: #0a192f;
+  --red: #e63946;
   --gold: #d4af37;
   --yellow: #ffcc00;
-  --gold-light: #e6c458;
+  --dark-gray: #2c3e50;
+  --light-gray: #ecf0f1;
+  --white: #ffffff;
 }
 
 .header {
-  background: var(--navy);
+  background: var(--dark-gray);
   color: white;
   padding: 12px 20px;
   display: flex;
@@ -61,11 +63,11 @@ body {
   gap: 6px;
   font-size: 0.9rem;
   font-weight: bold;
-  color: var(--navy);
+  color: var(--dark-gray);
 }
 
 .search-bar {
-  background: white;
+  background: var(--white);
   padding: 6px 20px;
   border-bottom: 2px solid var(--gold);
   position: relative;
@@ -75,7 +77,7 @@ body {
   display: flex;
   gap: 8px;
   align-items: center;
-  background: #f1f3f5;
+  background: var(--light-gray);
   border-radius: 40px;
   padding: 4px 12px;
 }
@@ -100,7 +102,7 @@ body {
   top: 100%;
   left: 0;
   right: 0;
-  background: white;
+  background: var(--white);
   border: 1px solid #ddd;
   border-radius: 8px;
   max-height: 200px;
@@ -115,7 +117,7 @@ body {
 
 .autocomplete-items div:hover {
   background: var(--gold);
-  color: var(--navy);
+  color: var(--dark-gray);
 }
 
 .main-menu,
@@ -123,7 +125,7 @@ body {
   display: flex;
   gap: 12px;
   padding: 10px 16px;
-  background: white;
+  background: var(--white);
   overflow-x: auto;
   white-space: nowrap;
   border-bottom: 1px solid #eee;
@@ -131,7 +133,7 @@ body {
 
 .main-menu div,
 .sub-menu div {
-  background: #f1f3f5;
+  background: var(--light-gray);
   padding: 5px 14px;
   border-radius: 30px;
   cursor: pointer;
@@ -152,7 +154,7 @@ body {
 .main-menu div:hover,
 .sub-menu div:hover {
   background: var(--gold);
-  color: var(--navy);
+  color: var(--dark-gray);
 }
 
 .page {
@@ -171,13 +173,13 @@ body {
 }
 
 .product-card {
-  background: white;
+  background: var(--white);
   border-radius: 20px;
   overflow: hidden;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transition: transform 0.2s, box-shadow 0.2s;
-  border: 1px solid rgba(212, 175, 55, 0.2);
+  border: 1px solid #e2e8f0;
 }
 
 .product-card:hover {
@@ -200,32 +202,33 @@ body {
 .product-name {
   font-weight: bold;
   font-size: 0.9rem;
-  color: var(--navy);
+  color: var(--dark-gray);
 }
 
 .product-price {
-  color: var(--gold);
+  color: var(--red);
   font-weight: bold;
   margin-top: 4px;
   font-size: 1rem;
 }
 
+/* BOTTOM NAVIGATION – fixed red background as requested */
 .bottom-nav {
   position: fixed;
   bottom: 0;
   width: 100%;
-  background: var(--navy);
+  background: #b91c1c; /* rich red */
   display: flex;
   justify-content: space-around;
   padding: 10px 0;
-  border-top: 1px solid #0a192f;
+  border-top: 1px solid #7f1a1a;
   z-index: 100;
 }
 
 .bottom-nav div {
   font-size: 24px;
   cursor: pointer;
-  color: #ddd;
+  color: #fdd;
   transition: 0.2s;
 }
 
@@ -234,7 +237,7 @@ body {
 }
 
 .footer {
-  background: var(--navy);
+  background: var(--dark-gray);
   color: #ccc;
   padding: 30px 20px 20px;
   margin-top: 30px;
@@ -284,10 +287,11 @@ body {
   font-size: 0.75rem;
 }
 
+/* BUTTONS – red background, gold on hover */
 button {
-  background: var(--gold);
+  background: var(--red);
   border: none;
-  color: var(--navy);
+  color: white;
   padding: 8px 16px;
   border-radius: 40px;
   cursor: pointer;
@@ -296,8 +300,8 @@ button {
 }
 
 button:hover {
-  background: var(--yellow);
-  color: var(--navy);
+  background: var(--gold);
+  color: var(--dark-gray);
   transform: scale(1.02);
 }
 
@@ -309,7 +313,7 @@ button:hover {
 }
 
 .admin-card {
-  background: white;
+  background: var(--white);
   border-radius: 16px;
   padding: 16px;
   cursor: pointer;
@@ -322,18 +326,19 @@ button:hover {
 
 .admin-card:hover {
   transform: translateY(-3px);
-  background: #fef9e6;
-  border-left-color: var(--yellow);
+  background: #fff8e7;
+  border-left-color: var(--red);
 }
 
 #map {
   height: 300px;
   border-radius: 16px;
   margin-bottom: 16px;
-  background: #e9ecef;
+  background: var(--light-gray);
   z-index: 1;
 }
 
+/* MODALS – removed yellow, now pleasant soft blue-gray */
 .modal {
   position: fixed;
   top: 0;
@@ -348,7 +353,7 @@ button:hover {
 }
 
 .modal-content {
-  background: white;
+  background: #f0f4f8;   /* soft, pleasant blue-gray */
   max-width: 90%;
   width: 700px;
   border-radius: 16px;
@@ -356,6 +361,8 @@ button:hover {
   max-height: 85vh;
   overflow-y: auto;
   position: relative;
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.2);
+  border: 1px solid #dce5ec;
 }
 
 .modal-body {
@@ -368,16 +375,16 @@ button:hover {
   right: 15px;
   font-size: 28px;
   cursor: pointer;
-  color: #888;
+  color: #5a6e7c;
 }
 
 .close-modal:hover {
-  color: var(--gold);
+  color: var(--red);
 }
 
 .checkout-step {
   display: none;
-  background: white;
+  background: var(--white);
   padding: 20px;
   border-radius: 16px;
   margin-top: 20px;
@@ -391,7 +398,7 @@ button:hover {
   display: flex;
   justify-content: space-between;
   margin-top: 20px;
-  background: white;
+  background: var(--white);
   padding: 16px;
   border-radius: 16px;
   flex-wrap: wrap;
@@ -417,7 +424,7 @@ button:hover {
 }
 
 .stats-card {
-  background: #f0f0f0;
+  background: #eef2f5;
   padding: 16px;
   border-radius: 16px;
   text-align: center;
@@ -431,7 +438,7 @@ textarea {
   padding: 8px;
   margin: 5px 0;
   border-radius: 12px;
-  border: 1px solid #ddd;
+  border: 1px solid #ccc;
   transition: 0.2s;
 }
 
@@ -466,7 +473,12 @@ textarea:focus {
 .cart-actions .checkout-btn {
   margin-left: auto;
   background: var(--gold);
-  color: var(--navy);
+  color: var(--dark-gray);
+}
+
+.cart-actions .checkout-btn:hover {
+  background: var(--red);
+  color: white;
 }
 
 .product-detail-layout {
@@ -497,18 +509,20 @@ textarea:focus {
 }
 
 .recommend-card {
-  background: white;
+  background: var(--white);
   border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
   text-align: center;
   padding: 8px;
   transition: 0.2s;
+  border: 1px solid #e2e8f0;
 }
 
 .recommend-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: var(--gold);
 }
 
 .recommend-card img {
@@ -554,7 +568,7 @@ textarea:focus {
 
 .back-btn-top,
 .share-btn-top {
-  background: rgba(10, 25, 47, 0.7);
+  background: rgba(44, 62, 80, 0.7);
   color: white;
   border: none;
   padding: 6px 12px;
@@ -590,7 +604,7 @@ textarea:focus {
 .quote-preview {
   font-family: monospace;
   padding: 20px;
-  background: white;
+  background: var(--white);
   border: 1px solid #ccc;
 }
 
