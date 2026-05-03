@@ -108,7 +108,7 @@ function displayProducts(products) {
   products.forEach(p => {
     const card = document.createElement('div');
     card.className = 'product-card';
-    card.innerHTML = `<img src="${p.main_image || 'https://picsum.photos/300/200'}" alt="${escapeHtml(p.name)}"><div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div><div class="product-price">$${p.price}</div></div>`;
+    card.innerHTML = `<img src="${p.main_image || 'https://picsum.photos/300/200'}" alt="${escapeHtml(p.name)}" loading="lazy"><div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div><div class="product-price">$${p.price}</div></div>`;
     card.onclick = (e) => { e.stopPropagation(); openProduct(p.id); };
     container.appendChild(card);
   });
@@ -182,7 +182,7 @@ function renderProductDetail(p) {
           <button class="back-btn-top" onclick="goBackHome()"><i class="fas fa-arrow-left"></i> Back</button>
           <button class="share-btn-top" onclick="shareProduct()"><i class="fas fa-share-alt"></i> Share</button>
         </div>
-        <img src="${p.main_image}" style="width:100%; border-radius:16px;">
+        <img src="${p.main_image}" style="width:100%; border-radius:16px;" loading="lazy">
         <h2>${p.name}</h2>
         <p>${p.description || ''}</p>
         <div class="color-size-row">
@@ -203,7 +203,7 @@ async function loadProductRecommendations(cat, excludeId) {
   let recs = allProducts.filter(p => p.cat === cat && p.id !== excludeId).slice(0, 20);
   if (recs.length < 20) recs = allProducts.filter(p => p.id !== excludeId).slice(0, 20);
   const grid = document.getElementById('productRecommendGrid');
-  if (grid) grid.innerHTML = recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${p.main_image}"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('');
+  if (grid) grid.innerHTML = recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${p.main_image}" loading="lazy"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('');
 }
 function shareProduct() {
   const url = window.location.href;
@@ -233,7 +233,7 @@ function renderCart() {
   let html = '', total = 0;
   cart.forEach((item, i) => {
     total += item.price;
-    html += `<div class="cart-item"><div><img src="${item.image}" width="50" style="border-radius:8px;"> ${item.name} (${item.size}, ${item.color})</div><div>$${item.price} <button onclick="removeFromCart(${i})">Remove</button></div></div>`;
+    html += `<div class="cart-item"><div><img src="${item.image}" width="50" style="border-radius:8px;" loading="lazy"> ${item.name} (${item.size}, ${item.color})</div><div>$${item.price} <button onclick="removeFromCart(${i})">Remove</button></div></div>`;
   });
   html += `<div class="cart-item"><strong>Total: $${total.toFixed(2)}</strong></div>`;
   container.innerHTML = html;
@@ -243,7 +243,7 @@ function removeFromCart(i) { cart.splice(i,1); localStorage.setItem('cart',JSON.
 async function loadCartRecommendations() {
   let recs = allProducts.slice(0,20);
   const grid = document.getElementById('cartRecommendations');
-  if(grid) grid.innerHTML = `<h4>You may also like</h4><div class="recommend-grid">${recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${p.main_image}"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('')}</div>`;
+  if(grid) grid.innerHTML = `<h4>You may also like</h4><div class="recommend-grid">${recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${p.main_image}" loading="lazy"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('')}</div>`;
 }
 function goToCheckout() {
   if (!user) { alert('Please login first'); switchPage('account'); return; }
@@ -363,7 +363,7 @@ async function register() {
 }
 
 async function login() {
-  const phone = document.getElementById('loginEmail').value; // field now used for phone
+  const phone = document.getElementById('loginEmail').value;
   const password = document.getElementById('loginPassword').value;
   if (!phone || !password) return alert('Enter phone number and password');
   try {
@@ -443,7 +443,6 @@ async function adminLogin() {
   }
 }
 
-// ---------- Admin dashboard ----------
 function initAdminCards() {
   document.querySelectorAll('.admin-card').forEach(card => {
     card.removeEventListener('click', card._listener);
@@ -481,17 +480,17 @@ async function loadDashboardStats(container) {
 }
 async function loadProductsModal(container) {
   let products = await apiCall('/products');
-  container.innerHTML = `<h3>Manage Products</h3><input type="text" id="productSearch" placeholder="Search..." onkeyup="filterProductList()" style="width:100%; margin-bottom:10px;"><div id="productListContainer">${products.map(p=>`<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:8px;"><img src="${p.main_image}" width="50" style="border-radius:8px;"> ${p.name} - $${p.price} <div><button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div></div>`).join('')}</div><button onclick="closeModal('modalManageProducts')">Close</button>`;
+  container.innerHTML = `<h3>Manage Products</h3><input type="text" id="productSearch" placeholder="Search..." onkeyup="filterProductList()" style="width:100%; margin-bottom:10px;"><div id="productListContainer">${products.map(p=>`<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:8px;"><img src="${p.main_image}" width="50" style="border-radius:8px;" loading="lazy"> ${p.name} - $${p.price} <div><button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div></div>`).join('')}</div><button onclick="closeModal('modalManageProducts')">Close</button>`;
   window.filterProductList = () => {
     const term = document.getElementById('productSearch').value.toLowerCase();
     const filtered = products.filter(p => p.name.toLowerCase().includes(term));
-    document.getElementById('productListContainer').innerHTML = filtered.map(p=>`<div><img src="${p.main_image}" width="50"> ${p.name} - $${p.price} <button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div>`).join('');
+    document.getElementById('productListContainer').innerHTML = filtered.map(p=>`<div><img src="${p.main_image}" width="50" loading="lazy"> ${p.name} - $${p.price} <button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div>`).join('');
   };
 }
 async function editProductModal(id) {
   const p = await apiCall(`/products/${id}`);
   const body = document.getElementById('modalManageProducts').querySelector('.modal-body');
-  body.innerHTML = `<h3>Edit Product</h3><img src="${p.main_image}" width="80"><br><input id="editName" value="${p.name}"><br><input id="editPrice" value="${p.price}"><br><input id="editImage" value="${p.main_image}"><br><label>Supporting Images (URLs, comma)</label><input id="editSubImages" value="${(p.sub_images || []).join(',')}"><br><textarea id="editDesc">${p.description||''}</textarea><br><input id="editCat" value="${p.cat}"><br><input id="editSubcat" value="${p.subcat}"><br><input id="editColors" value="${(p.colors||[]).join(',')}"><br><input id="editSizes" value="${(p.size_options||[]).map(s=>`${s.size}:${s.price}`).join(',')}"><br><button onclick="updateProduct(${id})">Update</button><button onclick="closeModal('modalManageProducts')">Cancel</button>`;
+  body.innerHTML = `<h3>Edit Product</h3><img src="${p.main_image}" width="80" loading="lazy"><br><input id="editName" value="${p.name}"><br><input id="editPrice" value="${p.price}"><br><input id="editImage" value="${p.main_image}"><br><label>Supporting Images (URLs, comma)</label><input id="editSubImages" value="${(p.sub_images || []).join(',')}"><br><textarea id="editDesc">${p.description||''}</textarea><br><input id="editCat" value="${p.cat}"><br><input id="editSubcat" value="${p.subcat}"><br><input id="editColors" value="${(p.colors||[]).join(',')}"><br><input id="editSizes" value="${(p.size_options||[]).map(s=>`${s.size}:${s.price}`).join(',')}"><br><button onclick="updateProduct(${id})">Update</button><button onclick="closeModal('modalManageProducts')">Cancel</button>`;
 }
 async function updateProduct(id) {
   const name = document.getElementById('editName').value;
@@ -636,11 +635,9 @@ async function sendBroadcast() {
   document.getElementById('broadcastResult').innerHTML = `<a href="${data.waLink}" target="_blank">Click to send broadcast to ${data.count} subscribers</a>`;
 }
 
-// ========== QUOTATION CREATION WITH AUTO‑REGISTRATION (PHONE) ==========
 function showCreateQuotationForm(container) {
   container.innerHTML = `<h3>Create Quotation</h3><div>Client Name: <input id="qcName"></div><div>Client Phone: <input id="qcPhone"></div><div>Client Email: <input id="qcEmail"></div><div>Address: <input id="qcAddress"></div><hr><div id="quoteItems"><div class="quote-item"><input placeholder="Description"> <input placeholder="Qty" size="5"> <input placeholder="Price" size="8"></div></div><button onclick="addQuoteItemRow()">+ Add Item</button><hr><div>Shipping Cost: <input id="qcShipping" value="0"></div><div>Discount: <input id="qcDiscount" value="0"></div><div>Tax %: <input id="qcTax" value="0"></div><hr><div><strong>Total: $<span id="qcTotal">0.00</span></strong></div><button onclick="generateQuoteAndSave()">Generate & Save Quotation</button>`;
   window.addQuoteItemRow = () => { const div = document.createElement('div'); div.className = 'quote-item'; div.innerHTML = '<input placeholder="Description"> <input placeholder="Qty" size="5"> <input placeholder="Price" size="8">'; document.getElementById('quoteItems').appendChild(div); };
-  
   window.generateQuoteAndSave = async () => {
     const client = {
       name: document.getElementById('qcName').value,
@@ -679,7 +676,6 @@ function showCreateQuotationForm(container) {
 
 function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
 
-// ---------- Search ----------
 document.getElementById('searchInput').addEventListener('input', function() {
   const term = this.value.toLowerCase();
   const list = document.getElementById('autocompleteList');
@@ -694,7 +690,6 @@ function searchProducts() {
   displayProducts(getShuffledWithPhoneBias(filtered).slice(0, currentDisplayLimit));
 }
 
-// ---------- UI helpers ----------
 function switchPage(pageId) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById(pageId).classList.add('active');
@@ -711,7 +706,7 @@ function resetHome() {
 }
 function goBackHome() { resetHome(); }
 function trackOrderCode(code) { document.getElementById('trackCode').value = code; switchPage('tracking'); setTimeout(trackOrder, 100); }
-async function showRandomPromo() { try { const promo = await apiCall('/promotions/random'); if (promo) { const popup = document.getElementById('popupPromo'); document.getElementById('popupContent').innerHTML = `<img src="${promo.image_url || 'https://picsum.photos/300/150'}"><div><strong>${promo.title}</strong><br>${promo.description}<br><a href="${promo.link}" target="_blank">Shop now</a></div>`; popup.style.display = 'block'; setTimeout(() => popup.style.display = 'none', 8000); } } catch(e) {} }
+async function showRandomPromo() { try { const promo = await apiCall('/promotions/random'); if (promo) { const popup = document.getElementById('popupPromo'); document.getElementById('popupContent').innerHTML = `<img src="${promo.image_url || 'https://picsum.photos/300/150'}" loading="lazy"><div><strong>${promo.title}</strong><br>${promo.description}<br><a href="${promo.link}" target="_blank">Shop now</a></div>`; popup.style.display = 'block'; setTimeout(() => popup.style.display = 'none', 8000); } } catch(e) {} }
 function closePopup() { document.getElementById('popupPromo').style.display = 'none'; }
 async function subscribe() {
   const email = document.getElementById('subEmail').value, phone = document.getElementById('subPhone').value;
@@ -732,14 +727,12 @@ function handleHash() {
 window.addEventListener('hashchange', handleHash);
 function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&')return'&amp;';if(m==='<')return'&lt;';if(m==='>')return'&gt;';return m;}); }
 
-// ---------- Global modal close ----------
 document.querySelectorAll('.close-modal').forEach(btn => {
   btn.addEventListener('click', function() { const modal = this.closest('.modal'); if(modal) modal.style.display = 'none'; });
 });
 window.addEventListener('click', (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; });
 document.querySelector('.close-popup')?.addEventListener('click', closePopup);
 
-// ========== DOUBLE-CLICK LOGO (fallback) ==========
 const logoElem = document.getElementById('logoArea');
 if (logoElem) {
   logoElem.addEventListener('dblclick', function(e) {
@@ -748,7 +741,6 @@ if (logoElem) {
   });
 }
 
-// ========== INITIALIZATION ==========
 window.addEventListener('load', function() {
   document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
   updateCartCount();
