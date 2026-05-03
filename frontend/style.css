@@ -18,7 +18,7 @@ body {
 }
 
 .header {
-  background: var(--navy);
+  background: #000080;
   color: white;
   padding: 12px 20px;
   display: flex;
@@ -51,7 +51,7 @@ body {
 }
 
 .cart-icon {
-  background: var(--gold);
+  background: white;
   padding: 6px 14px;
   border-radius: 30px;
   cursor: pointer;
