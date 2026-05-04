@@ -1,3 +1,9 @@
+// ========== SUPABASE CONFIGURATION ==========
+const SUPABASE_URL = 'https://proljdccjrifqgbmsyco.supabase.co';
+// 👇 Set your storage bucket name (where product images are stored)
+const BUCKET_NAME = 'products';   // <-- CHANGE THIS if your bucket is different (e.g., 'product-images', 'public')
+const SUPABASE_IMAGE_BASE = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}`;
+
 // ========== GLOBALS ==========
 const API = '/api';
 let allProducts = [];
@@ -11,13 +17,15 @@ let currentDisplayLimit = 150;
 let allShuffled = [];
 let searchDebounceTimer = null;
 
-// Helper to fix image URLs: if path starts with '/', prepend origin
+// Helper to fix image URLs using Supabase base
 function fixImageUrl(url) {
   if (!url) return null;
-  if (url.startsWith('/')) {
-    return window.location.origin + url;
-  }
-  return url;
+  // Already absolute URL
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  // If it's a relative path (e.g., "product123.jpg" or "/images/photo.jpg")
+  // Remove leading slash if present, then join with SUPABASE_IMAGE_BASE
+  const cleanUrl = url.startsWith('/') ? url.slice(1) : url;
+  return `${SUPABASE_IMAGE_BASE}/${cleanUrl}`;
 }
 
 // ---------- Category data ----------
@@ -121,8 +129,8 @@ function displayProducts(products) {
   products.forEach(p => {
     const card = document.createElement('div');
     card.className = 'product-card';
-    const imgSrc = fixImageUrl(p.main_image) || 'https://picsum.photos/300/200?grayscale';
-    card.innerHTML = `<img src="${imgSrc}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async"><div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div><div class="product-price">$${p.price}</div></div>`;
+    const imgSrc = fixImageUrl(p.main_image) || '';
+    card.innerHTML = `<img src="${imgSrc}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async" onerror="this.style.backgroundColor='#e9ecef'; this.src=''; this.onerror=null;"><div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div><div class="product-price">$${p.price}</div></div>`;
     card.onclick = (e) => { e.stopPropagation(); openProduct(p.id); };
     container.appendChild(card);
   });
@@ -193,7 +201,7 @@ async function openProduct(id) {
 
 function renderProductDetail(p) {
   const container = document.getElementById('productDetailContainer');
-  const imgSrc = fixImageUrl(p.main_image) || 'https://picsum.photos/400/300?grayscale';
+  const imgSrc = fixImageUrl(p.main_image) || '';
   container.innerHTML = `
     <div class="product-detail-layout">
       <div class="product-detail-left">
@@ -201,7 +209,7 @@ function renderProductDetail(p) {
           <button class="back-btn-top" onclick="goBackHome()"><i class="fas fa-arrow-left"></i> Back</button>
           <button class="share-btn-top" onclick="shareProduct()"><i class="fas fa-share-alt"></i> Share</button>
         </div>
-        <img src="${imgSrc}" style="width:100%; border-radius:16px;" loading="lazy" decoding="async">
+        <img src="${imgSrc}" style="width:100%; border-radius:16px;" loading="lazy" decoding="async" onerror="this.style.backgroundColor='#e9ecef'; this.src='';">
         <h2>${p.name}</h2>
         <p>${p.description || ''}</p>
         <div class="color-size-row">
@@ -223,7 +231,7 @@ async function loadProductRecommendations(cat, excludeId) {
   let recs = allProducts.filter(p => p.cat === cat && p.id !== excludeId).slice(0, 20);
   if (recs.length < 20) recs = allProducts.filter(p => p.id !== excludeId).slice(0, 20);
   const grid = document.getElementById('productRecommendGrid');
-  if (grid) grid.innerHTML = recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${fixImageUrl(p.main_image) || 'https://picsum.photos/150/150?grayscale'}" loading="lazy" decoding="async"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('');
+  if (grid) grid.innerHTML = recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${fixImageUrl(p.main_image) || ''}" loading="lazy" decoding="async" onerror="this.style.backgroundColor='#e9ecef'; this.src='';"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('');
 }
 
 function shareProduct() {
@@ -257,8 +265,8 @@ function renderCart() {
   let html = '', total = 0;
   cart.forEach((item, i) => {
     total += item.price;
-    const imgSrc = fixImageUrl(item.image) || 'https://picsum.photos/50/50?grayscale';
-    html += `<div class="cart-item"><div><img src="${imgSrc}" width="50" style="border-radius:8px;" loading="lazy"> ${item.name} (${item.size}, ${item.color})</div><div>$${item.price} <button onclick="removeFromCart(${i})">Remove</button></div></div>`;
+    const imgSrc = fixImageUrl(item.image) || '';
+    html += `<div class="cart-item"><div><img src="${imgSrc}" width="50" style="border-radius:8px;" loading="lazy" onerror="this.style.backgroundColor='#e9ecef'; this.src='';"> ${item.name} (${item.size}, ${item.color})</div><div>$${item.price} <button onclick="removeFromCart(${i})">Remove</button></div></div>`;
   });
   html += `<div class="cart-item"><strong>Total: $${total.toFixed(2)}</strong></div>`;
   container.innerHTML = html;
@@ -270,7 +278,7 @@ function removeFromCart(i) { cart.splice(i, 1); localStorage.setItem('cart', JSO
 async function loadCartRecommendations() {
   let recs = allProducts.slice(0, 20);
   const grid = document.getElementById('cartRecommendations');
-  if (grid) grid.innerHTML = `<h4>You may also like</h4><div class="recommend-grid">${recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${fixImageUrl(p.main_image) || 'https://picsum.photos/150/150?grayscale'}" loading="lazy" decoding="async"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('')}</div>`;
+  if (grid) grid.innerHTML = `<h4>You may also like</h4><div class="recommend-grid">${recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${fixImageUrl(p.main_image) || ''}" loading="lazy" decoding="async" onerror="this.style.backgroundColor='#e9ecef'; this.src='';"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('')}</div>`;
 }
 
 function goToCheckout() {
@@ -369,7 +377,7 @@ async function fetchShipmentStatus() {
   } catch (e) { document.getElementById('shipmentStatus').innerHTML = '<p style="color:red;">Shipment not found.</p>'; }
 }
 
-// ========== AUTH FUNCTIONS – PHONE-BASED ==========
+// ========== AUTH FUNCTIONS ==========
 async function register() {
   const name = document.getElementById('regName').value;
   const phone = document.getElementById('regPhone').value;
@@ -447,7 +455,6 @@ async function updateProfile() {
 }
 
 function openShipmentTracking() { document.getElementById('shipmentTrackingModal').style.display = 'flex'; }
-
 function closeShipmentModal() { document.getElementById('shipmentTrackingModal').style.display = 'none'; }
 
 // ========== ADMIN LOGIN ==========
@@ -525,18 +532,18 @@ async function loadDashboardStats(container) {
 
 async function loadProductsModal(container) {
   let products = await apiCall('/products');
-  container.innerHTML = `<h3>Manage Products</h3><input type="text" id="productSearch" placeholder="Search..." onkeyup="filterProductList()" style="width:100%; margin-bottom:10px;"><div id="productListContainer">${products.map(p => `<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:8px;"><img src="${fixImageUrl(p.main_image) || 'https://picsum.photos/50/50?grayscale'}" width="50" style="border-radius:8px;" loading="lazy"> ${p.name} - $${p.price} <div><button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div></div>`).join('')}</div><button onclick="closeModal('modalManageProducts')">Close</button>`;
+  container.innerHTML = `<h3>Manage Products</h3><input type="text" id="productSearch" placeholder="Search..." onkeyup="filterProductList()" style="width:100%; margin-bottom:10px;"><div id="productListContainer">${products.map(p => `<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:8px;"><img src="${fixImageUrl(p.main_image) || ''}" width="50" style="border-radius:8px;" loading="lazy" onerror="this.style.backgroundColor='#e9ecef'; this.src='';"> ${p.name} - $${p.price} <div><button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div></div>`).join('')}</div><button onclick="closeModal('modalManageProducts')">Close</button>`;
   window.filterProductList = () => {
     const term = document.getElementById('productSearch').value.toLowerCase();
     const filtered = products.filter(p => p.name.toLowerCase().includes(term));
-    document.getElementById('productListContainer').innerHTML = filtered.map(p => `<div><img src="${fixImageUrl(p.main_image) || 'https://picsum.photos/50/50?grayscale'}" width="50" loading="lazy"> ${p.name} - $${p.price} <button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div>`).join('');
+    document.getElementById('productListContainer').innerHTML = filtered.map(p => `<div><img src="${fixImageUrl(p.main_image) || ''}" width="50" loading="lazy" onerror="this.style.backgroundColor='#e9ecef'; this.src='';"> ${p.name} - $${p.price} <button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div>`).join('');
   };
 }
 
 async function editProductModal(id) {
   const p = await apiCall(`/products/${id}`);
   const body = document.getElementById('modalManageProducts').querySelector('.modal-body');
-  body.innerHTML = `<h3>Edit Product</h3><img src="${fixImageUrl(p.main_image) || 'https://picsum.photos/80/80?grayscale'}" width="80" loading="lazy"><br><input id="editName" value="${p.name}"><br><input id="editPrice" value="${p.price}"><br><input id="editImage" value="${p.main_image}"><br><label>Supporting Images (URLs, comma)</label><input id="editSubImages" value="${(p.sub_images || []).join(',')}"><br><textarea id="editDesc">${p.description || ''}</textarea><br><input id="editCat" value="${p.cat}"><br><input id="editSubcat" value="${p.subcat}"><br><input id="editColors" value="${(p.colors || []).join(',')}"><br><input id="editSizes" value="${(p.size_options || []).map(s => `${s.size}:${s.price}`).join(',')}"><br><button onclick="updateProduct(${id})">Update</button><button onclick="closeModal('modalManageProducts')">Cancel</button>`;
+  body.innerHTML = `<h3>Edit Product</h3><img src="${fixImageUrl(p.main_image) || ''}" width="80" loading="lazy" onerror="this.style.backgroundColor='#e9ecef'; this.src='';"><br><input id="editName" value="${p.name}"><br><input id="editPrice" value="${p.price}"><br><input id="editImage" value="${p.main_image}"><br><label>Supporting Images (URLs, comma)</label><input id="editSubImages" value="${(p.sub_images || []).join(',')}"><br><textarea id="editDesc">${p.description || ''}</textarea><br><input id="editCat" value="${p.cat}"><br><input id="editSubcat" value="${p.subcat}"><br><input id="editColors" value="${(p.colors || []).join(',')}"><br><input id="editSizes" value="${(p.size_options || []).map(s => `${s.size}:${s.price}`).join(',')}"><br><button onclick="updateProduct(${id})">Update</button><button onclick="closeModal('modalManageProducts')">Cancel</button>`;
 }
 
 async function updateProduct(id) {
@@ -702,7 +709,6 @@ async function sendBroadcast() {
   document.getElementById('broadcastResult').innerHTML = `<a href="${data.waLink}" target="_blank">Click to send broadcast to ${data.count} subscribers</a>`;
 }
 
-// ========== QUOTATION CREATION WITH AUTO‑REGISTRATION (PHONE) ==========
 function showCreateQuotationForm(container) {
   container.innerHTML = `<h3>Create Quotation</h3><div>Client Name: <input id="qcName"></div><div>Client Phone: <input id="qcPhone"></div><div>Client Email: <input id="qcEmail"></div><div>Address: <input id="qcAddress"></div><hr><div id="quoteItems"><div class="quote-item"><input placeholder="Description"> <input placeholder="Qty" size="5"> <input placeholder="Price" size="8"></div></div><button onclick="addQuoteItemRow()">+ Add Item</button><hr><div>Shipping Cost: <input id="qcShipping" value="0"></div><div>Discount: <input id="qcDiscount" value="0"></div><div>Tax %: <input id="qcTax" value="0"></div><hr><div><strong>Total: $<span id="qcTotal">0.00</span></strong></div><button onclick="generateQuoteAndSave()">Generate & Save Quotation</button>`;
   window.addQuoteItemRow = () => { const div = document.createElement('div'); div.className = 'quote-item'; div.innerHTML = '<input placeholder="Description"> <input placeholder="Qty" size="5"> <input placeholder="Price" size="8">'; document.getElementById('quoteItems').appendChild(div); };
@@ -763,7 +769,6 @@ function searchProducts() {
   displayProducts(getShuffledWithPhoneBias(filtered).slice(0, currentDisplayLimit));
 }
 
-// ---------- UI helpers ----------
 function switchPage(pageId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById(pageId).classList.add('active');
@@ -789,7 +794,7 @@ async function showRandomPromo() {
     const promo = await apiCall('/promotions/random');
     if (promo) {
       const popup = document.getElementById('popupPromo');
-      document.getElementById('popupContent').innerHTML = `<img src="${promo.image_url || 'https://picsum.photos/300/150?grayscale'}" loading="lazy"><div><strong>${promo.title}</strong><br>${promo.description}<br><a href="${promo.link}" target="_blank">Shop now</a></div>`;
+      document.getElementById('popupContent').innerHTML = `<img src="${promo.image_url || ''}" loading="lazy" onerror="this.style.backgroundColor='#e9ecef'; this.src='';"> <div><strong>${promo.title}</strong><br>${promo.description}<br><a href="${promo.link}" target="_blank">Shop now</a></div>`;
       popup.style.display = 'block';
       setTimeout(() => popup.style.display = 'none', 8000);
     }
@@ -822,14 +827,12 @@ function escapeHtml(str) {
   return str.replace(/[&<>]/g, function (m) { if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m; });
 }
 
-// ---------- Global modal close ----------
 document.querySelectorAll('.close-modal').forEach(btn => {
   btn.addEventListener('click', function () { const modal = this.closest('.modal'); if (modal) modal.style.display = 'none'; });
 });
 window.addEventListener('click', (e) => { if (e.target.classList.contains('modal')) e.target.style.display = 'none'; });
 document.querySelector('.close-popup')?.addEventListener('click', closePopup);
 
-// ========== DOUBLE-CLICK LOGO (fallback) ==========
 const logoElem = document.getElementById('logoArea');
 if (logoElem) {
   logoElem.addEventListener('dblclick', function (e) {
@@ -838,7 +841,6 @@ if (logoElem) {
   });
 }
 
-// ========== INITIALIZATION ==========
 window.addEventListener('load', function () {
   document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
   updateCartCount();
