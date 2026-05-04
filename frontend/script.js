@@ -11,6 +11,15 @@ let currentDisplayLimit = 150;
 let allShuffled = [];
 let searchDebounceTimer = null;
 
+// Helper to fix image URLs: if path starts with '/', prepend origin
+function fixImageUrl(url) {
+  if (!url) return null;
+  if (url.startsWith('/')) {
+    return window.location.origin + url;
+  }
+  return url;
+}
+
 // ---------- Category data ----------
 const categoryHierarchy = {
   "Phones": { "Smartphones": ["Android Phones", "iPhones", "Rugged Phones"], "Feature Phones": ["Keypad Phones"], "Accessories": ["Chargers", "Power Banks", "Phone Cases", "Screen Protectors"] },
@@ -112,7 +121,8 @@ function displayProducts(products) {
   products.forEach(p => {
     const card = document.createElement('div');
     card.className = 'product-card';
-    card.innerHTML = `<img src="${p.main_image || 'https://picsum.photos/300/200'}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async"><div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div><div class="product-price">$${p.price}</div></div>`;
+    const imgSrc = fixImageUrl(p.main_image) || 'https://picsum.photos/300/200?grayscale';
+    card.innerHTML = `<img src="${imgSrc}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async"><div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div><div class="product-price">$${p.price}</div></div>`;
     card.onclick = (e) => { e.stopPropagation(); openProduct(p.id); };
     container.appendChild(card);
   });
@@ -183,6 +193,7 @@ async function openProduct(id) {
 
 function renderProductDetail(p) {
   const container = document.getElementById('productDetailContainer');
+  const imgSrc = fixImageUrl(p.main_image) || 'https://picsum.photos/400/300?grayscale';
   container.innerHTML = `
     <div class="product-detail-layout">
       <div class="product-detail-left">
@@ -190,7 +201,7 @@ function renderProductDetail(p) {
           <button class="back-btn-top" onclick="goBackHome()"><i class="fas fa-arrow-left"></i> Back</button>
           <button class="share-btn-top" onclick="shareProduct()"><i class="fas fa-share-alt"></i> Share</button>
         </div>
-        <img src="${p.main_image}" style="width:100%; border-radius:16px;" loading="lazy" decoding="async">
+        <img src="${imgSrc}" style="width:100%; border-radius:16px;" loading="lazy" decoding="async">
         <h2>${p.name}</h2>
         <p>${p.description || ''}</p>
         <div class="color-size-row">
@@ -212,7 +223,7 @@ async function loadProductRecommendations(cat, excludeId) {
   let recs = allProducts.filter(p => p.cat === cat && p.id !== excludeId).slice(0, 20);
   if (recs.length < 20) recs = allProducts.filter(p => p.id !== excludeId).slice(0, 20);
   const grid = document.getElementById('productRecommendGrid');
-  if (grid) grid.innerHTML = recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${p.main_image}" loading="lazy" decoding="async"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('');
+  if (grid) grid.innerHTML = recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${fixImageUrl(p.main_image) || 'https://picsum.photos/150/150?grayscale'}" loading="lazy" decoding="async"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('');
 }
 
 function shareProduct() {
@@ -246,7 +257,8 @@ function renderCart() {
   let html = '', total = 0;
   cart.forEach((item, i) => {
     total += item.price;
-    html += `<div class="cart-item"><div><img src="${item.image}" width="50" style="border-radius:8px;" loading="lazy"> ${item.name} (${item.size}, ${item.color})</div><div>$${item.price} <button onclick="removeFromCart(${i})">Remove</button></div></div>`;
+    const imgSrc = fixImageUrl(item.image) || 'https://picsum.photos/50/50?grayscale';
+    html += `<div class="cart-item"><div><img src="${imgSrc}" width="50" style="border-radius:8px;" loading="lazy"> ${item.name} (${item.size}, ${item.color})</div><div>$${item.price} <button onclick="removeFromCart(${i})">Remove</button></div></div>`;
   });
   html += `<div class="cart-item"><strong>Total: $${total.toFixed(2)}</strong></div>`;
   container.innerHTML = html;
@@ -258,7 +270,7 @@ function removeFromCart(i) { cart.splice(i, 1); localStorage.setItem('cart', JSO
 async function loadCartRecommendations() {
   let recs = allProducts.slice(0, 20);
   const grid = document.getElementById('cartRecommendations');
-  if (grid) grid.innerHTML = `<h4>You may also like</h4><div class="recommend-grid">${recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${p.main_image}" loading="lazy" decoding="async"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('')}</div>`;
+  if (grid) grid.innerHTML = `<h4>You may also like</h4><div class="recommend-grid">${recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${fixImageUrl(p.main_image) || 'https://picsum.photos/150/150?grayscale'}" loading="lazy" decoding="async"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('')}</div>`;
 }
 
 function goToCheckout() {
@@ -513,18 +525,18 @@ async function loadDashboardStats(container) {
 
 async function loadProductsModal(container) {
   let products = await apiCall('/products');
-  container.innerHTML = `<h3>Manage Products</h3><input type="text" id="productSearch" placeholder="Search..." onkeyup="filterProductList()" style="width:100%; margin-bottom:10px;"><div id="productListContainer">${products.map(p => `<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:8px;"><img src="${p.main_image}" width="50" style="border-radius:8px;" loading="lazy"> ${p.name} - $${p.price} <div><button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div></div>`).join('')}</div><button onclick="closeModal('modalManageProducts')">Close</button>`;
+  container.innerHTML = `<h3>Manage Products</h3><input type="text" id="productSearch" placeholder="Search..." onkeyup="filterProductList()" style="width:100%; margin-bottom:10px;"><div id="productListContainer">${products.map(p => `<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:8px;"><img src="${fixImageUrl(p.main_image) || 'https://picsum.photos/50/50?grayscale'}" width="50" style="border-radius:8px;" loading="lazy"> ${p.name} - $${p.price} <div><button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div></div>`).join('')}</div><button onclick="closeModal('modalManageProducts')">Close</button>`;
   window.filterProductList = () => {
     const term = document.getElementById('productSearch').value.toLowerCase();
     const filtered = products.filter(p => p.name.toLowerCase().includes(term));
-    document.getElementById('productListContainer').innerHTML = filtered.map(p => `<div><img src="${p.main_image}" width="50" loading="lazy"> ${p.name} - $${p.price} <button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div>`).join('');
+    document.getElementById('productListContainer').innerHTML = filtered.map(p => `<div><img src="${fixImageUrl(p.main_image) || 'https://picsum.photos/50/50?grayscale'}" width="50" loading="lazy"> ${p.name} - $${p.price} <button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div>`).join('');
   };
 }
 
 async function editProductModal(id) {
   const p = await apiCall(`/products/${id}`);
   const body = document.getElementById('modalManageProducts').querySelector('.modal-body');
-  body.innerHTML = `<h3>Edit Product</h3><img src="${p.main_image}" width="80" loading="lazy"><br><input id="editName" value="${p.name}"><br><input id="editPrice" value="${p.price}"><br><input id="editImage" value="${p.main_image}"><br><label>Supporting Images (URLs, comma)</label><input id="editSubImages" value="${(p.sub_images || []).join(',')}"><br><textarea id="editDesc">${p.description || ''}</textarea><br><input id="editCat" value="${p.cat}"><br><input id="editSubcat" value="${p.subcat}"><br><input id="editColors" value="${(p.colors || []).join(',')}"><br><input id="editSizes" value="${(p.size_options || []).map(s => `${s.size}:${s.price}`).join(',')}"><br><button onclick="updateProduct(${id})">Update</button><button onclick="closeModal('modalManageProducts')">Cancel</button>`;
+  body.innerHTML = `<h3>Edit Product</h3><img src="${fixImageUrl(p.main_image) || 'https://picsum.photos/80/80?grayscale'}" width="80" loading="lazy"><br><input id="editName" value="${p.name}"><br><input id="editPrice" value="${p.price}"><br><input id="editImage" value="${p.main_image}"><br><label>Supporting Images (URLs, comma)</label><input id="editSubImages" value="${(p.sub_images || []).join(',')}"><br><textarea id="editDesc">${p.description || ''}</textarea><br><input id="editCat" value="${p.cat}"><br><input id="editSubcat" value="${p.subcat}"><br><input id="editColors" value="${(p.colors || []).join(',')}"><br><input id="editSizes" value="${(p.size_options || []).map(s => `${s.size}:${s.price}`).join(',')}"><br><button onclick="updateProduct(${id})">Update</button><button onclick="closeModal('modalManageProducts')">Cancel</button>`;
 }
 
 async function updateProduct(id) {
@@ -732,7 +744,7 @@ function showCreateQuotationForm(container) {
 
 function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
 
-// ---------- Search with debounce for better performance ----------
+// ---------- Search with debounce ----------
 document.getElementById('searchInput').addEventListener('input', function () {
   clearTimeout(searchDebounceTimer);
   const term = this.value.toLowerCase();
@@ -777,7 +789,7 @@ async function showRandomPromo() {
     const promo = await apiCall('/promotions/random');
     if (promo) {
       const popup = document.getElementById('popupPromo');
-      document.getElementById('popupContent').innerHTML = `<img src="${promo.image_url || 'https://picsum.photos/300/150'}" loading="lazy"><div><strong>${promo.title}</strong><br>${promo.description}<br><a href="${promo.link}" target="_blank">Shop now</a></div>`;
+      document.getElementById('popupContent').innerHTML = `<img src="${promo.image_url || 'https://picsum.photos/300/150?grayscale'}" loading="lazy"><div><strong>${promo.title}</strong><br>${promo.description}<br><a href="${promo.link}" target="_blank">Shop now</a></div>`;
       popup.style.display = 'block';
       setTimeout(() => popup.style.display = 'none', 8000);
     }
