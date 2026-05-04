@@ -12,18 +12,27 @@
   <meta property="og:url" content="https://mmeliglobal.com">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <!-- Speed: preconnect & DNS prefetch -->
+
+  <!-- Preconnect to essential origins -->
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="preconnect" href="https://proljdccjrifqgbmsyco.supabase.co" crossorigin>
+
+  <!-- DNS prefetch for extra speed -->
   <link rel="dns-prefetch" href="https://unpkg.com">
   <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-  <!-- External resources -->
+
+  <!-- External CSS (non-blocking) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <!-- Main styles -->
+  
+  <!-- Main styles (inline critical + external style.css) -->
   <link rel="stylesheet" href="style.css">
-  <!-- Leaflet loaded deferred -->
+
+  <!-- Leaflet JS deferred -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <!-- Main JS deferred -->
+  <script src="script.js" defer></script>
 </head>
 <body>
 
@@ -179,6 +188,5 @@
   <div class="footer-bottom">&copy; 2025 Mmeli Global. All rights reserved.</div>
 </footer>
 
-<script src="script.js" defer></script>
 </body>
 </html>
