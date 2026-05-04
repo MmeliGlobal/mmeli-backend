@@ -12,24 +12,24 @@
   <meta property="og:url" content="https://mmeliglobal.com">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <!-- Preconnect & DNS prefetch for faster external resources -->
+  <!-- Speed: preconnect & DNS prefetch -->
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <link rel="dns-prefetch" href="https://unpkg.com">
   <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-  <!-- External styles -->
+  <!-- External resources -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <!-- Main custom styles -->
+  <!-- Main styles -->
   <link rel="stylesheet" href="style.css">
-  <!-- Leaflet (deferred) -->
+  <!-- Leaflet loaded deferred -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 </head>
 <body>
 
 <header class="header">
   <div class="logo" id="logoArea">
-    <img src="logo.png" alt="Mmeli Global Logo" id="siteLogo" style="height:40px;" width="40" height="40">
+    <img src="logo.png" alt="Mmeli Global Logo" id="siteLogo" style="height:40px;" loading="lazy">
     <span>Mmeli Global</span>
   </div>
   <div class="cart-icon" onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i> <span id="cartCount">0</span></div>
@@ -142,7 +142,7 @@
   </div>
 </section>
 
-<!-- MODALS -->
+<!-- MODALS (all 12) -->
 <div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
 <div id="modalManageProducts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
 <div id="modalAddProduct" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
@@ -160,11 +160,11 @@
 <div id="popupPromo" class="popup-promo" style="position:fixed; bottom:20px; right:20px; background:white; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.2); display:none; z-index:1100; max-width:280px;"><span class="close-popup" style="float:right; cursor:pointer;">&times;</span><div id="popupContent"></div></div>
 
 <nav class="bottom-nav">
-  <div onclick="resetHome()" aria-label="Home"><i class="fas fa-home"></i></div>
-  <div onclick="switchPage('promo')" aria-label="Promotions"><i class="fas fa-fire"></i></div>
-  <div onclick="switchPage('tracking')" aria-label="Tracking"><i class="fas fa-map-marker-alt"></i></div>
-  <div onclick="switchPage('cart')" aria-label="Cart"><i class="fas fa-shopping-cart"></i></div>
-  <div onclick="switchPage('account')" aria-label="Account"><i class="fas fa-user"></i></div>
+  <div onclick="resetHome()"><i class="fas fa-home"></i></div>
+  <div onclick="switchPage('promo')"><i class="fas fa-fire"></i></div>
+  <div onclick="switchPage('tracking')"><i class="fas fa-map-marker-alt"></i></div>
+  <div onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i></div>
+  <div onclick="switchPage('account')"><i class="fas fa-user"></i></div>
 </nav>
 
 <footer class="footer">
