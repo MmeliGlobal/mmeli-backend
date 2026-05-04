@@ -13,25 +13,17 @@
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
 
-  <!-- Preconnect to essential origins -->
-  <link rel="preconnect" href="https://unpkg.com">
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <!-- Preconnect to Supabase CDN -->
   <link rel="preconnect" href="https://proljdccjrifqgbmsyco.supabase.co" crossorigin>
+  <link rel="dns-prefetch" href="https://proljdccjrifqgbmsyco.supabase.co">
 
-  <!-- DNS prefetch for extra speed -->
-  <link rel="dns-prefetch" href="https://unpkg.com">
-  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-
-  <!-- External CSS (non-blocking) -->
+  <!-- External CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  
-  <!-- Main styles (inline critical + external style.css) -->
   <link rel="stylesheet" href="style.css">
 
-  <!-- Leaflet JS deferred -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
-  <!-- Main JS deferred -->
+  <!-- Supabase JS library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js" defer></script>
 </head>
 <body>
@@ -151,7 +143,7 @@
   </div>
 </section>
 
-<!-- MODALS (all 12) -->
+<!-- MODALS (same as before) -->
 <div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
 <div id="modalManageProducts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
 <div id="modalAddProduct" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
