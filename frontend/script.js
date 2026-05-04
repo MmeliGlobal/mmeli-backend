@@ -1,9 +1,3 @@
-// ========== SUPABASE CONFIGURATION ==========
-const SUPABASE_URL = 'https://proljdccjrifqgbmsyco.supabase.co';
-// 👇 Set your storage bucket name (where product images are stored)
-const BUCKET_NAME = 'products';   // <-- CHANGE THIS if your bucket is different (e.g., 'product-images', 'public')
-const SUPABASE_IMAGE_BASE = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}`;
-
 // ========== GLOBALS ==========
 const API = '/api';
 let allProducts = [];
@@ -15,18 +9,7 @@ let map = null;
 let appliedDiscount = null;
 let currentDisplayLimit = 150;
 let allShuffled = [];
-let searchDebounceTimer = null;
-
-// Helper to fix image URLs using Supabase base
-function fixImageUrl(url) {
-  if (!url) return null;
-  // Already absolute URL
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  // If it's a relative path (e.g., "product123.jpg" or "/images/photo.jpg")
-  // Remove leading slash if present, then join with SUPABASE_IMAGE_BASE
-  const cleanUrl = url.startsWith('/') ? url.slice(1) : url;
-  return `${SUPABASE_IMAGE_BASE}/${cleanUrl}`;
-}
+let searchDebounceTimer = null; // for debounced search
 
 // ---------- Category data ----------
 const categoryHierarchy = {
@@ -47,7 +30,6 @@ const categoryHierarchy = {
   "Animal": { "Poultry Equipment": ["Incubators", "Feeders"], "Livestock Equipment": ["Drinkers", "Housing"] },
   "Packaging": { "Packaging": ["Cartons", "Plastic Packaging"], "Handling": ["Trolleys", "Pallet Equipment"] }
 };
-
 const subcategoryIcons = {
   "Smartphones": "https://cdn-icons-png.flaticon.com/512/1055/1055685.png", "Feature Phones": "https://cdn-icons-png.flaticon.com/512/180/180027.png", "Accessories": "https://cdn-icons-png.flaticon.com/512/1510/1510665.png",
   "Cameras": "https://cdn-icons-png.flaticon.com/512/1046/1046773.png", "Video Equipment": "https://cdn-icons-png.flaticon.com/512/1686/1686802.png", "Farm Machinery": "https://cdn-icons-png.flaticon.com/512/2964/2964420.png",
@@ -82,7 +64,6 @@ function shuffleArray(arr) {
   }
   return arr;
 }
-
 function getShuffledWithPhoneBias(products) {
   const phones = products.filter(p => p.cat === 'Phones');
   const nonPhones = products.filter(p => p.cat !== 'Phones');
@@ -106,7 +87,7 @@ async function loadProducts() {
     buildMainMenu();
     if (!sessionStorage.getItem('popupShown')) { showRandomPromo(); sessionStorage.setItem('popupShown', 'true'); }
     localStorage.setItem('cachedProducts', JSON.stringify(allProducts));
-  } catch (e) {
+  } catch(e) {
     console.error(e);
     const cached = localStorage.getItem('cachedProducts');
     if (cached) {
@@ -120,7 +101,6 @@ async function loadProducts() {
     }
   }
 }
-
 function displayProducts(products) {
   const container = document.getElementById('productsContainer');
   if (!container) return;
@@ -129,13 +109,11 @@ function displayProducts(products) {
   products.forEach(p => {
     const card = document.createElement('div');
     card.className = 'product-card';
-    const imgSrc = fixImageUrl(p.main_image) || '';
-    card.innerHTML = `<img src="${imgSrc}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async" onerror="this.style.backgroundColor='#e9ecef'; this.src=''; this.onerror=null;"><div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div><div class="product-price">$${p.price}</div></div>`;
+    card.innerHTML = `<img src="${p.main_image || 'https://picsum.photos/300/200'}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async"><div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div><div class="product-price">$${p.price}</div></div>`;
     card.onclick = (e) => { e.stopPropagation(); openProduct(p.id); };
     container.appendChild(card);
   });
 }
-
 function loadMoreProducts() {
   currentDisplayLimit += 150;
   displayProducts(allShuffled.slice(0, currentDisplayLimit));
@@ -162,7 +140,6 @@ function buildMainMenu() {
     mainMenu.appendChild(catDiv);
   });
 }
-
 function selectMainCategory(cat) {
   const filtered = allProducts.filter(p => p.cat === cat);
   displayProducts(getShuffledWithPhoneBias(filtered));
@@ -179,7 +156,6 @@ function selectMainCategory(cat) {
     });
   }
 }
-
 function selectSubCategory(cat, sub) {
   const leaves = categoryHierarchy[cat][sub];
   if (leaves) {
@@ -196,12 +172,10 @@ async function openProduct(id) {
     renderProductDetail(product);
     switchPage('productPage');
     history.pushState(null, '', `#/product/${id}`);
-  } catch (e) { alert('Could not open product'); }
+  } catch(e) { alert('Could not open product'); }
 }
-
 function renderProductDetail(p) {
   const container = document.getElementById('productDetailContainer');
-  const imgSrc = fixImageUrl(p.main_image) || '';
   container.innerHTML = `
     <div class="product-detail-layout">
       <div class="product-detail-left">
@@ -209,12 +183,12 @@ function renderProductDetail(p) {
           <button class="back-btn-top" onclick="goBackHome()"><i class="fas fa-arrow-left"></i> Back</button>
           <button class="share-btn-top" onclick="shareProduct()"><i class="fas fa-share-alt"></i> Share</button>
         </div>
-        <img src="${imgSrc}" style="width:100%; border-radius:16px;" loading="lazy" decoding="async" onerror="this.style.backgroundColor='#e9ecef'; this.src='';">
+        <img src="${p.main_image}" style="width:100%; border-radius:16px;" loading="lazy" decoding="async">
         <h2>${p.name}</h2>
         <p>${p.description || ''}</p>
         <div class="color-size-row">
           <div><label>Color:</label><select id="productColor">${(p.colors || ['Default']).map(c => `<option>${c}</option>`).join('')}</select></div>
-          <div><label>Size:</label><select id="productSize">${(p.size_options || [{ size: 'Standard', price: p.price }]).map(s => `<option value="${s.price}">${s.size} - $${s.price}</option>`).join('')}</select></div>
+          <div><label>Size:</label><select id="productSize">${(p.size_options || [{size:'Standard',price:p.price}]).map(s => `<option value="${s.price}">${s.size} - $${s.price}</option>`).join('')}</select></div>
         </div>
         <div class="add-to-cart-center"><button onclick="addToCartFromDetail()"><i class="fas fa-cart-plus"></i> Add to Cart</button></div>
       </div>
@@ -226,14 +200,12 @@ function renderProductDetail(p) {
   `;
   loadProductRecommendations(p.cat, p.id);
 }
-
 async function loadProductRecommendations(cat, excludeId) {
   let recs = allProducts.filter(p => p.cat === cat && p.id !== excludeId).slice(0, 20);
   if (recs.length < 20) recs = allProducts.filter(p => p.id !== excludeId).slice(0, 20);
   const grid = document.getElementById('productRecommendGrid');
-  if (grid) grid.innerHTML = recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${fixImageUrl(p.main_image) || ''}" loading="lazy" decoding="async" onerror="this.style.backgroundColor='#e9ecef'; this.src='';"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('');
+  if (grid) grid.innerHTML = recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${p.main_image}" loading="lazy" decoding="async"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('');
 }
-
 function shareProduct() {
   const url = window.location.href;
   const text = `Check out ${currentProduct.name} on Mmeli Global!`;
@@ -245,7 +217,6 @@ function shareProduct() {
     alert(`Share via:\nWhatsApp: ${wa}\nFacebook: ${fb}\nTwitter: ${tw}`);
   }
 }
-
 function addToCartFromDetail() {
   const sizeSelect = document.getElementById('productSize');
   const price = sizeSelect ? parseFloat(sizeSelect.value) : currentProduct.price;
@@ -256,31 +227,25 @@ function addToCartFromDetail() {
   updateCartCount();
   alert('Added to cart');
 }
-
 function updateCartCount() { document.getElementById('cartCount').innerText = cart.length; }
-
 function renderCart() {
   const container = document.getElementById('cartList');
   if (!cart.length) { container.innerHTML = '<p>Cart is empty.</p>'; return; }
   let html = '', total = 0;
   cart.forEach((item, i) => {
     total += item.price;
-    const imgSrc = fixImageUrl(item.image) || '';
-    html += `<div class="cart-item"><div><img src="${imgSrc}" width="50" style="border-radius:8px;" loading="lazy" onerror="this.style.backgroundColor='#e9ecef'; this.src='';"> ${item.name} (${item.size}, ${item.color})</div><div>$${item.price} <button onclick="removeFromCart(${i})">Remove</button></div></div>`;
+    html += `<div class="cart-item"><div><img src="${item.image}" width="50" style="border-radius:8px;" loading="lazy"> ${item.name} (${item.size}, ${item.color})</div><div>$${item.price} <button onclick="removeFromCart(${i})">Remove</button></div></div>`;
   });
   html += `<div class="cart-item"><strong>Total: $${total.toFixed(2)}</strong></div>`;
   container.innerHTML = html;
   loadCartRecommendations();
 }
-
-function removeFromCart(i) { cart.splice(i, 1); localStorage.setItem('cart', JSON.stringify(cart)); updateCartCount(); renderCart(); }
-
+function removeFromCart(i) { cart.splice(i,1); localStorage.setItem('cart',JSON.stringify(cart)); updateCartCount(); renderCart(); }
 async function loadCartRecommendations() {
-  let recs = allProducts.slice(0, 20);
+  let recs = allProducts.slice(0,20);
   const grid = document.getElementById('cartRecommendations');
-  if (grid) grid.innerHTML = `<h4>You may also like</h4><div class="recommend-grid">${recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${fixImageUrl(p.main_image) || ''}" loading="lazy" decoding="async" onerror="this.style.backgroundColor='#e9ecef'; this.src='';"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('')}</div>`;
+  if(grid) grid.innerHTML = `<h4>You may also like</h4><div class="recommend-grid">${recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${p.main_image}" loading="lazy" decoding="async"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('')}</div>`;
 }
-
 function goToCheckout() {
   if (!user) { alert('Please login first'); switchPage('account'); return; }
   if (!cart.length) { alert('Cart empty'); return; }
@@ -289,9 +254,7 @@ function goToCheckout() {
   document.getElementById('stepShipping').classList.add('active');
   switchPage('checkoutPage');
 }
-
 let checkoutData = { shippingAddress: '', deliveryMethod: 'standard', deliveryCost: 5 };
-
 function nextStep() {
   const active = document.querySelector('.checkout-step.active');
   if (active.id === 'stepShipping') {
@@ -307,34 +270,32 @@ function nextStep() {
     document.getElementById('stepPayment').classList.add('active');
   }
 }
-
 async function completeCheckout() {
-  const trackingCode = 'MM' + Math.floor(Math.random() * 1000000);
-  let total = cart.reduce((s, i) => s + i.price, 0);
+  const trackingCode = 'MM' + Math.floor(Math.random()*1000000);
+  let total = cart.reduce((s,i)=>s+i.price,0);
   if (appliedDiscount) total -= appliedDiscount.amount;
   total += checkoutData.deliveryCost;
   const order = { tracking_code: trackingCode, user_id: user.id, user_data: user, items: cart, total, status: 'Processing', paid: false, packed: false, shipped: false, delivered: false };
   try {
-    await apiCall('/orders', { method: 'POST', body: JSON.stringify(order) });
-    let msg = `New order%0ATracking: ${trackingCode}%0ATotal: $${total}%0AItems:%0A` + cart.map(i => `${i.name} - $${i.price}`).join('%0A');
+    await apiCall('/orders', { method:'POST', body: JSON.stringify(order) });
+    let msg = `New order%0ATracking: ${trackingCode}%0ATotal: $${total}%0AItems:%0A` + cart.map(i=>`${i.name} - $${i.price}`).join('%0A');
     window.open(`https://wa.me/263776871711?text=${msg}`);
-    cart = []; localStorage.setItem('cart', JSON.stringify(cart)); updateCartCount(); renderCart(); appliedDiscount = null;
+    cart = []; localStorage.setItem('cart',JSON.stringify(cart)); updateCartCount(); renderCart(); appliedDiscount = null;
     alert(`Order placed! Tracking code: ${trackingCode}`);
     switchPage('home');
-  } catch (e) { alert('Order failed: ' + e.message); }
+  } catch(e) { alert('Order failed: '+e.message); }
 }
-
 async function applyDiscount() {
   const code = document.getElementById('promoCodeInput').value;
   if (!code) return;
-  const total = cart.reduce((s, i) => s + i.price, 0);
+  const total = cart.reduce((s,i)=>s+i.price,0);
   try {
-    const res = await apiCall('/marketing/validate', { method: 'POST', body: JSON.stringify({ code, cartTotal: total }) });
+    const res = await apiCall('/marketing/validate', { method:'POST', body: JSON.stringify({ code, cartTotal: total }) });
     appliedDiscount = { code, amount: res.discountAmount };
     let discountSpan = document.getElementById('discountDisplay');
     if (!discountSpan) { discountSpan = document.createElement('span'); discountSpan.id = 'discountDisplay'; document.getElementById('cartList').after(discountSpan); }
     discountSpan.innerHTML = `<br>Discount applied: -$${res.discountAmount.toFixed(2)}`;
-  } catch (e) { alert(e.message); }
+  } catch(e) { alert(e.message); }
 }
 
 async function trackOrder() {
@@ -342,26 +303,25 @@ async function trackOrder() {
   if (!code) return alert('Enter tracking code');
   try {
     const order = await apiCall(`/orders/track/${code}`);
-    document.getElementById('trackInfo').innerHTML = `<strong>Status:</strong> ${order.status}<br><strong>Items:</strong> ${order.items.map(i => i.name).join(', ')}<br><strong>Total:</strong> $${order.total}`;
+    document.getElementById('trackInfo').innerHTML = `<strong>Status:</strong> ${order.status}<br><strong>Items:</strong> ${order.items.map(i=>i.name).join(', ')}<br><strong>Total:</strong> $${order.total}`;
     const steps = ['Ordered', 'Paid', 'Packed', 'Shipped', 'Delivered'];
     const stepStatus = { Ordered: true, Paid: order.paid, Packed: order.packed, Shipped: order.shipped, Delivered: order.delivered };
     const timelineDiv = document.getElementById('trackTimeline');
     timelineDiv.innerHTML = `<div class="timeline">${steps.map(s => `<div class="timeline-step ${stepStatus[s] ? 'completed' : ''}">${s}</div>`).join('')}</div>`;
     if (map) map.remove();
-    map = L.map('map').setView([-17.825, 31.033], 6);
+    map = L.map('map').setView([-17.825,31.033], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     if (order.location_lat && order.location_lng) {
       L.marker([order.location_lat, order.location_lng]).addTo(map).bindPopup('Current Location').openPopup();
       map.setView([order.location_lat, order.location_lng], 12);
-    } else { L.marker([-17.825, 31.033]).addTo(map).bindPopup('Mmeli Global').openPopup(); }
-  } catch (e) { alert('Order not found'); }
+    } else { L.marker([-17.825,31.033]).addTo(map).bindPopup('Mmeli Global').openPopup(); }
+  } catch(e) { alert('Order not found'); }
 }
-
 function initDefaultMap() {
   if (map) map.remove();
-  map = L.map('map').setView([-17.825, 31.033], 6);
+  map = L.map('map').setView([-17.825,31.033], 6);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-  L.marker([-17.825, 31.033]).addTo(map).bindPopup('Mmeli Global').openPopup();
+  L.marker([-17.825,31.033]).addTo(map).bindPopup('Mmeli Global').openPopup();
 }
 
 async function fetchShipmentStatus() {
@@ -374,10 +334,10 @@ async function fetchShipmentStatus() {
     if (shipment.updates && shipment.updates.length) {
       timelineDiv.innerHTML = `<h4>Tracking Timeline</h4><ul>${shipment.updates.map(u => `<li>${new Date(u.timestamp).toLocaleString()} - ${u.status}: ${u.location || ''}</li>`).join('')}</ul>`;
     } else timelineDiv.innerHTML = '';
-  } catch (e) { document.getElementById('shipmentStatus').innerHTML = '<p style="color:red;">Shipment not found.</p>'; }
+  } catch(e) { document.getElementById('shipmentStatus').innerHTML = '<p style="color:red;">Shipment not found.</p>'; }
 }
 
-// ========== AUTH FUNCTIONS ==========
+// ========== AUTH FUNCTIONS – PHONE-BASED ==========
 async function register() {
   const name = document.getElementById('regName').value;
   const phone = document.getElementById('regPhone').value;
@@ -424,36 +384,28 @@ async function login() {
   }
 }
 
-function logout() { token = null; user = null; localStorage.clear(); location.reload(); }
-
+function logout() { token=null; user=null; localStorage.clear(); location.reload(); }
 async function showMyOrders() {
   const orders = await apiCall('/orders/my-orders');
-  document.getElementById('customerData').innerHTML = `<h4>My Orders</h4>${orders.map(o => `<div style="border:1px solid #ddd; padding:8px; margin:8px 0; border-radius:12px;"><strong>${o.tracking_code}</strong> - ${o.status} - $${o.total} <button onclick="trackOrderCode('${o.tracking_code}')">Track</button></div>`).join('')}`;
+  document.getElementById('customerData').innerHTML = `<h4>My Orders</h4>${orders.map(o=>`<div style="border:1px solid #ddd; padding:8px; margin:8px 0; border-radius:12px;"><strong>${o.tracking_code}</strong> - ${o.status} - $${o.total} <button onclick="trackOrderCode('${o.tracking_code}')">Track</button></div>`).join('')}`;
 }
-
 async function showMyQuotations() {
   try {
     const quotes = await apiCall('/quotations/my-quotations');
-    document.getElementById('customerData').innerHTML = `<h4>My Quotations</h4>${quotes.map(q => `<div style="border:1px solid #ddd; padding:8px; margin:8px 0; border-radius:12px;">${q.quote_number} - $${q.total} <button onclick="viewQuote(${q.id})">View</button></div>`).join('')}`;
-  } catch (e) { document.getElementById('customerData').innerHTML = '<p>No quotations yet.</p>'; }
+    document.getElementById('customerData').innerHTML = `<h4>My Quotations</h4>${quotes.map(q=>`<div style="border:1px solid #ddd; padding:8px; margin:8px 0; border-radius:12px;">${q.quote_number} - $${q.total} <button onclick="viewQuote(${q.id})">View</button></div>`).join('')}`;
+  } catch(e) { document.getElementById('customerData').innerHTML = '<p>No quotations yet.</p>'; }
 }
-
-async function viewQuote(id) { const q = await apiCall(`/quotations/${id}`); document.getElementById('quotePreview').innerHTML = `<pre>${JSON.stringify(q, null, 2)}</pre>`; document.getElementById('quoteModal').style.display = 'flex'; }
-
-function closeQuoteModal() { document.getElementById('quoteModal').style.display = 'none'; }
-
-async function showMyReturns() { try { const returns = await apiCall('/returns/my-returns'); document.getElementById('customerData').innerHTML = `<h4>My Returns</h4>${returns.map(r => `<div>Return for order #${r.order_id}: ${r.status} - ${r.reason}</div>`).join('')}`; } catch (e) { document.getElementById('customerData').innerHTML = '<p>No returns yet.</p>'; } }
-
+async function viewQuote(id) { const q = await apiCall(`/quotations/${id}`); document.getElementById('quotePreview').innerHTML = `<pre>${JSON.stringify(q,null,2)}</pre>`; document.getElementById('quoteModal').style.display='flex'; }
+function closeQuoteModal() { document.getElementById('quoteModal').style.display='none'; }
+async function showMyReturns() { try { const returns = await apiCall('/returns/my-returns'); document.getElementById('customerData').innerHTML = `<h4>My Returns</h4>${returns.map(r=>`<div>Return for order #${r.order_id}: ${r.status} - ${r.reason}</div>`).join('')}`; } catch(e) { document.getElementById('customerData').innerHTML = '<p>No returns yet.</p>'; } }
 function showProfile() {
   document.getElementById('customerData').innerHTML = `<h4>Edit Profile</h4><input id="editName" value="${user.name}"><br><input id="editPhone" value="${user.phone || ''}"><br><input id="editAddress" value="${user.address || ''}"><br><button onclick="updateProfile()">Save Changes</button>`;
 }
-
 async function updateProfile() {
   const name = document.getElementById('editName').value, phone = document.getElementById('editPhone').value, address = document.getElementById('editAddress').value;
-  const updated = await apiCall('/users/profile', { method: 'PUT', body: JSON.stringify({ name, phone, address }) });
-  user = updated; localStorage.setItem('user', JSON.stringify(user)); document.getElementById('userName').innerText = user.name; alert('Profile updated'); showProfile();
+  const updated = await apiCall('/users/profile', { method:'PUT', body: JSON.stringify({ name, phone, address }) });
+  user = updated; localStorage.setItem('user',JSON.stringify(user)); document.getElementById('userName').innerText = user.name; alert('Profile updated'); showProfile();
 }
-
 function openShipmentTracking() { document.getElementById('shipmentTrackingModal').style.display = 'flex'; }
 function closeShipmentModal() { document.getElementById('shipmentTrackingModal').style.display = 'none'; }
 
@@ -503,12 +455,11 @@ function initAdminCards() {
     card._listener = handler;
   });
 }
-
 function openAdminModal(modalId) {
   const modal = document.getElementById(`modal${modalId.charAt(0).toUpperCase() + modalId.slice(1)}`);
   if (!modal) return;
   const body = modal.querySelector('.modal-body');
-  switch (modalId) {
+  switch(modalId) {
     case 'dashboardStats': loadDashboardStats(body); break;
     case 'manageProducts': loadProductsModal(body); break;
     case 'addProduct': showAddProductForm(body); break;
@@ -524,28 +475,24 @@ function openAdminModal(modalId) {
   }
   modal.style.display = 'flex';
 }
-
 async function loadDashboardStats(container) {
   const stats = await apiCall('/dashboard/stats');
   container.innerHTML = `<h3>Dashboard</h3><div class="stats-grid"><div class="stats-card">📦 Orders<br>${stats.totalOrders}</div><div class="stats-card">💰 Revenue<br>$${stats.totalRevenue}</div><div class="stats-card">🛍️ Products<br>${stats.totalProducts}</div><div class="stats-card">👥 Customers<br>${stats.totalUsers}</div><div class="stats-card">📅 Today<br>${stats.todayOrders} orders</div><div class="stats-card">📈 Week Revenue<br>$${stats.weekRevenue}</div></div><button onclick="closeModal('modalDashboardStats')">Close</button>`;
 }
-
 async function loadProductsModal(container) {
   let products = await apiCall('/products');
-  container.innerHTML = `<h3>Manage Products</h3><input type="text" id="productSearch" placeholder="Search..." onkeyup="filterProductList()" style="width:100%; margin-bottom:10px;"><div id="productListContainer">${products.map(p => `<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:8px;"><img src="${fixImageUrl(p.main_image) || ''}" width="50" style="border-radius:8px;" loading="lazy" onerror="this.style.backgroundColor='#e9ecef'; this.src='';"> ${p.name} - $${p.price} <div><button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div></div>`).join('')}</div><button onclick="closeModal('modalManageProducts')">Close</button>`;
+  container.innerHTML = `<h3>Manage Products</h3><input type="text" id="productSearch" placeholder="Search..." onkeyup="filterProductList()" style="width:100%; margin-bottom:10px;"><div id="productListContainer">${products.map(p=>`<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:8px;"><img src="${p.main_image}" width="50" style="border-radius:8px;" loading="lazy"> ${p.name} - $${p.price} <div><button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div></div>`).join('')}</div><button onclick="closeModal('modalManageProducts')">Close</button>`;
   window.filterProductList = () => {
     const term = document.getElementById('productSearch').value.toLowerCase();
     const filtered = products.filter(p => p.name.toLowerCase().includes(term));
-    document.getElementById('productListContainer').innerHTML = filtered.map(p => `<div><img src="${fixImageUrl(p.main_image) || ''}" width="50" loading="lazy" onerror="this.style.backgroundColor='#e9ecef'; this.src='';"> ${p.name} - $${p.price} <button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div>`).join('');
+    document.getElementById('productListContainer').innerHTML = filtered.map(p=>`<div><img src="${p.main_image}" width="50" loading="lazy"> ${p.name} - $${p.price} <button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div>`).join('');
   };
 }
-
 async function editProductModal(id) {
   const p = await apiCall(`/products/${id}`);
   const body = document.getElementById('modalManageProducts').querySelector('.modal-body');
-  body.innerHTML = `<h3>Edit Product</h3><img src="${fixImageUrl(p.main_image) || ''}" width="80" loading="lazy" onerror="this.style.backgroundColor='#e9ecef'; this.src='';"><br><input id="editName" value="${p.name}"><br><input id="editPrice" value="${p.price}"><br><input id="editImage" value="${p.main_image}"><br><label>Supporting Images (URLs, comma)</label><input id="editSubImages" value="${(p.sub_images || []).join(',')}"><br><textarea id="editDesc">${p.description || ''}</textarea><br><input id="editCat" value="${p.cat}"><br><input id="editSubcat" value="${p.subcat}"><br><input id="editColors" value="${(p.colors || []).join(',')}"><br><input id="editSizes" value="${(p.size_options || []).map(s => `${s.size}:${s.price}`).join(',')}"><br><button onclick="updateProduct(${id})">Update</button><button onclick="closeModal('modalManageProducts')">Cancel</button>`;
+  body.innerHTML = `<h3>Edit Product</h3><img src="${p.main_image}" width="80" loading="lazy"><br><input id="editName" value="${p.name}"><br><input id="editPrice" value="${p.price}"><br><input id="editImage" value="${p.main_image}"><br><label>Supporting Images (URLs, comma)</label><input id="editSubImages" value="${(p.sub_images || []).join(',')}"><br><textarea id="editDesc">${p.description||''}</textarea><br><input id="editCat" value="${p.cat}"><br><input id="editSubcat" value="${p.subcat}"><br><input id="editColors" value="${(p.colors||[]).join(',')}"><br><input id="editSizes" value="${(p.size_options||[]).map(s=>`${s.size}:${s.price}`).join(',')}"><br><button onclick="updateProduct(${id})">Update</button><button onclick="closeModal('modalManageProducts')">Cancel</button>`;
 }
-
 async function updateProduct(id) {
   const name = document.getElementById('editName').value;
   const price = parseFloat(document.getElementById('editPrice').value);
@@ -553,7 +500,7 @@ async function updateProduct(id) {
   const description = document.getElementById('editDesc').value;
   const cat = document.getElementById('editCat').value;
   const subcat = document.getElementById('editSubcat').value;
-  const colors = document.getElementById('editColors').value.split(',').map(c => c.trim()).filter(c => c);
+  const colors = document.getElementById('editColors').value.split(',').map(c=>c.trim()).filter(c=>c);
   const sizeStr = document.getElementById('editSizes').value;
   const subImagesStr = document.getElementById('editSubImages').value;
   if (!name || isNaN(price) || !main_image || !cat || !subcat) { alert('Please fill required fields'); return; }
@@ -575,13 +522,10 @@ async function updateProduct(id) {
     loadProducts();
   } catch (err) { alert('Update failed: ' + err.message); }
 }
-
-async function deleteProduct(id) { if (confirm('Delete product?')) await apiCall(`/products/${id}`, { method: 'DELETE' }); openAdminModal('manageProducts'); loadProducts(); }
-
+async function deleteProduct(id) { if(confirm('Delete product?')) await apiCall(`/products/${id}`, { method:'DELETE' }); openAdminModal('manageProducts'); loadProducts(); }
 function showAddProductForm(container) {
   container.innerHTML = `<h3>Add Product</h3><input id="prodName" placeholder="Name"><br><input id="prodPrice" placeholder="Price"><br><input id="prodImage" placeholder="Main Image URL"><br><label>Supporting Images (URLs, comma)</label><input id="prodSubImages"><br><textarea id="prodDesc" placeholder="Description"></textarea><br><input id="prodCat" placeholder="Category"><br><input id="prodSubcat" placeholder="Subcategory"><br><input id="prodColors" placeholder="Colors (comma)"><br><input id="prodSizes" placeholder="Sizes (size:price, comma)"><br><button onclick="addProduct()">Save</button><button onclick="closeModal('modalAddProduct')">Cancel</button>`;
 }
-
 async function addProduct() {
   const name = document.getElementById('prodName').value;
   const price = parseFloat(document.getElementById('prodPrice').value);
@@ -589,7 +533,7 @@ async function addProduct() {
   const description = document.getElementById('prodDesc').value;
   const cat = document.getElementById('prodCat').value;
   const subcat = document.getElementById('prodSubcat').value;
-  const colors = document.getElementById('prodColors').value.split(',').map(c => c.trim()).filter(c => c);
+  const colors = document.getElementById('prodColors').value.split(',').map(c=>c.trim()).filter(c=>c);
   const sizeStr = document.getElementById('prodSizes').value;
   const subImagesStr = document.getElementById('prodSubImages').value;
   if (!name || isNaN(price) || !main_image || !cat || !subcat) { alert('Please fill required fields'); return; }
@@ -611,79 +555,65 @@ async function addProduct() {
     loadProducts();
   } catch (err) { alert('Add failed: ' + err.message); }
 }
-
 async function loadOrdersModal(container) {
   const orders = await apiCall('/orders');
-  container.innerHTML = `<h3>Orders</h3>${orders.map(o => `<div style="border:1px solid #ddd; padding:8px; margin:8px 0;"><strong>${o.tracking_code}</strong> - ${o.status} - $${o.total}<br><button onclick="updateOrderStatus('${o.id}','paid')">Mark Paid</button> <button onclick="updateOrderStatus('${o.id}','packed')">Mark Packed</button> <button onclick="updateOrderStatus('${o.id}','shipped')">Mark Shipped</button> <button onclick="updateOrderStatus('${o.id}','delivered')">Mark Delivered</button></div>`).join('')}<button onclick="closeModal('modalManageOrders')">Close</button>`;
+  container.innerHTML = `<h3>Orders</h3>${orders.map(o=>`<div style="border:1px solid #ddd; padding:8px; margin:8px 0;"><strong>${o.tracking_code}</strong> - ${o.status} - $${o.total}<br><button onclick="updateOrderStatus('${o.id}','paid')">Mark Paid</button> <button onclick="updateOrderStatus('${o.id}','packed')">Mark Packed</button> <button onclick="updateOrderStatus('${o.id}','shipped')">Mark Shipped</button> <button onclick="updateOrderStatus('${o.id}','delivered')">Mark Delivered</button></div>`).join('')}<button onclick="closeModal('modalManageOrders')">Close</button>`;
 }
-
 async function updateOrderStatus(id, step) {
   const update = {};
   if (step === 'paid') update.paid = true;
   else if (step === 'packed') update.packed = true;
   else if (step === 'shipped') update.shipped = true;
   else if (step === 'delivered') update.delivered = true;
-  await apiCall(`/orders/${id}/status`, { method: 'PUT', body: JSON.stringify({ ...update, status: step.charAt(0).toUpperCase() + step.slice(1) }) });
+  await apiCall(`/orders/${id}/status`, { method:'PUT', body: JSON.stringify({ ...update, status: step.charAt(0).toUpperCase() + step.slice(1) }) });
   openAdminModal('manageOrders');
 }
-
 async function loadDiscountsModal(container) {
   const discounts = await apiCall('/marketing/discounts');
-  container.innerHTML = `<h3>Discounts</h3><button onclick="showAddDiscountForm()">+ Add Discount</button><div id="discountsList">${discounts.map(d => `<div>${d.code} - ${d.type} ${d.value}% - ${d.is_active ? 'Active' : 'Inactive'} <button onclick="deleteDiscount(${d.id})">Delete</button></div>`).join('')}</div><button onclick="closeModal('modalDiscounts')">Close</button>`;
+  container.innerHTML = `<h3>Discounts</h3><button onclick="showAddDiscountForm()">+ Add Discount</button><div id="discountsList">${discounts.map(d=>`<div>${d.code} - ${d.type} ${d.value}% - ${d.is_active?'Active':'Inactive'} <button onclick="deleteDiscount(${d.id})">Delete</button></div>`).join('')}</div><button onclick="closeModal('modalDiscounts')">Close</button>`;
 }
-
 function showAddDiscountForm() {
   const body = document.getElementById('modalDiscounts').querySelector('.modal-body');
   body.innerHTML = `<h3>Add Discount</h3><input id="discountCode" placeholder="Code"><select id="discountType"><option value="percentage">%</option><option value="fixed">Fixed</option></select><input id="discountValue" placeholder="Value"><input id="discountMinOrder" placeholder="Min Order"><button onclick="addDiscount()">Save</button><button onclick="closeModal('modalDiscounts')">Cancel</button>`;
 }
-
 async function addDiscount() {
   const code = document.getElementById('discountCode').value, type = document.getElementById('discountType').value, value = parseFloat(document.getElementById('discountValue').value), min_order = parseFloat(document.getElementById('discountMinOrder').value);
-  await apiCall('/marketing/discounts', { method: 'POST', body: JSON.stringify({ code, type, value, min_order, is_active: true }) });
+  await apiCall('/marketing/discounts', { method:'POST', body: JSON.stringify({ code, type, value, min_order, is_active: true }) });
   alert('Discount added'); openAdminModal('discounts');
 }
-
-async function deleteDiscount(id) { if (confirm('Delete discount?')) await apiCall(`/marketing/discounts/${id}`, { method: 'DELETE' }); openAdminModal('discounts'); }
-
+async function deleteDiscount(id) { if(confirm('Delete discount?')) await apiCall(`/marketing/discounts/${id}`, { method:'DELETE' }); openAdminModal('discounts'); }
 async function loadReturnsModal(container) {
   const returns = await apiCall('/returns');
-  container.innerHTML = `<h3>Returns</h3>${returns.map(r => `<div>Order ${r.order_id}: ${r.status} - ${r.reason} <button onclick="updateReturnStatus(${r.id},'approved')">Approve</button> <button onclick="updateReturnStatus(${r.id},'rejected')">Reject</button></div>`).join('')}<button onclick="closeModal('modalReturns')">Close</button>`;
+  container.innerHTML = `<h3>Returns</h3>${returns.map(r=>`<div>Order ${r.order_id}: ${r.status} - ${r.reason} <button onclick="updateReturnStatus(${r.id},'approved')">Approve</button> <button onclick="updateReturnStatus(${r.id},'rejected')">Reject</button></div>`).join('')}<button onclick="closeModal('modalReturns')">Close</button>`;
 }
-
 async function updateReturnStatus(id, status) {
-  await apiCall(`/returns/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
+  await apiCall(`/returns/${id}/status`, { method:'PUT', body: JSON.stringify({ status }) });
   openAdminModal('returns');
 }
-
 async function loadInventoryModal(container) {
   const inv = await apiCall('/inventory');
-  container.innerHTML = `<h3>Inventory</h3>${inv.map(i => `<div>${i.products?.name}: ${i.quantity} in ${i.warehouse} <button onclick="updateStock(${i.id})">Update</button></div>`).join('')}<button onclick="closeModal('modalInventory')">Close</button>`;
+  container.innerHTML = `<h3>Inventory</h3>${inv.map(i=>`<div>${i.products?.name}: ${i.quantity} in ${i.warehouse} <button onclick="updateStock(${i.id})">Update</button></div>`).join('')}<button onclick="closeModal('modalInventory')">Close</button>`;
 }
-
 async function updateStock(id) {
   const qty = prompt('New quantity');
-  if (qty !== null) await apiCall(`/inventory/${id}`, { method: 'PUT', body: JSON.stringify({ quantity: parseInt(qty) }) });
+  if (qty !== null) await apiCall(`/inventory/${id}`, { method:'PUT', body: JSON.stringify({ quantity: parseInt(qty) }) });
   openAdminModal('inventory');
 }
-
 async function loadPoliciesModal(container) {
   const policies = await apiCall('/policies');
   container.innerHTML = `<h3>Policies</h3>${policies.map(p => `<div><strong>${p.title}</strong><textarea id="policy_${p.key}" rows="3">${p.content || ''}</textarea><button onclick="updatePolicy('${p.key}')">Save</button></div>`).join('')}<button onclick="closeModal('modalManagePolicies')">Close</button>`;
-  window.updatePolicy = async (key) => { const content = document.getElementById(`policy_${key}`).value; await apiCall(`/policies/${key}`, { method: 'PUT', body: JSON.stringify({ content }) }); alert('Policy updated'); openAdminModal('managePolicies'); };
+  window.updatePolicy = async (key) => { const content = document.getElementById(`policy_${key}`).value; await apiCall(`/policies/${key}`, { method:'PUT', body: JSON.stringify({ content }) }); alert('Policy updated'); openAdminModal('managePolicies'); };
 }
-
 async function loadShipmentsModal(container) {
   const shipments = await apiCall('/shipments');
-  container.innerHTML = `<h3>Shipments</h3><button onclick="showAddShipmentForm()">+ Add Shipment</button><div id="shipmentsList">${shipments.map(s => `<div><strong>${s.tracking_code}</strong> - ${s.status}<br>Client: ${s.client.name}<br>Receiver: ${s.receiver.name}<br><button onclick="updateShipmentStatus('${s.id}','shipped')">Mark Shipped</button></div>`).join('')}</div><button onclick="closeModal('modalManageShipments')">Close</button>`;
+  container.innerHTML = `<h3>Shipments</h3><button onclick="showAddShipmentForm()">+ Add Shipment</button><div id="shipmentsList">${shipments.map(s=>`<div><strong>${s.tracking_code}</strong> - ${s.status}<br>Client: ${s.client.name}<br>Receiver: ${s.receiver.name}<br><button onclick="updateShipmentStatus('${s.id}','shipped')">Mark Shipped</button></div>`).join('')}</div><button onclick="closeModal('modalManageShipments')">Close</button>`;
 }
-
 function showAddShipmentForm() {
   const body = document.getElementById('modalManageShipments').querySelector('.modal-body');
   body.innerHTML = `<h3>Add Shipment</h3><div><label>Tracking Code</label><input id="shipTrack"></div><div><label>Client Name</label><input id="shipClientName"></div><div><label>Client Phone</label><input id="shipClientPhone"></div><div><label>Receiver Name</label><input id="shipReceiverName"></div><div><label>Receiver Phone</label><input id="shipReceiverPhone"></div><div><label>Pickup Location</label><input id="shipPickup"></div><div><label>Courier Payment Status</label><select id="shipPaid"><option value="false">Pending</option><option value="true">Paid</option></select></div><div><label>Package Image</label><input type="file" id="shipImage"></div><div><label>Notes</label><textarea id="shipNotes"></textarea></div><button onclick="addShipment()">Save</button><button onclick="closeModal('modalManageShipments')">Cancel</button>`;
 }
-
 async function addShipment() {
-  const tracking_code = document.getElementById('shipTrack').value || 'SHIP' + Math.floor(Math.random() * 1000000);
+  const tracking_code = document.getElementById('shipTrack').value || 'SHIP'+Math.floor(Math.random()*1000000);
   const client = { name: document.getElementById('shipClientName').value, phone: document.getElementById('shipClientPhone').value };
   const receiver = { name: document.getElementById('shipReceiverName').value, phone: document.getElementById('shipReceiverPhone').value };
   const pickup = document.getElementById('shipPickup').value;
@@ -691,21 +621,18 @@ async function addShipment() {
   const notes = document.getElementById('shipNotes').value;
   const file = document.getElementById('shipImage').files[0];
   let image = null;
-  const save = async (img) => { await apiCall('/shipments', { method: 'POST', body: JSON.stringify({ tracking_code, client, receiver, pickup, notes, image: img, paid, status: 'pending' }) }); alert('Shipment added'); closeModal('modalManageShipments'); openAdminModal('manageShipments'); };
+  const save = async (img) => { await apiCall('/shipments', { method:'POST', body: JSON.stringify({ tracking_code, client, receiver, pickup, notes, image: img, paid, status:'pending' }) }); alert('Shipment added'); closeModal('modalManageShipments'); openAdminModal('manageShipments'); };
   if (file) { const reader = new FileReader(); reader.onload = e => save(e.target.result); reader.readAsDataURL(file); } else save(null);
 }
-
-async function updateShipmentStatus(id) { await apiCall(`/shipments/${id}/status`, { method: 'PUT', body: JSON.stringify({ status: 'shipped' }) }); openAdminModal('manageShipments'); }
-
+async function updateShipmentStatus(id) { await apiCall(`/shipments/${id}/status`, { method:'PUT', body: JSON.stringify({ status:'shipped' }) }); openAdminModal('manageShipments'); }
 function loadBroadcastModal(container) {
   container.innerHTML = `<h3>Broadcast</h3><textarea id="broadcastMsg" rows="3"></textarea><button onclick="sendBroadcast()">Generate WhatsApp Link</button><div id="broadcastResult"></div><button onclick="closeModal('modalBroadcast')">Close</button>`;
 }
-
 async function sendBroadcast() {
   let message = document.getElementById('broadcastMsg').value;
   if (!message) return alert('Enter message');
   const fullMessage = `${message}\n\nCheck our website: ${window.location.origin}`;
-  const data = await apiCall('/notifications/broadcast', { method: 'POST', body: JSON.stringify({ message: fullMessage }) });
+  const data = await apiCall('/notifications/broadcast', { method:'POST', body: JSON.stringify({ message: fullMessage }) });
   document.getElementById('broadcastResult').innerHTML = `<a href="${data.waLink}" target="_blank">Click to send broadcast to ${data.count} subscribers</a>`;
 }
 
@@ -723,8 +650,8 @@ function showCreateQuotationForm(container) {
     const items = [];
     document.querySelectorAll('#quoteItems .quote-item').forEach(row => {
       const desc = row.children[0].value,
-        qty = parseFloat(row.children[1].value) || 0,
-        price = parseFloat(row.children[2].value) || 0;
+            qty = parseFloat(row.children[1].value) || 0,
+            price = parseFloat(row.children[2].value) || 0;
       if (desc && qty > 0 && price > 0) items.push({ desc, qty, price, subtotal: qty * price });
     });
     if (items.length === 0) { alert('Add at least one item'); return; }
@@ -750,18 +677,17 @@ function showCreateQuotationForm(container) {
 
 function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
 
-// ---------- Search with debounce ----------
-document.getElementById('searchInput').addEventListener('input', function () {
+// ---------- Search with debounce (improved speed) ----------
+document.getElementById('searchInput').addEventListener('input', function() {
   clearTimeout(searchDebounceTimer);
   const term = this.value.toLowerCase();
   const list = document.getElementById('autocompleteList');
   if (!term) { list.innerHTML = ''; return; }
   searchDebounceTimer = setTimeout(() => {
-    const matches = allProducts.filter(p => p.name.toLowerCase().includes(term) || (p.description && p.description.toLowerCase().includes(term)) || (p.cat && p.cat.toLowerCase().includes(term)) || (p.subcat && p.subcat.toLowerCase().includes(term))).slice(0, 8);
+    const matches = allProducts.filter(p => p.name.toLowerCase().includes(term) || (p.description && p.description.toLowerCase().includes(term)) || (p.cat && p.cat.toLowerCase().includes(term)) || (p.subcat && p.subcat.toLowerCase().includes(term))).slice(0,8);
     list.innerHTML = matches.map(p => `<div onclick="openProduct(${p.id})">${p.name} (${p.cat})</div>`).join('');
   }, 200);
 });
-
 function searchProducts() {
   const term = document.getElementById('searchInput').value.toLowerCase();
   if (!term) { displayProducts(allShuffled.slice(0, currentDisplayLimit)); return; }
@@ -769,14 +695,14 @@ function searchProducts() {
   displayProducts(getShuffledWithPhoneBias(filtered).slice(0, currentDisplayLimit));
 }
 
+// ---------- UI helpers ----------
 function switchPage(pageId) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById(pageId).classList.add('active');
   if (pageId === 'cart') renderCart();
   if (pageId === 'home') loadProducts();
   if (pageId === 'tracking') { if (map) map.remove(); initDefaultMap(); }
 }
-
 function resetHome() {
   currentDisplayLimit = 150;
   allShuffled = getShuffledWithPhoneBias(allProducts);
@@ -784,31 +710,15 @@ function resetHome() {
   document.getElementById('subMenu').innerHTML = '';
   switchPage('home');
 }
-
 function goBackHome() { resetHome(); }
-
 function trackOrderCode(code) { document.getElementById('trackCode').value = code; switchPage('tracking'); setTimeout(trackOrder, 100); }
-
-async function showRandomPromo() {
-  try {
-    const promo = await apiCall('/promotions/random');
-    if (promo) {
-      const popup = document.getElementById('popupPromo');
-      document.getElementById('popupContent').innerHTML = `<img src="${promo.image_url || ''}" loading="lazy" onerror="this.style.backgroundColor='#e9ecef'; this.src='';"> <div><strong>${promo.title}</strong><br>${promo.description}<br><a href="${promo.link}" target="_blank">Shop now</a></div>`;
-      popup.style.display = 'block';
-      setTimeout(() => popup.style.display = 'none', 8000);
-    }
-  } catch (e) { }
-}
-
+async function showRandomPromo() { try { const promo = await apiCall('/promotions/random'); if (promo) { const popup = document.getElementById('popupPromo'); document.getElementById('popupContent').innerHTML = `<img src="${promo.image_url || 'https://picsum.photos/300/150'}" loading="lazy"><div><strong>${promo.title}</strong><br>${promo.description}<br><a href="${promo.link}" target="_blank">Shop now</a></div>`; popup.style.display = 'block'; setTimeout(() => popup.style.display = 'none', 8000); } } catch(e) {} }
 function closePopup() { document.getElementById('popupPromo').style.display = 'none'; }
-
 async function subscribe() {
   const email = document.getElementById('subEmail').value, phone = document.getElementById('subPhone').value;
   if (!email && !phone) return alert('Enter email or phone');
-  try { await apiCall('/notifications/subscribe', { method: 'POST', body: JSON.stringify({ email, phone, name: user?.name || '' }) }); alert('Subscribed successfully!'); } catch (e) { alert('Subscription failed'); }
+  try { await apiCall('/notifications/subscribe', { method:'POST', body: JSON.stringify({ email, phone, name: user?.name || '' }) }); alert('Subscribed successfully!'); } catch(e) { alert('Subscription failed'); }
 }
-
 function handleHash() {
   const hash = window.location.hash;
   if (!hash || hash === '#/home' || hash === '#/') {
@@ -820,34 +730,33 @@ function handleHash() {
     resetHome();
   }
 }
-
 window.addEventListener('hashchange', handleHash);
+function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&')return'&amp;';if(m==='<')return'&lt;';if(m==='>')return'&gt;';return m;}); }
 
-function escapeHtml(str) {
-  return str.replace(/[&<>]/g, function (m) { if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m; });
-}
-
+// ---------- Global modal close ----------
 document.querySelectorAll('.close-modal').forEach(btn => {
-  btn.addEventListener('click', function () { const modal = this.closest('.modal'); if (modal) modal.style.display = 'none'; });
+  btn.addEventListener('click', function() { const modal = this.closest('.modal'); if(modal) modal.style.display = 'none'; });
 });
-window.addEventListener('click', (e) => { if (e.target.classList.contains('modal')) e.target.style.display = 'none'; });
+window.addEventListener('click', (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; });
 document.querySelector('.close-popup')?.addEventListener('click', closePopup);
 
+// ========== DOUBLE-CLICK LOGO (fallback) ==========
 const logoElem = document.getElementById('logoArea');
 if (logoElem) {
-  logoElem.addEventListener('dblclick', function (e) {
+  logoElem.addEventListener('dblclick', function(e) {
     e.preventDefault();
     switchPage('adminDashboard');
   });
 }
 
-window.addEventListener('load', function () {
+// ========== INITIALIZATION ==========
+window.addEventListener('load', function() {
   document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
   updateCartCount();
   initAdminCards();
   if (user) {
-    document.getElementById('loginBox').style.display = 'none';
-    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('loginBox').style.display='none';
+    document.getElementById('dashboard').style.display='block';
     document.getElementById('userName').innerText = user.name;
     if (user.role === 'admin') {
       document.getElementById('adminLoginDiv').style.display = 'none';
