@@ -1,12 +1,28 @@
-// ========== SUPABASE IMAGE OPTIMIZATION ==========
+// ========== SUPABASE INIT ==========
 const SUPABASE_URL = 'https://proljdccjrifqgbmsyco.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb2xqZGNjanJpZnFnYm1zeWNvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTc4ODAxOSwiZXhwIjoyMDkxMzY0MDE5fQ.VltzBUq-bLvu0Ny4jPy1kBp5E-4hffQgqFpqHrRWlZA';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb2xqZGNjanJpZnFnYm1zeWNvIiwicm9sZSI6InNlcnZpYV9yb2xlIiwiaWF0IjoxNzc1Nzg4MDE5LCJleHAiOjIwOTEzNjQwMTl9.VltzBUq-bLvu0Ny4jPy1kBp5E-4hffQgqFpqHrRWlZA';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-function getOptimizedImageUrl(url, width = 300, height = 300, quality = 75) {
-  if (!url) return 'https://picsum.photos/300/200?grayscale';
-  // Only transform if it's a Supabase storage URL
-  if (url.includes(`${SUPABASE_URL}/storage/v1/object/public/`)) {
-    // Add transformation parameters: resize, quality, format auto
+// Function to upload image to Supabase Storage (bucket 'products')
+async function uploadImageToSupabase(file, productId) {
+  if (!file) return null;
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${productId || Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+  const filePath = `products/${fileName}`;
+  const { data, error } = await supabase.storage.from('products').upload(filePath, file, {
+    cacheControl: '3600',
+    upsert: false
+  });
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+  const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(filePath);
+  return publicUrl;
+}
+
+// Optimized image URL with transformations (WebP, resize, quality)
+function getOptimizedImageUrl(url, width = 300, height = 300, quality = 80) {
+  if (!url) return 'https://placehold.co/300x300?text=No+Image';
+  // If it's a Supabase URL, add transformation params
+  if (url.includes(SUPABASE_URL)) {
     const separator = url.includes('?') ? '&' : '?';
     return `${url}${separator}width=${width}&height=${height}&quality=${quality}&format=webp`;
   }
@@ -26,7 +42,7 @@ let currentDisplayLimit = 150;
 let allShuffled = [];
 let searchDebounceTimer = null;
 
-// ---------- Category data ----------
+// Category data (unchanged)
 const categoryHierarchy = {
   "Phones": { "Smartphones": ["Android Phones", "iPhones", "Rugged Phones"], "Feature Phones": ["Keypad Phones"], "Accessories": ["Chargers", "Power Banks", "Phone Cases", "Screen Protectors"] },
   "Cameras": { "Cameras": ["Digital Cameras", "DSLR Cameras", "Mirrorless Cameras"], "Video Equipment": ["Camcorders", "Action Cameras"], "Accessories": ["Tripods", "Lighting", "Microphones"] },
@@ -126,8 +142,8 @@ function displayProducts(products) {
   products.forEach(p => {
     const card = document.createElement('div');
     card.className = 'product-card';
-    const optimizedImg = getOptimizedImageUrl(p.main_image, 300, 300);
-    card.innerHTML = `<img src="${optimizedImg}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async"><div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div><div class="product-price">$${p.price}</div></div>`;
+    const imgSrc = getOptimizedImageUrl(p.main_image, 300, 300);
+    card.innerHTML = `<img src="${imgSrc}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async" onerror="this.src='https://placehold.co/300x300?text=No+Image'"><div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div><div class="product-price">$${p.price}</div></div>`;
     card.onclick = (e) => { e.stopPropagation(); openProduct(p.id); };
     container.appendChild(card);
   });
@@ -206,7 +222,7 @@ function renderProductDetail(p) {
           <button class="back-btn-top" onclick="goBackHome()"><i class="fas fa-arrow-left"></i> Back</button>
           <button class="share-btn-top" onclick="shareProduct()"><i class="fas fa-share-alt"></i> Share</button>
         </div>
-        <img src="${optimizedMain}" style="width:100%; border-radius:16px;" loading="lazy" decoding="async">
+        <img src="${optimizedMain}" style="width:100%; border-radius:16px;" loading="eager" fetchpriority="high" onerror="this.src='https://placehold.co/600x600?text=No+Image'">
         <h2>${p.name}</h2>
         <p>${p.description || ''}</p>
         <div class="color-size-row">
@@ -228,7 +244,7 @@ async function loadProductRecommendations(cat, excludeId) {
   let recs = allProducts.filter(p => p.cat === cat && p.id !== excludeId).slice(0, 20);
   if (recs.length < 20) recs = allProducts.filter(p => p.id !== excludeId).slice(0, 20);
   const grid = document.getElementById('productRecommendGrid');
-  if (grid) grid.innerHTML = recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${getOptimizedImageUrl(p.main_image, 120, 120)}" loading="lazy" decoding="async"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('');
+  if (grid) grid.innerHTML = recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${getOptimizedImageUrl(p.main_image, 120, 120)}" loading="lazy" decoding="async" onerror="this.src='https://placehold.co/120x120?text=No+Image'"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('');
 }
 
 function shareProduct() {
@@ -263,7 +279,7 @@ function renderCart() {
   cart.forEach((item, i) => {
     total += item.price;
     const optimizedImg = getOptimizedImageUrl(item.image, 50, 50);
-    html += `<div class="cart-item"><div><img src="${optimizedImg}" width="50" style="border-radius:8px;" loading="lazy"> ${item.name} (${item.size}, ${item.color})</div><div>$${item.price} <button onclick="removeFromCart(${i})">Remove</button></div></div>`;
+    html += `<div class="cart-item"><div><img src="${optimizedImg}" width="50" style="border-radius:8px;" loading="lazy" onerror="this.src='https://placehold.co/50x50?text=No+Image'"> ${item.name} (${item.size}, ${item.color})</div><div>$${item.price} <button onclick="removeFromCart(${i})">Remove</button></div></div>`;
   });
   html += `<div class="cart-item"><strong>Total: $${total.toFixed(2)}</strong></div>`;
   container.innerHTML = html;
@@ -275,7 +291,7 @@ function removeFromCart(i) { cart.splice(i,1); localStorage.setItem('cart',JSON.
 async function loadCartRecommendations() {
   let recs = allProducts.slice(0,20);
   const grid = document.getElementById('cartRecommendations');
-  if(grid) grid.innerHTML = `<h4>You may also like</h4><div class="recommend-grid">${recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${getOptimizedImageUrl(p.main_image, 120, 120)}" loading="lazy" decoding="async"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('')}</div>`;
+  if(grid) grid.innerHTML = `<h4>You may also like</h4><div class="recommend-grid">${recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${getOptimizedImageUrl(p.main_image, 120, 120)}" loading="lazy" decoding="async" onerror="this.src='https://placehold.co/120x120?text=No+Image'"><div>${p.name}<br><strong>$${p.price}</strong></div></div>`).join('')}</div>`;
 }
 
 function goToCheckout() {
@@ -373,7 +389,7 @@ async function fetchShipmentStatus() {
   } catch(e) { document.getElementById('shipmentStatus').innerHTML = '<p style="color:red;">Shipment not found.</p>'; }
 }
 
-// ========== AUTH FUNCTIONS – PHONE-BASED ==========
+// ========== AUTH FUNCTIONS ==========
 async function register() {
   const name = document.getElementById('regName').value;
   const phone = document.getElementById('regPhone').value;
@@ -452,7 +468,7 @@ async function updateProfile() {
 function openShipmentTracking() { document.getElementById('shipmentTrackingModal').style.display = 'flex'; }
 function closeShipmentModal() { document.getElementById('shipmentTrackingModal').style.display = 'none'; }
 
-// ========== ADMIN LOGIN ==========
+// ========== ADMIN LOGIN & IMAGE UPLOAD ==========
 async function adminLogin() {
   const email = document.getElementById('adminEmail').value.trim();
   const password = document.getElementById('adminPassword').value;
@@ -527,31 +543,55 @@ async function loadDashboardStats(container) {
 
 async function loadProductsModal(container) {
   let products = await apiCall('/products');
-  container.innerHTML = `<h3>Manage Products</h3><input type="text" id="productSearch" placeholder="Search..." onkeyup="filterProductList()" style="width:100%; margin-bottom:10px;"><div id="productListContainer">${products.map(p=>`<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:8px;"><img src="${getOptimizedImageUrl(p.main_image, 50, 50)}" width="50" style="border-radius:8px;" loading="lazy"> ${p.name} - $${p.price} <div><button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div></div>`).join('')}</div><button onclick="closeModal('modalManageProducts')">Close</button>`;
+  container.innerHTML = `<h3>Manage Products</h3><input type="text" id="productSearch" placeholder="Search..." onkeyup="filterProductList()" style="width:100%; margin-bottom:10px;"><div id="productListContainer">${products.map(p=>`<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:8px;"><img src="${getOptimizedImageUrl(p.main_image, 50, 50)}" width="50" style="border-radius:8px;" loading="lazy" onerror="this.src='https://placehold.co/50x50'"> ${p.name} - $${p.price} <div><button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div></div>`).join('')}</div><button onclick="closeModal('modalManageProducts')">Close</button>`;
   window.filterProductList = () => {
     const term = document.getElementById('productSearch').value.toLowerCase();
     const filtered = products.filter(p => p.name.toLowerCase().includes(term));
-    document.getElementById('productListContainer').innerHTML = filtered.map(p=>`<div><img src="${getOptimizedImageUrl(p.main_image, 50, 50)}" width="50" loading="lazy"> ${p.name} - $${p.price} <button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div>`).join('');
+    document.getElementById('productListContainer').innerHTML = filtered.map(p=>`<div><img src="${getOptimizedImageUrl(p.main_image, 50, 50)}" width="50" loading="lazy" onerror="this.src='https://placehold.co/50x50'"> ${p.name} - $${p.price} <button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div>`).join('');
   };
 }
 
 async function editProductModal(id) {
   const p = await apiCall(`/products/${id}`);
   const body = document.getElementById('modalManageProducts').querySelector('.modal-body');
-  body.innerHTML = `<h3>Edit Product</h3><img src="${getOptimizedImageUrl(p.main_image, 80, 80)}" width="80" loading="lazy"><br><input id="editName" value="${p.name}"><br><input id="editPrice" value="${p.price}"><br><input id="editImage" value="${p.main_image}"><br><label>Supporting Images (URLs, comma)</label><input id="editSubImages" value="${(p.sub_images || []).join(',')}"><br><textarea id="editDesc">${p.description||''}</textarea><br><input id="editCat" value="${p.cat}"><br><input id="editSubcat" value="${p.subcat}"><br><input id="editColors" value="${(p.colors||[]).join(',')}"><br><input id="editSizes" value="${(p.size_options||[]).map(s=>`${s.size}:${s.price}`).join(',')}"><br><button onclick="updateProduct(${id})">Update</button><button onclick="closeModal('modalManageProducts')">Cancel</button>`;
+  body.innerHTML = `<h3>Edit Product</h3>
+    <img src="${getOptimizedImageUrl(p.main_image, 80, 80)}" width="80" id="editPreview" onerror="this.src='https://placehold.co/80x80'">
+    <br><label>Upload New Image (optional)</label>
+    <input type="file" id="editImageFile" accept="image/*">
+    <br><input id="editName" value="${p.name}" placeholder="Name">
+    <br><input id="editPrice" value="${p.price}" placeholder="Price">
+    <br><textarea id="editDesc" placeholder="Description">${p.description||''}</textarea>
+    <br><input id="editCat" value="${p.cat}" placeholder="Category">
+    <br><input id="editSubcat" value="${p.subcat}" placeholder="Subcategory">
+    <br><input id="editColors" value="${(p.colors||[]).join(',')}" placeholder="Colors (comma)">
+    <br><input id="editSizes" value="${(p.size_options||[]).map(s=>`${s.size}:${s.price}`).join(',')}" placeholder="Sizes (size:price, comma)">
+    <br><button onclick="updateProductWithImage(${id})">Update</button>
+    <button onclick="closeModal('modalManageProducts')">Cancel</button>`;
 }
 
-async function updateProduct(id) {
+async function updateProductWithImage(id) {
   const name = document.getElementById('editName').value;
   const price = parseFloat(document.getElementById('editPrice').value);
-  const main_image = document.getElementById('editImage').value;
   const description = document.getElementById('editDesc').value;
   const cat = document.getElementById('editCat').value;
   const subcat = document.getElementById('editSubcat').value;
   const colors = document.getElementById('editColors').value.split(',').map(c=>c.trim()).filter(c=>c);
   const sizeStr = document.getElementById('editSizes').value;
-  const subImagesStr = document.getElementById('editSubImages').value;
-  if (!name || isNaN(price) || !main_image || !cat || !subcat) { alert('Please fill required fields'); return; }
+  const imageFile = document.getElementById('editImageFile').files[0];
+  
+  let main_image = null;
+  if (imageFile) {
+    try {
+      main_image = await uploadImageToSupabase(imageFile, id);
+    } catch(e) { alert('Image upload failed: ' + e.message); return; }
+  } else {
+    // Keep existing image URL
+    const existingProduct = allProducts.find(p => p.id == id);
+    main_image = existingProduct.main_image;
+  }
+  
+  if (!name || isNaN(price) || !cat || !subcat || !main_image) { alert('Please fill required fields and ensure an image is set'); return; }
+  
   let size_options = [];
   if (sizeStr) {
     sizeStr.split(',').forEach(pair => {
@@ -560,8 +600,8 @@ async function updateProduct(id) {
     });
   }
   if (size_options.length === 0) size_options = [{ size: 'Standard', price: price }];
-  let sub_images = subImagesStr ? subImagesStr.split(',').map(u => u.trim()).filter(u => u) : [];
-  const productData = { name, description, cat, subcat, price, colors, size_options, main_image, sub_images };
+  
+  const productData = { name, description, cat, subcat, price, colors, size_options, main_image };
   try {
     await apiCall(`/products/${id}`, { method: 'PUT', body: JSON.stringify(productData) });
     alert('Product updated successfully');
@@ -574,20 +614,36 @@ async function updateProduct(id) {
 async function deleteProduct(id) { if(confirm('Delete product?')) await apiCall(`/products/${id}`, { method:'DELETE' }); openAdminModal('manageProducts'); loadProducts(); }
 
 function showAddProductForm(container) {
-  container.innerHTML = `<h3>Add Product</h3><input id="prodName" placeholder="Name"><br><input id="prodPrice" placeholder="Price"><br><input id="prodImage" placeholder="Main Image URL"><br><label>Supporting Images (URLs, comma)</label><input id="prodSubImages"><br><textarea id="prodDesc" placeholder="Description"></textarea><br><input id="prodCat" placeholder="Category"><br><input id="prodSubcat" placeholder="Subcategory"><br><input id="prodColors" placeholder="Colors (comma)"><br><input id="prodSizes" placeholder="Sizes (size:price, comma)"><br><button onclick="addProduct()">Save</button><button onclick="closeModal('modalAddProduct')">Cancel</button>`;
+  container.innerHTML = `<h3>Add Product</h3>
+    <input id="prodName" placeholder="Name"><br>
+    <input id="prodPrice" placeholder="Price"><br>
+    <input type="file" id="prodImageFile" accept="image/*" required><br>
+    <textarea id="prodDesc" placeholder="Description"></textarea><br>
+    <input id="prodCat" placeholder="Category"><br>
+    <input id="prodSubcat" placeholder="Subcategory"><br>
+    <input id="prodColors" placeholder="Colors (comma)"><br>
+    <input id="prodSizes" placeholder="Sizes (size:price, comma)"><br>
+    <button onclick="addProductWithImage()">Save</button>
+    <button onclick="closeModal('modalAddProduct')">Cancel</button>`;
 }
 
-async function addProduct() {
+async function addProductWithImage() {
   const name = document.getElementById('prodName').value;
   const price = parseFloat(document.getElementById('prodPrice').value);
-  const main_image = document.getElementById('prodImage').value;
   const description = document.getElementById('prodDesc').value;
   const cat = document.getElementById('prodCat').value;
   const subcat = document.getElementById('prodSubcat').value;
   const colors = document.getElementById('prodColors').value.split(',').map(c=>c.trim()).filter(c=>c);
   const sizeStr = document.getElementById('prodSizes').value;
-  const subImagesStr = document.getElementById('prodSubImages').value;
-  if (!name || isNaN(price) || !main_image || !cat || !subcat) { alert('Please fill required fields'); return; }
+  const imageFile = document.getElementById('prodImageFile').files[0];
+  
+  if (!name || isNaN(price) || !cat || !subcat || !imageFile) { alert('Please fill all required fields and select an image'); return; }
+  
+  let main_image;
+  try {
+    main_image = await uploadImageToSupabase(imageFile);
+  } catch(e) { alert('Image upload failed: ' + e.message); return; }
+  
   let size_options = [];
   if (sizeStr) {
     sizeStr.split(',').forEach(pair => {
@@ -596,8 +652,8 @@ async function addProduct() {
     });
   }
   if (size_options.length === 0) size_options = [{ size: 'Standard', price: price }];
-  let sub_images = subImagesStr ? subImagesStr.split(',').map(u => u.trim()).filter(u => u) : [];
-  const productData = { name, description, cat, subcat, price, colors, size_options, main_image, sub_images };
+  
+  const productData = { name, description, cat, subcat, price, colors, size_options, main_image };
   try {
     await apiCall('/products', { method: 'POST', body: JSON.stringify(productData) });
     alert('Product added successfully');
@@ -784,7 +840,7 @@ function resetHome() {
 function goBackHome() { resetHome(); }
 function trackOrderCode(code) { document.getElementById('trackCode').value = code; switchPage('tracking'); setTimeout(trackOrder, 100); }
 
-async function showRandomPromo() { try { const promo = await apiCall('/promotions/random'); if (promo) { const popup = document.getElementById('popupPromo'); document.getElementById('popupContent').innerHTML = `<img src="${getOptimizedImageUrl(promo.image_url, 280, 140)}" loading="lazy"><div><strong>${promo.title}</strong><br>${promo.description}<br><a href="${promo.link}" target="_blank">Shop now</a></div>`; popup.style.display = 'block'; setTimeout(() => popup.style.display = 'none', 8000); } } catch(e) {} }
+async function showRandomPromo() { try { const promo = await apiCall('/promotions/random'); if (promo) { const popup = document.getElementById('popupPromo'); document.getElementById('popupContent').innerHTML = `<img src="${getOptimizedImageUrl(promo.image_url, 280, 140)}" loading="lazy" onerror="this.src='https://placehold.co/280x140'"><div><strong>${promo.title}</strong><br>${promo.description}<br><a href="${promo.link}" target="_blank">Shop now</a></div>`; popup.style.display = 'block'; setTimeout(() => popup.style.display = 'none', 8000); } } catch(e) {} }
 
 function closePopup() { document.getElementById('popupPromo').style.display = 'none'; }
 
