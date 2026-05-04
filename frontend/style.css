@@ -186,7 +186,6 @@ body {
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
-  background: #e9ecef; /* fallback gray while loading */
 }
 
 .product-info {
@@ -206,7 +205,7 @@ body {
   margin-top: 4px;
 }
 
-/* BOTTOM NAVIGATION - navy background, gold icons */
+/* BOTTOM NAVIGATION - navy background, gold icons (changed) */
 .bottom-nav {
   position: fixed;
   bottom: 0;
@@ -470,9 +469,11 @@ textarea:focus {
   .product-detail-layout {
     flex-direction: row;
   }
+
   .product-detail-left {
     flex: 2;
   }
+
   .product-detail-right {
     flex: 1;
   }
@@ -504,7 +505,6 @@ textarea:focus {
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
-  background: #e9ecef;
   border-radius: 8px;
 }
 
@@ -543,7 +543,7 @@ textarea:focus {
   background: transparent; /* image area transparent */
 }
 
-/* Description area (below image) - light gray background */
+/* Product description area (below image) - light gray background */
 .product-detail-left h2,
 .product-detail-left p,
 .product-detail-left .color-size-row,
@@ -583,6 +583,7 @@ textarea:focus {
   #productsContainer {
     grid-template-columns: repeat(2, 1fr);
   }
+
   .customer-buttons button {
     min-width: 100%;
   }
