@@ -3,8 +3,8 @@ const SUPABASE_URL = 'https://proljdccjrifqgbmsyco.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb2xqZGNjanJpZnFnYm1zeWNvIiwicm9sZSI6InNlcnZpYV9yb2xlIiwiaWF0IjoxNzc1Nzg4MDE5LCJleHAiOjIwOTEzNjQwMTl9.VltzBUq-bLvu0Ny4jPy1kBp5E-4hffQgqFpqHrRWlZA';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Function to upload image to Supabase Storage (bucket 'products')
-async function uploadImageToSupabase(file, productId) {
+// Upload image to Supabase bucket "products"
+async function uploadImageToSupabase(file, productId = null) {
   if (!file) return null;
   const fileExt = file.name.split('.').pop();
   const fileName = `${productId || Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -18,10 +18,9 @@ async function uploadImageToSupabase(file, productId) {
   return publicUrl;
 }
 
-// Optimized image URL with transformations (WebP, resize, quality)
+// Optimized image URL (Supabase CDN)
 function getOptimizedImageUrl(url, width = 300, height = 300, quality = 80) {
   if (!url) return 'https://placehold.co/300x300?text=No+Image';
-  // If it's a Supabase URL, add transformation params
   if (url.includes(SUPABASE_URL)) {
     const separator = url.includes('?') ? '&' : '?';
     return `${url}${separator}width=${width}&height=${height}&quality=${quality}&format=webp`;
@@ -42,7 +41,7 @@ let currentDisplayLimit = 150;
 let allShuffled = [];
 let searchDebounceTimer = null;
 
-// Category data (unchanged)
+// Category data (unchanged - keep as in your original)
 const categoryHierarchy = {
   "Phones": { "Smartphones": ["Android Phones", "iPhones", "Rugged Phones"], "Feature Phones": ["Keypad Phones"], "Accessories": ["Chargers", "Power Banks", "Phone Cases", "Screen Protectors"] },
   "Cameras": { "Cameras": ["Digital Cameras", "DSLR Cameras", "Mirrorless Cameras"], "Video Equipment": ["Camcorders", "Action Cameras"], "Accessories": ["Tripods", "Lighting", "Microphones"] },
