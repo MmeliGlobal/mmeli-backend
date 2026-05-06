@@ -12,173 +12,176 @@
   <meta property="og:url" content="https://mmeliglobal.com">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-
-  <!-- Preconnect to Supabase CDN -->
+  
+  <!-- Speed: preconnect -->
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <link rel="preconnect" href="https://proljdccjrifqgbmsyco.supabase.co" crossorigin>
-  <link rel="dns-prefetch" href="https://proljdccjrifqgbmsyco.supabase.co">
-
-  <!-- External CSS -->
+  
+  <!-- External resources -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link rel="stylesheet" href="style.css">
-
-  <!-- Supabase JS library -->
+  
+  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- Leaflet & main script -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
   <script src="script.js" defer></script>
 </head>
 <body>
-
-<header class="header">
-  <div class="logo" id="logoArea">
-    <img src="logo.png" alt="Mmeli Global Logo" id="siteLogo" style="height:40px;" loading="lazy">
-    <span>Mmeli Global</span>
-  </div>
-  <div class="cart-icon" onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i> <span id="cartCount">0</span></div>
-</header>
-
-<div class="search-bar">
-  <div class="search-wrapper">
-    <input type="text" id="searchInput" placeholder="Search products..." autocomplete="off">
-    <i class="fas fa-search" onclick="searchProducts()"></i>
-    <label for="scanInput" style="cursor:pointer;"><i class="fas fa-camera"></i></label>
-    <input type="file" id="scanInput" hidden accept="image/*">
-  </div>
-  <div id="autocompleteList" class="autocomplete-items"></div>
-</div>
-
-<div id="mainMenu" class="main-menu"></div>
-<div id="subMenu" class="sub-menu"></div>
-
-<section id="home" class="page active">
-  <div id="productsContainer"></div>
-  <div id="loadMoreBtn" style="text-align:center; margin-top:20px;"><button onclick="loadMoreProducts()">Load More</button></div>
-</section>
-
-<section id="productPage" class="page">
-  <div id="productDetailContainer"></div>
-  <div id="productRecommendations" class="recommendations"></div>
-</section>
-
-<section id="cart" class="page">
-  <h3>Your Cart</h3>
-  <div id="cartList"></div>
-  <div class="cart-actions">
-    <input type="text" id="promoCodeInput" placeholder="Discount code">
-    <button onclick="applyDiscount()">Apply</button>
-    <button onclick="goToCheckout()" class="checkout-btn"><i class="fab fa-whatsapp"></i> Proceed to Checkout</button>
-  </div>
-  <div id="cartRecommendations" class="recommendations"></div>
-</section>
-
-<section id="checkoutPage" class="page">
-  <h3>Checkout</h3>
-  <div class="checkout-step active" id="stepShipping">
-    <h4>Shipping Address</h4>
-    <input type="text" id="checkoutAddress" placeholder="Address" value=""><button onclick="nextStep()">Next</button>
-  </div>
-  <div class="checkout-step" id="stepDelivery">
-    <h4>Delivery Method</h4>
-    <label><input type="radio" name="delivery" value="standard" checked> Standard (3-5 days) – $5</label>
-    <label><input type="radio" name="delivery" value="express"> Express (1-2 days) – $15</label>
-    <button onclick="nextStep()">Next</button>
-  </div>
-  <div class="checkout-step" id="stepPayment">
-    <h4>Payment</h4>
-    <p>You will be redirected to WhatsApp to confirm payment.</p>
-    <button onclick="completeCheckout()">Place Order</button>
-  </div>
-</section>
-
-<section id="tracking" class="page">
-  <h3>Track Your Order</h3>
-  <div id="map"></div>
-  <input type="text" id="trackCode" placeholder="Enter Tracking Code">
-  <button onclick="trackOrder()"><i class="fas fa-search"></i> Track</button>
-  <div id="trackInfo"></div>
-  <div id="trackTimeline" class="timeline"></div>
-</section>
-
-<section id="promo" class="page"><h3>Special Offers</h3><div id="promoList"></div></section>
-
-<section id="account" class="page">
-  <div id="loginBox">
-    <h3>Customer Login</h3>
-    <input type="email" id="loginEmail" placeholder="Phone number" required><input type="password" id="loginPassword" placeholder="Password" required><button onclick="login()">Login</button>
-    <hr><h3>New Customer? Register</h3>
-    <input type="text" id="regName" placeholder="Full Name"><input type="email" id="regEmail" placeholder="Email"><input type="tel" id="regPhone" placeholder="Phone"><input type="text" id="regAddress" placeholder="Address"><input type="password" id="regPassword" placeholder="Password"><button onclick="register()">Register</button>
-  </div>
-  <div id="dashboard" style="display:none;">
-    <h3>Welcome, <span id="userName"></span></h3>
-    <div class="customer-buttons">
-      <button onclick="showMyOrders()"><i class="fas fa-box"></i> My Orders</button>
-      <button onclick="showMyQuotations()"><i class="fas fa-file-invoice"></i> My Quotations</button>
-      <button onclick="showMyReturns()"><i class="fas fa-undo-alt"></i> My Returns</button>
-      <button onclick="openShipmentTracking()"><i class="fas fa-shipping-fast"></i> Track Shipment</button>
-      <button onclick="showProfile()"><i class="fas fa-user-edit"></i> Edit Profile</button>
-      <button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+  <!-- Everything below is exactly as your original HTML -->
+  <header class="header">
+    <div class="logo" id="logoArea">
+      <img src="logo.png" alt="Mmeli Global Logo" id="siteLogo" style="height:40px;" loading="lazy">
+      <span>Mmeli Global</span>
     </div>
-    <div id="customerData"></div>
-    <div id="customerRecommendations" class="recommendations"></div>
-  </div>
-</section>
+    <div class="cart-icon" onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i> <span id="cartCount">0</span></div>
+  </header>
 
-<section id="adminDashboard" class="page">
-  <div id="adminLoginDiv"><h3>Admin Login</h3><input type="email" id="adminEmail" placeholder="Email" required><input type="password" id="adminPassword" placeholder="Password" required><button onclick="adminLogin()">Login</button></div>
-  <div id="adminPanel" style="display:none;">
-    <h3>Admin Dashboard</h3>
-    <div class="admin-cards-grid">
-      <div class="admin-card" data-modal="dashboardStats">📊 Dashboard</div>
-      <div class="admin-card" data-modal="manageProducts">🛍️ Products</div>
-      <div class="admin-card" data-modal="addProduct">➕ Add Product</div>
-      <div class="admin-card" data-modal="manageOrders">📦 Orders</div>
-      <div class="admin-card" data-modal="discounts">🏷️ Discounts</div>
-      <div class="admin-card" data-modal="returns">🔄 Returns</div>
-      <div class="admin-card" data-modal="inventory">📦 Inventory</div>
-      <div class="admin-card" data-modal="managePolicies">📜 Policies</div>
-      <div class="admin-card" data-modal="manageShipments">🚚 Shipments</div>
-      <div class="admin-card" data-modal="broadcast">📢 Broadcast</div>
-      <div class="admin-card" data-modal="createQuotation">📄 Create Quotation</div>
+  <div class="search-bar">
+    <div class="search-wrapper">
+      <input type="text" id="searchInput" placeholder="Search products..." autocomplete="off">
+      <i class="fas fa-search" onclick="searchProducts()"></i>
+      <label for="scanInput" style="cursor:pointer;"><i class="fas fa-camera"></i></label>
+      <input type="file" id="scanInput" hidden accept="image/*">
     </div>
-    <button onclick="switchPage('account')"><i class="fas fa-arrow-left"></i> Back to Site</button>
+    <div id="autocompleteList" class="autocomplete-items"></div>
   </div>
-</section>
 
-<!-- MODALS (all 12) -->
-<div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalManageProducts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalAddProduct" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalManageOrders" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalDiscounts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalReturns" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalInventory" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalManagePolicies" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalManageShipments" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalBroadcast" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalCreateQuotation" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalQuotationPreview" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div id="quotationPreviewContent"></div></div></div>
-<div id="shipmentTrackingModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeShipmentModal()">&times;</span><h3>Track Your Shipment</h3><input type="text" id="shipmentCode" placeholder="Enter tracking code"><button onclick="fetchShipmentStatus()">Track</button><div id="shipmentStatus"></div><div id="shipmentTimeline"></div></div></div>
-<div id="quoteModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div id="quotePreview"></div></div></div>
-<div id="popupPromo" class="popup-promo" style="position:fixed; bottom:20px; right:20px; background:white; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.2); display:none; z-index:1100; max-width:280px;"><span class="close-popup" style="float:right; cursor:pointer;">&times;</span><div id="popupContent"></div></div>
+  <div id="mainMenu" class="main-menu"></div>
+  <div id="subMenu" class="sub-menu"></div>
 
-<nav class="bottom-nav">
-  <div onclick="resetHome()"><i class="fas fa-home"></i></div>
-  <div onclick="switchPage('promo')"><i class="fas fa-fire"></i></div>
-  <div onclick="switchPage('tracking')"><i class="fas fa-map-marker-alt"></i></div>
-  <div onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i></div>
-  <div onclick="switchPage('account')"><i class="fas fa-user"></i></div>
-</nav>
+  <section id="home" class="page active">
+    <div id="productsContainer"></div>
+    <div id="loadMoreBtn" style="text-align:center; margin-top:20px;"><button onclick="loadMoreProducts()">Load More</button></div>
+  </section>
 
-<footer class="footer">
-  <div class="footer-grid">
-    <div><h4>Mmeli Global</h4><p>Premium products delivered worldwide.</p><p><i class="fab fa-whatsapp"></i> +263 77 687 1711</p><p><i class="far fa-envelope"></i> info@mmeliglobal.com</p></div>
-    <div><h4>Quick Links</h4><a href="#" onclick="resetHome()">Home</a><a href="#" onclick="switchPage('promo')">Promotions</a><a href="#" onclick="switchPage('tracking')">Track Order</a><a href="#" onclick="switchPage('account')">My Account</a>
-      <a href="#" onclick="switchPage('adminDashboard')" style="color: #d4af37; font-weight: bold; margin-top: 12px;">🔐 Admin Login</a>
+  <section id="productPage" class="page">
+    <div id="productDetailContainer"></div>
+    <div id="productRecommendations" class="recommendations"></div>
+  </section>
+
+  <section id="cart" class="page">
+    <h3>Your Cart</h3>
+    <div id="cartList"></div>
+    <div class="cart-actions">
+      <input type="text" id="promoCodeInput" placeholder="Discount code">
+      <button onclick="applyDiscount()">Apply</button>
+      <button onclick="goToCheckout()" class="checkout-btn"><i class="fab fa-whatsapp"></i> Proceed to Checkout</button>
     </div>
-    <div><h4>Policies</h4><a href="#" id="privacyLink">Privacy Policy</a><a href="#" id="termsLink">Terms of Service</a><a href="#" id="shippingLink">Shipping Info</a><a href="#" id="returnsLink">Returns & Refunds</a></div>
-    <div><h4>Newsletter</h4><p>Get updates</p><input type="email" id="subEmail" placeholder="Email"><input type="tel" id="subPhone" placeholder="WhatsApp"><button onclick="subscribe()">Subscribe</button></div>
-  </div>
-  <div class="footer-bottom">&copy; 2025 Mmeli Global. All rights reserved.</div>
-</footer>
+    <div id="cartRecommendations" class="recommendations"></div>
+  </section>
 
+  <section id="checkoutPage" class="page">
+    <h3>Checkout</h3>
+    <div class="checkout-step active" id="stepShipping">
+      <h4>Shipping Address</h4>
+      <input type="text" id="checkoutAddress" placeholder="Address" value=""><button onclick="nextStep()">Next</button>
+    </div>
+    <div class="checkout-step" id="stepDelivery">
+      <h4>Delivery Method</h4>
+      <label><input type="radio" name="delivery" value="standard" checked> Standard (3-5 days) – $5</label>
+      <label><input type="radio" name="delivery" value="express"> Express (1-2 days) – $15</label>
+      <button onclick="nextStep()">Next</button>
+    </div>
+    <div class="checkout-step" id="stepPayment">
+      <h4>Payment</h4>
+      <p>You will be redirected to WhatsApp to confirm payment.</p>
+      <button onclick="completeCheckout()">Place Order</button>
+    </div>
+  </section>
+
+  <section id="tracking" class="page">
+    <h3>Track Your Order</h3>
+    <div id="map"></div>
+    <input type="text" id="trackCode" placeholder="Enter Tracking Code">
+    <button onclick="trackOrder()"><i class="fas fa-search"></i> Track</button>
+    <div id="trackInfo"></div>
+    <div id="trackTimeline" class="timeline"></div>
+  </section>
+
+  <section id="promo" class="page"><h3>Special Offers</h3><div id="promoList"></div></section>
+
+  <section id="account" class="page">
+    <div id="loginBox">
+      <h3>Customer Login</h3>
+      <input type="email" id="loginEmail" placeholder="Phone number" required><input type="password" id="loginPassword" placeholder="Password" required><button onclick="login()">Login</button>
+      <hr><h3>New Customer? Register</h3>
+      <input type="text" id="regName" placeholder="Full Name"><input type="email" id="regEmail" placeholder="Email"><input type="tel" id="regPhone" placeholder="Phone"><input type="text" id="regAddress" placeholder="Address"><input type="password" id="regPassword" placeholder="Password"><button onclick="register()">Register</button>
+    </div>
+    <div id="dashboard" style="display:none;">
+      <h3>Welcome, <span id="userName"></span></h3>
+      <div class="customer-buttons">
+        <button onclick="showMyOrders()"><i class="fas fa-box"></i> My Orders</button>
+        <button onclick="showMyQuotations()"><i class="fas fa-file-invoice"></i> My Quotations</button>
+        <button onclick="showMyReturns()"><i class="fas fa-undo-alt"></i> My Returns</button>
+        <button onclick="openShipmentTracking()"><i class="fas fa-shipping-fast"></i> Track Shipment</button>
+        <button onclick="showProfile()"><i class="fas fa-user-edit"></i> Edit Profile</button>
+        <button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+      </div>
+      <div id="customerData"></div>
+      <div id="customerRecommendations" class="recommendations"></div>
+    </div>
+  </section>
+
+  <section id="adminDashboard" class="page">
+    <div id="adminLoginDiv"><h3>Admin Login</h3><input type="email" id="adminEmail" placeholder="Email" required><input type="password" id="adminPassword" placeholder="Password" required><button onclick="adminLogin()">Login</button></div>
+    <div id="adminPanel" style="display:none;">
+      <h3>Admin Dashboard</h3>
+      <div class="admin-cards-grid">
+        <div class="admin-card" data-modal="dashboardStats">📊 Dashboard</div>
+        <div class="admin-card" data-modal="manageProducts">🛍️ Products</div>
+        <div class="admin-card" data-modal="addProduct">➕ Add Product</div>
+        <div class="admin-card" data-modal="manageOrders">📦 Orders</div>
+        <div class="admin-card" data-modal="discounts">🏷️ Discounts</div>
+        <div class="admin-card" data-modal="returns">🔄 Returns</div>
+        <div class="admin-card" data-modal="inventory">📦 Inventory</div>
+        <div class="admin-card" data-modal="managePolicies">📜 Policies</div>
+        <div class="admin-card" data-modal="manageShipments">🚚 Shipments</div>
+        <div class="admin-card" data-modal="broadcast">📢 Broadcast</div>
+        <div class="admin-card" data-modal="createQuotation">📄 Create Quotation</div>
+      </div>
+      <button onclick="switchPage('account')"><i class="fas fa-arrow-left"></i> Back to Site</button>
+    </div>
+  </section>
+
+  <!-- MODALS (all 12) -->
+  <div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalManageProducts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalAddProduct" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalManageOrders" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalDiscounts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalReturns" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalInventory" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalManagePolicies" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalManageShipments" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalBroadcast" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalCreateQuotation" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalQuotationPreview" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div id="quotationPreviewContent"></div></div></div>
+  <div id="shipmentTrackingModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeShipmentModal()">&times;</span><h3>Track Your Shipment</h3><input type="text" id="shipmentCode" placeholder="Enter tracking code"><button onclick="fetchShipmentStatus()">Track</button><div id="shipmentStatus"></div><div id="shipmentTimeline"></div></div></div>
+  <div id="quoteModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div id="quotePreview"></div></div></div>
+  <div id="popupPromo" class="popup-promo" style="position:fixed; bottom:20px; right:20px; background:white; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.2); display:none; z-index:1100; max-width:280px;"><span class="close-popup" style="float:right; cursor:pointer;">&times;</span><div id="popupContent"></div></div>
+
+  <nav class="bottom-nav">
+    <div onclick="resetHome()"><i class="fas fa-home"></i></div>
+    <div onclick="switchPage('promo')"><i class="fas fa-fire"></i></div>
+    <div onclick="switchPage('tracking')"><i class="fas fa-map-marker-alt"></i></div>
+    <div onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i></div>
+    <div onclick="switchPage('account')"><i class="fas fa-user"></i></div>
+  </nav>
+
+  <footer class="footer">
+    <div class="footer-grid">
+      <div><h4>Mmeli Global</h4><p>Premium products delivered worldwide.</p><p><i class="fab fa-whatsapp"></i> +263 77 687 1711</p><p><i class="far fa-envelope"></i> info@mmeliglobal.com</p></div>
+      <div><h4>Quick Links</h4><a href="#" onclick="resetHome()">Home</a><a href="#" onclick="switchPage('promo')">Promotions</a><a href="#" onclick="switchPage('tracking')">Track Order</a><a href="#" onclick="switchPage('account')">My Account</a>
+        <a href="#" onclick="switchPage('adminDashboard')" style="color: #d4af37; font-weight: bold; margin-top: 12px;">🔐 Admin Login</a>
+      </div>
+      <div><h4>Policies</h4><a href="#" id="privacyLink">Privacy Policy</a><a href="#" id="termsLink">Terms of Service</a><a href="#" id="shippingLink">Shipping Info</a><a href="#" id="returnsLink">Returns & Refunds</a></div>
+      <div><h4>Newsletter</h4><p>Get updates</p><input type="email" id="subEmail" placeholder="Email"><input type="tel" id="subPhone" placeholder="WhatsApp"><button onclick="subscribe()">Subscribe</button></div>
+    </div>
+    <div class="footer-bottom">&copy; 2025 Mmeli Global. All rights reserved.</div>
+  </footer>
 </body>
 </html>
