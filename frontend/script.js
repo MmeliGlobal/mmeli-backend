@@ -1,3 +1,6 @@
+// ========== API BASE URL (DEFINED FIRST) ==========
+const API = '/api';
+
 // ========== SUPABASE DIRECT UPLOAD ==========
 const SUPABASE_URL = 'https://proljdccjrifqgbmsyco.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb2xqZGNjanJpZnFnYm1zeWNvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTc4ODAxOSwiZXhwIjoyMDkxMzY0MDE5fQ.VltzBUq-bLvu0Ny4jPy1kBp5E-4hffQgqFpqHrRWlZA';
@@ -24,7 +27,6 @@ async function uploadImageToSupabase(file) {
 }
 
 // ========== GLOBALS ==========
-const API = '/api';
 let allProducts = [];
 let currentProduct = null;
 let cart = JSON.parse(localStorage.getItem('cart') || '[]');
