@@ -837,3 +837,115 @@ window.addEventListener('load', function() {
   resetHome();
   handleHash();
 });
+
+async function uploadPhonePrices() {
+  const fileInput = document.getElementById('phonePriceCsv');
+  const statusDiv = document.getElementById('phonePriceStatus');
+  if (!fileInput.files.length) {
+    statusDiv.innerHTML = '<span style="color:red;">Please select a CSV file.</span>';
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+
+  reader.onload = async function(e) {
+    const csvText = e.target.result;
+    const lines = csvText.split(/\r?\n/);
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    
+    const nameIdx = headers.indexOf('product_name');
+    const storageIdx = headers.indexOf('storage_gb');
+    const priceIdx = headers.indexOf('price_usd');
+
+    if (nameIdx === -1 || storageIdx === -1 || priceIdx === -1) {
+      statusDiv.innerHTML = '<span style="color:red;">CSV must have columns: product_name, storage_gb, price_usd</span>';
+      return;
+    }
+
+    // Group rows by base product name
+    const priceMap = new Map();
+    for (let i = 1; i < lines.length; i++) {
+      if (!lines[i].trim()) continue;
+      const cols = lines[i].split(',').map(c => c.trim());
+      const baseName = cols[nameIdx];
+      let storageRaw = cols[storageIdx];
+      const price = parseFloat(cols[priceIdx]);
+
+      if (!baseName || isNaN(price)) continue;
+
+      let sizeLabel;
+      if (storageRaw.toString().toLowerCase() === '1') sizeLabel = '1TB';
+      else sizeLabel = `${storageRaw}GB`;
+
+      if (!priceMap.has(baseName)) priceMap.set(baseName, []);
+      priceMap.get(baseName).push({ size: sizeLabel, price });
+    }
+
+    let updated = 0, inserted = 0, errors = 0;
+
+    for (let [baseName, sizeOptions] of priceMap.entries()) {
+      // Sort by price to get lowest
+      sizeOptions.sort((a,b) => a.price - b.price);
+      const lowestPrice = sizeOptions[0].price;
+
+      // Check if product exists in Supabase
+      const { data: existing, error: findError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('name', baseName)
+        .maybeSingle();
+
+      if (findError) {
+        errors++;
+        continue;
+      }
+
+      if (existing) {
+        // Update
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({
+            price: lowestPrice,
+            size_options: sizeOptions
+          })
+          .eq('id', existing.id);
+        if (updateError) errors++;
+        else updated++;
+      } else {
+        // Insert new product
+        const { error: insertError } = await supabase
+          .from('products')
+          .insert([{
+            name: baseName,
+            description: `${baseName} - Brand new original phone`,
+            cat: 'Phones',
+            subcat: 'Smartphones',
+            price: lowestPrice,
+            colors: ['Black', 'White'],
+            size_options: sizeOptions,
+            main_image: 'https://via.placeholder.com/300?text=Phone',
+            sub_images: []
+          }]);
+        if (insertError) errors++;
+        else inserted++;
+      }
+    }
+
+    statusDiv.innerHTML = `
+      <span style="color:green;">✅ Done</span><br>
+      Updated: ${updated}<br>
+      Inserted: ${inserted}<br>
+      Errors: ${errors}
+    `;
+    
+    // Refresh local product list and display if on home page
+    await loadProducts(); // your existing loadProducts function
+    if (document.getElementById('home').classList.contains('active')) {
+      allShuffled = getShuffledWithPhoneBias(allProducts);
+      displayProducts(allShuffled.slice(0, currentDisplayLimit));
+    }
+  };
+
+  reader.readAsText(file);
+}
