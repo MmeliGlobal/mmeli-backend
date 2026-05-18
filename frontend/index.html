@@ -139,6 +139,7 @@
       <div class="admin-card" data-modal="manageShipments">🚚 Shipments</div>
       <div class="admin-card" data-modal="broadcast">📢 Broadcast</div>
       <div class="admin-card" data-modal="createQuotation">📄 Create Quotation</div>
+      <div class="admin-card" data-modal="bulkPhonePrices">📱 Bulk Phone Prices (CSV)</div>
     </div>
     <button onclick="switchPage('account')"><i class="fas fa-arrow-left"></i> Back to Site</button>
   </div>
@@ -160,7 +161,19 @@
 <div id="shipmentTrackingModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeShipmentModal()">&times;</span><h3>Track Your Shipment</h3><input type="text" id="shipmentCode" placeholder="Enter tracking code"><button onclick="fetchShipmentStatus()">Track</button><div id="shipmentStatus"></div><div id="shipmentTimeline"></div></div></div>
 <div id="quoteModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div id="quotePreview"></div></div></div>
 <div id="popupPromo" class="popup-promo" style="position:fixed; bottom:20px; right:20px; background:white; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.2); display:none; z-index:1100; max-width:280px;"><span class="close-popup" style="float:right; cursor:pointer;">&times;</span><div id="popupContent"></div></div>
-
+<div id="modalBulkPhonePrices" class="modal">
+  <div class="modal-content">
+    <span class="close-modal">&times;</span>
+    <div class="modal-body">
+      <h3>Upload Phone Price CSV</h3>
+      <p style="font-size: 0.85rem;">Columns: product_name, storage_gb, price_usd</p>
+      <input type="file" id="phonePriceCsv" accept=".csv">
+      <button onclick="uploadPhonePrices()">Update & Insert Products</button>
+      <div id="phonePriceStatus" style="margin-top: 12px;"></div>
+    </div>
+  </div>
+</div>
+  
 <nav class="bottom-nav">
   <div onclick="resetHome()"><i class="fas fa-home"></i></div>
   <div onclick="switchPage('promo')"><i class="fas fa-fire"></i></div>
