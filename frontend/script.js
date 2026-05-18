@@ -498,6 +498,7 @@ function openAdminModal(modalId) {
     case 'manageShipments': loadShipmentsModal(body); break;
     case 'broadcast': loadBroadcastModal(body); break;
     case 'createQuotation': showCreateQuotationForm(body); break;
+    case 'bulkPhonePrices': break;
     default: return;
   }
   modal.style.display = 'flex';
