@@ -950,3 +950,18 @@ async function uploadPhonePrices() {
 
   reader.readAsText(file);
 }
+// Make sure the bulk phone price card opens its modal
+document.addEventListener('DOMContentLoaded', function() {
+  const bulkCard = document.querySelector('.admin-card[data-modal="bulkPhonePrices"]');
+  if (bulkCard) {
+    bulkCard.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const modal = document.getElementById('modalBulkPhonePrices');
+      if (modal) {
+        modal.style.display = 'flex';
+      } else {
+        console.error('Modal not found: modalBulkPhonePrices');
+      }
+    });
+  }
+});
