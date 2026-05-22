@@ -839,6 +839,7 @@ window.addEventListener('load', function() {
   handleHash();
 });
 
+// ========== FIXED: CSV UPLOAD USING DIRECT SUPABASE REST API ==========
 async function uploadPhonePrices() {
   const fileInput = document.getElementById('phonePriceCsv');
   const statusDiv = document.getElementById('phonePriceStatus');
@@ -854,7 +855,7 @@ async function uploadPhonePrices() {
     const csvText = e.target.result;
     const lines = csvText.split(/\r?\n/);
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-    
+
     const nameIdx = headers.indexOf('product_name');
     const storageIdx = headers.indexOf('storage_gb');
     const priceIdx = headers.indexOf('price_usd');
@@ -887,37 +888,48 @@ async function uploadPhonePrices() {
 
     for (let [baseName, sizeOptions] of priceMap.entries()) {
       // Sort by price to get lowest
-      sizeOptions.sort((a,b) => a.price - b.price);
+      sizeOptions.sort((a, b) => a.price - b.price);
       const lowestPrice = sizeOptions[0].price;
 
       // Check if product exists in Supabase
-      const { data: existing, error: findError } = await supabase
-        .from('products')
-        .select('id')
-        .eq('name', baseName)
-        .maybeSingle();
-
-      if (findError) {
+      const checkUrl = `${SUPABASE_URL}/rest/v1/products?name=eq.${encodeURIComponent(baseName)}&select=id`;
+      const checkResp = await fetch(checkUrl, {
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
+      });
+      if (!checkResp.ok) {
         errors++;
         continue;
       }
+      const existing = await checkResp.json();
 
-      if (existing) {
+      if (existing && existing.length > 0) {
         // Update
-        const { error: updateError } = await supabase
-          .from('products')
-          .update({
+        const updateUrl = `${SUPABASE_URL}/rest/v1/products?id=eq.${existing[0].id}`;
+        const updateResp = await fetch(updateUrl, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
             price: lowestPrice,
             size_options: sizeOptions
           })
-          .eq('id', existing.id);
-        if (updateError) errors++;
+        });
+        if (!updateResp.ok) errors++;
         else updated++;
       } else {
         // Insert new product
-        const { error: insertError } = await supabase
-          .from('products')
-          .insert([{
+        const insertUrl = `${SUPABASE_URL}/rest/v1/products`;
+        const insertResp = await fetch(insertUrl, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
             name: baseName,
             description: `${baseName} - Brand new original phone`,
             cat: 'Phones',
@@ -927,8 +939,9 @@ async function uploadPhonePrices() {
             size_options: sizeOptions,
             main_image: 'https://via.placeholder.com/300?text=Phone',
             sub_images: []
-          }]);
-        if (insertError) errors++;
+          })
+        });
+        if (!insertResp.ok) errors++;
         else inserted++;
       }
     }
@@ -939,9 +952,9 @@ async function uploadPhonePrices() {
       Inserted: ${inserted}<br>
       Errors: ${errors}
     `;
-    
+
     // Refresh local product list and display if on home page
-    await loadProducts(); // your existing loadProducts function
+    await loadProducts();
     if (document.getElementById('home').classList.contains('active')) {
       allShuffled = getShuffledWithPhoneBias(allProducts);
       displayProducts(allShuffled.slice(0, currentDisplayLimit));
@@ -950,6 +963,7 @@ async function uploadPhonePrices() {
 
   reader.readAsText(file);
 }
+
 // Make sure the bulk phone price card opens its modal
 document.addEventListener('DOMContentLoaded', function() {
   const bulkCard = document.querySelector('.admin-card[data-modal="bulkPhonePrices"]');
