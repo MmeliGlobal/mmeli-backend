@@ -822,6 +822,9 @@ if (logoElem) {
 }
 
 // ========== INITIALIZATION ==========
+import { createClient } from 'https://esm.sh/@supabase/supabase-js'
+const supabase = createClient('https://proljdccjrifqgbmsyco.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb2xqZGNjanJpZnFnYm1zeWNvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTc4ODAxOSwiZXhwIjoyMDkxMzY0MDE5fQ.VltzBUq-bLvu0Ny4jPy1kBp5E-4hffQgqFpqHrRWlZA')
+
 window.addEventListener('load', function() {
   document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
   updateCartCount();
