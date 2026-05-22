@@ -839,7 +839,7 @@ window.addEventListener('load', function() {
   handleHash();
 });
 
-// ========== FIXED: CSV UPLOAD USING DIRECT SUPABASE REST API ==========
+// ========== FIXED CSV UPLOAD (NO SUPABASE.FROM) ==========
 async function uploadPhonePrices() {
   const fileInput = document.getElementById('phonePriceCsv');
   const statusDiv = document.getElementById('phonePriceStatus');
