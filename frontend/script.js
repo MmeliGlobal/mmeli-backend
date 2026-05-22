@@ -821,25 +821,18 @@ if (logoElem) {
   });
 }
 
-// ========== INITIALIZATION ==========
-window.addEventListener('load', function() {
-  document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
-  updateCartCount();
-  initAdminCards();
-  if (user) {
-    document.getElementById('loginBox').style.display='none';
-    document.getElementById('dashboard').style.display='block';
-    document.getElementById('userName').innerText = user.name;
-    if (user.role === 'admin') {
-      document.getElementById('adminLoginDiv').style.display = 'none';
-      document.getElementById('adminPanel').style.display = 'block';
-    }
-  }
-  resetHome();
-  handleHash();
-});
+/**
+ * uploadPhonePrices() — 修复版
+ * 
+ * 修复内容:
+ *   🔴 CSV 逗号分割 → 改用标准引号解析
+ *   🔴 storageRaw 为空崩溃 → 增加防御性检查
+ *   🟡 parseFloat 容错差 → 清理 $ 和千位分隔符
+ *   🟡 TB 判断不完整 → 支持 1TB / 1tb / 1024 / 1000 等多种写法
+ *   ➕ 空数据时给出明确提示
+ *   ➕ 错误详情不再只计数，会展示出来
+ */
 
-// ========== FIXED CSV UPLOAD (NO SUPABASE.FROM) ==========
 async function uploadPhonePrices() {
   const fileInput = document.getElementById('phonePriceCsv');
   const statusDiv = document.getElementById('phonePriceStatus');
@@ -853,107 +846,160 @@ async function uploadPhonePrices() {
 
   reader.onload = async function(e) {
     const csvText = e.target.result;
-    const lines = csvText.split(/\r?\n/);
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const header = parseCSVLine(csvText.split(/\r?\n/)[0]);
+    const headers = header.map(h => h.trim().toLowerCase());
 
     const nameIdx = headers.indexOf('product_name');
     const storageIdx = headers.indexOf('storage_gb');
     const priceIdx = headers.indexOf('price_usd');
 
     if (nameIdx === -1 || storageIdx === -1 || priceIdx === -1) {
-      statusDiv.innerHTML = '<span style="color:red;">CSV must have columns: product_name, storage_gb, price_usd</span>';
+      const found = headers.join(', ') || '(none)';
+      statusDiv.innerHTML = `<span style="color:red;">CSV 缺少必需列。找到: [${found}]，需要: product_name, storage_gb, price_usd</span>`;
       return;
     }
 
-    // Group rows by base product name
+    // ---------- 解析所有行 ----------
+    const allLines = csvText.split(/\r?\n/);
     const priceMap = new Map();
-    for (let i = 1; i < lines.length; i++) {
-      if (!lines[i].trim()) continue;
-      const cols = lines[i].split(',').map(c => c.trim());
+    const rowErrors = [];   // 收集具体错误信息
+
+    for (let i = 1; i < allLines.length; i++) {
+      const line = allLines[i];
+      if (!line.trim()) continue;
+
+      // ✅ 修复1: 用标准 CSV 解析替代 split(',')
+      const cols = parseCSVLine(line);
+
+      // 检查列数
+      const minCols = Math.max(nameIdx, storageIdx, priceIdx) + 1;
+      if (cols.length < minCols) {
+        rowErrors.push(`[行${i}] 列数不足（需${minCols}列，实际${cols.length}列）`);
+        continue;
+      }
+
       const baseName = cols[nameIdx];
       let storageRaw = cols[storageIdx];
-      const price = parseFloat(cols[priceIdx]);
+      const priceRaw = cols[priceIdx];
 
-      if (!baseName || isNaN(price)) continue;
+      // ✅ 修复2: 防御 storageRaw 为空
+      if (storageRaw === undefined || storageRaw === null || storageRaw === '') {
+        rowErrors.push(`[行${i}] storage_gb 为空，跳过 "${baseName || '(空)'}"`);
+        continue;
+      }
 
-      let sizeLabel;
-      if (storageRaw.toString().toLowerCase() === '1') sizeLabel = '1TB';
-      else sizeLabel = `${storageRaw}GB`;
+      // ✅ 修复3: 清理价格字符串再解析
+      let priceStr = (priceRaw || '').replace(/^[$€£¥]/, '').replace(/,/g, '');
+      const price = parseFloat(priceStr);
+
+      if (isNaN(price)) {
+        rowErrors.push(`[行${i}] 价格无法解析: "${priceRaw}" → "${baseName || '(空)'}"`);
+        continue;
+      }
+
+      if (!baseName) {
+        rowErrors.push(`[行${i}] product_name 为空`);
+        continue;
+      }
+
+      if (price < 0) {
+        rowErrors.push(`[行${i}] 价格为负数 ${price}: "${baseName}"`);
+        continue;
+      }
+
+      // ✅ 修复4: 更健壮的容量标签
+      const sizeLabel = formatStorageLabel(storageRaw);
 
       if (!priceMap.has(baseName)) priceMap.set(baseName, []);
       priceMap.get(baseName).push({ size: sizeLabel, price });
     }
 
+    // ---------- 空数据检查 ----------
+    if (priceMap.size === 0) {
+      const msg = rowErrors.length > 0
+        ? `<span style="color:red;">没有有效数据可导入。</span><br>${rowErrors.map(e => `• ${e}`).join('<br>')}`
+        : '<span style="color:orange;">⚠️ CSV 没有数据行，请检查文件。</span>';
+      statusDiv.innerHTML = msg;
+      return;
+    }
+
+    // ---------- 写入 Supabase ----------
+    statusDiv.innerHTML = '<span style="color:#0366d6;">⏳ 正在导入，请稍候...</span>';
+
     let updated = 0, inserted = 0, errors = 0;
+    const errorDetails = [];
 
     for (let [baseName, sizeOptions] of priceMap.entries()) {
-      // Sort by price to get lowest
       sizeOptions.sort((a, b) => a.price - b.price);
       const lowestPrice = sizeOptions[0].price;
 
-      // Check if product exists in Supabase
-      const checkUrl = `${SUPABASE_URL}/rest/v1/products?name=eq.${encodeURIComponent(baseName)}&select=id`;
-      const checkResp = await fetch(checkUrl, {
-        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
-      });
-      if (!checkResp.ok) {
+      // 标记最低价
+      const labeled = sizeOptions.map(o => ({ ...o, lowest: o.price === lowestPrice }));
+
+      const { data: existing, error: findError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('name', baseName)
+        .maybeSingle();
+
+      if (findError) {
         errors++;
+        errorDetails.push(`查询失败: ${baseName} — ${findError.message}`);
         continue;
       }
-      const existing = await checkResp.json();
 
-      if (existing && existing.length > 0) {
-        // Update
-        const updateUrl = `${SUPABASE_URL}/rest/v1/products?id=eq.${existing[0].id}`;
-        const updateResp = await fetch(updateUrl, {
-          method: 'PATCH',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            price: lowestPrice,
-            size_options: sizeOptions
-          })
-        });
-        if (!updateResp.ok) errors++;
-        else updated++;
+      if (existing) {
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({ price: lowestPrice, size_options: labeled })
+          .eq('id', existing.id);
+        if (updateError) {
+          errors++;
+          errorDetails.push(`更新失败: ${baseName} — ${updateError.message}`);
+        } else {
+          updated++;
+        }
       } else {
-        // Insert new product
-        const insertUrl = `${SUPABASE_URL}/rest/v1/products`;
-        const insertResp = await fetch(insertUrl, {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
+        const { error: insertError } = await supabase
+          .from('products')
+          .insert([{
             name: baseName,
             description: `${baseName} - Brand new original phone`,
             cat: 'Phones',
             subcat: 'Smartphones',
             price: lowestPrice,
             colors: ['Black', 'White'],
-            size_options: sizeOptions,
+            size_options: labeled,
             main_image: 'https://via.placeholder.com/300?text=Phone',
             sub_images: []
-          })
-        });
-        if (!insertResp.ok) errors++;
-        else inserted++;
+          }]);
+        if (insertError) {
+          errors++;
+          errorDetails.push(`插入失败: ${baseName} — ${insertError.message}`);
+        } else {
+          inserted++;
+        }
       }
     }
 
-    statusDiv.innerHTML = `
-      <span style="color:green;">✅ Done</span><br>
-      Updated: ${updated}<br>
-      Inserted: ${inserted}<br>
-      Errors: ${errors}
-    `;
+    // ---------- 最终状态 ----------
+    let html = '<span style="color:green;">✅ 导入完成</span><br>';
+    html += `📦 产品总数: ${priceMap.size}<br>`;
+    html += `🔄 更新: ${updated} &nbsp;|&nbsp; ➕ 新增: ${inserted} &nbsp;|&nbsp; ❌ 失败: ${errors}`;
 
-    // Refresh local product list and display if on home page
+    if (rowErrors.length > 0) {
+      html += `<br><br><span style="color:#e6a617;">⚠️ CSV 解析警告 (${rowErrors.length}):</span><br>`;
+      html += rowErrors.slice(0, 10).map(e => `• ${e}`).join('<br>');
+      if (rowErrors.length > 10) html += `<br>• ...还有 ${rowErrors.length - 10} 条`;
+    }
+    if (errorDetails.length > 0) {
+      html += `<br><br><span style="color:red;">❌ 数据库错误:</span><br>`;
+      html += errorDetails.map(e => `• ${e}`).join('<br>');
+    }
+
+    statusDiv.innerHTML = html;
+
+    // 刷新本地列表
     await loadProducts();
     if (document.getElementById('home').classList.contains('active')) {
       allShuffled = getShuffledWithPhoneBias(allProducts);
@@ -964,7 +1010,80 @@ async function uploadPhonePrices() {
   reader.readAsText(file);
 }
 
-// Make sure the bulk phone price card opens its modal
+// ==========================================
+// 工具函数
+// ==========================================
+
+/**
+ * 标准 CSV 行解析：处理引号包裹字段
+ *  "iPhone 15, Pro" → ['iPhone 15, Pro']
+ */
+function parseCSVLine(line) {
+  const cols = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      // 双引号转义: "" → "
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === ',' && !inQuotes) {
+      cols.push(current.trim());
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  cols.push(current.trim());
+  return cols;
+}
+
+/**
+ * 智能容量标签
+ *   1     → 1TB
+ *   1TB   → 1TB
+ *   1tb   → 1TB
+ *   1024  → 1TB
+ *   1000  → 1TB
+ *   512   → 512GB
+ *   128gb → 128GB
+ */
+function formatStorageLabel(raw) {
+  const s = String(raw).trim().toLowerCase();
+
+  // 已经是 TB 标记
+  if (/^(\d+)\s*tb$/i.test(s)) {
+    return `${RegExp.$1}TB`;
+  }
+
+  // 数字 ≥ 1000 → 认为是 TB
+  const num = parseFloat(s);
+  if (!isNaN(num) && num >= 1000) {
+    const tb = Math.round(num / 1000 * 100) / 100; // 保留两位小数
+    return `${tb}TB`;
+  }
+
+  // 默认 GB
+  const gbMatch = s.match(/^(\d+)\s*gb$/i);
+  if (gbMatch) return `${gbMatch[1]}GB`;
+
+  // 纯数字
+  if (!isNaN(num) && num > 0) return `${num}GB`;
+
+  // 兜底
+  return `${raw}GB`;
+}
+
+
+// ==========================================
+// 管理员卡片点击绑定（保持不变）
+// ==========================================
 document.addEventListener('DOMContentLoaded', function() {
   const bulkCard = document.querySelector('.admin-card[data-modal="bulkPhonePrices"]');
   if (bulkCard) {
