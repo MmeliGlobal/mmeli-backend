@@ -149,7 +149,48 @@
 <!-- MODALS (all 12) -->
 <div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
 <div id="modalManageProducts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalAddProduct" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalAddProduct" class="modal">
+  <div class="modal-content">
+    <span class="close-modal">&times;</span>
+    <div class="modal-body">
+      <h3>Add Product</h3>
+      <div class="autocomplete-wrapper">
+        <label>Product Name (start typing for suggestions)</label>
+        <input type="text" id="prodNameAutocomplete" placeholder="Type product name..." autocomplete="off">
+        <div id="nameSuggestions" class="autocomplete-items" style="position:absolute; background:white; border:1px solid #ccc; max-height:150px; overflow-y:auto; display:none;"></div>
+      </div>
+      <input type="hidden" id="prodNameHidden">
+      <br><br>
+
+      <label>Description</label>
+      <textarea id="prodDesc" placeholder="Description"></textarea>
+
+      <label>Category</label>
+      <input id="prodCat" placeholder="Category">
+
+      <label>Subcategory</label>
+      <input id="prodSubcat" placeholder="Subcategory">
+
+      <label>Price (lowest)</label>
+      <input id="prodPrice" placeholder="Price">
+
+      <label>Colors (comma separated)</label>
+      <input id="prodColors" placeholder="e.g. Black, White, Blue">
+
+      <label>Size options (JSON)</label>
+      <textarea id="prodSizes" placeholder='[{"size":"128GB","price":678.57},{"size":"256GB","price":707.14}]' rows="3"></textarea>
+
+      <label>Main Image URL</label>
+      <input id="prodImage" placeholder="https://...">
+
+      <label>Supporting Images (URLs, comma)</label>
+      <input id="prodSubImages" placeholder="https://..., https://...">
+
+      <button onclick="addProductWithAutofill()">Save Product</button>
+      <button onclick="closeModal('modalAddProduct')">Cancel</button>
+    </div>
+  </div>
+</div>
 <div id="modalManageOrders" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
 <div id="modalDiscounts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
 <div id="modalReturns" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
