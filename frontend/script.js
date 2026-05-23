@@ -586,46 +586,60 @@ function showAddProductForm(container) {
     <button onclick="addProduct()">Save</button>
     <button onclick="closeModal('modalAddProduct')">Cancel</button>`;
 }
-async function addProduct() {
-  const name = document.getElementById('prodName').value;
-  const price = parseFloat(document.getElementById('prodPrice').value);
+async function addProductWithAutofill() {
+  const name = document.getElementById('prodNameHidden').value || document.getElementById('prodNameAutocomplete').value;
   const description = document.getElementById('prodDesc').value;
   const cat = document.getElementById('prodCat').value;
   const subcat = document.getElementById('prodSubcat').value;
-  const colors = document.getElementById('prodColors').value.split(',').map(c=>c.trim()).filter(c=>c);
-  const sizeStr = document.getElementById('prodSizes').value;
-  const imageFile = document.getElementById('prodImageFile').files[0];
-  
-  if (!name || isNaN(price) || !cat || !subcat || !imageFile) {
-    alert('Please fill all required fields and select an image');
-    return;
-  }
-  
-  let main_image;
-  try {
-    main_image = await uploadImageToSupabase(imageFile);
-  } catch(e) {
-    alert('Image upload failed: ' + e.message);
-    return;
-  }
-  
+  let price = parseFloat(document.getElementById('prodPrice').value);
+  const colors = document.getElementById('prodColors').value.split(',').map(c => c.trim()).filter(c => c);
   let size_options = [];
-  if (sizeStr) {
-    sizeStr.split(',').forEach(pair => {
+  const sizesText = document.getElementById('prodSizes').value;
+  try {
+    size_options = JSON.parse(sizesText);
+    if (!Array.isArray(size_options)) throw new Error();
+  } catch(e) {
+    // If not valid JSON, try to parse as old format "size:price,size:price"
+    const pairs = sizesText.split(',');
+    for (let pair of pairs) {
       let [s, p] = pair.split(':');
       if (s && p) size_options.push({ size: s.trim(), price: parseFloat(p) });
-    });
+    }
   }
-  if (size_options.length === 0) size_options = [{ size: 'Standard', price: price }];
-  
-  const productData = { name, description, cat, subcat, price, colors, size_options, main_image };
+  const main_image = document.getElementById('prodImage').value;
+  const subImagesStr = document.getElementById('prodSubImages').value;
+  const sub_images = subImagesStr ? subImagesStr.split(',').map(u => u.trim()).filter(u => u) : [];
+
+  if (!name || isNaN(price) || !main_image || !cat || !subcat) {
+    alert('Please fill required fields (Name, Price, Main Image, Category, Subcategory)');
+    return;
+  }
+
+  if (size_options.length === 0) {
+    size_options = [{ size: 'Standard', price: price }];
+  }
+
+  const productData = {
+    name, description, cat, subcat, price,
+    colors, size_options, main_image, sub_images
+  };
+
   try {
-    await apiCall('/products', { method: 'POST', body: JSON.stringify(productData) });
+    const { data, error } = await supabase
+      .from('products')
+      .insert([productData])
+      .select();
+    if (error) throw error;
     alert('Product added successfully');
     closeModal('modalAddProduct');
-    openAdminModal('manageProducts');
-    loadProducts();
-  } catch (err) { alert('Add failed: ' + err.message); }
+    await loadProducts();  // refresh global products
+    if (document.getElementById('home').classList.contains('active')) {
+      allShuffled = getShuffledWithPhoneBias(allProducts);
+      displayProducts(allShuffled.slice(0, currentDisplayLimit));
+    }
+  } catch(err) {
+    alert('Add failed: ' + err.message);
+  }
 }
 async function loadOrdersModal(container) {
   const orders = await apiCall('/orders');
@@ -1420,3 +1434,84 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 });
+// Autocomplete for Add Product modal
+async function searchProductNames(query) {
+  if (!query || query.length < 2) {
+    document.getElementById('nameSuggestions').style.display = 'none';
+    return [];
+  }
+  const { data, error } = await supabase
+    .from('products')
+    .select('name, description, cat, subcat, price, size_options, colors')
+    .ilike('name', `%${query}%`)
+    .limit(10);
+  if (error) {
+    console.error(error);
+    return [];
+  }
+  return data;
+}
+
+function showNameSuggestions(suggestions) {
+  const suggestionsDiv = document.getElementById('nameSuggestions');
+  if (!suggestions.length) {
+    suggestionsDiv.style.display = 'none';
+    return;
+  }
+  suggestionsDiv.innerHTML = suggestions.map(p => 
+    `<div data-name="${p.name}" 
+          data-desc="${escapeHtml(p.description || '')}" 
+          data-cat="${escapeHtml(p.cat || '')}" 
+          data-subcat="${escapeHtml(p.subcat || '')}" 
+          data-price="${p.price}" 
+          data-colors="${(p.colors || []).join(',')}" 
+          data-sizes='${JSON.stringify(p.size_options || [])}' 
+          onclick="selectProductSuggestion(this)">
+        ${p.name}
+     </div>`
+  ).join('');
+  suggestionsDiv.style.display = 'block';
+}
+
+function selectProductSuggestion(el) {
+  const name = el.getAttribute('data-name');
+  const desc = el.getAttribute('data-desc');
+  const cat = el.getAttribute('data-cat');
+  const subcat = el.getAttribute('data-subcat');
+  const price = el.getAttribute('data-price');
+  const colors = el.getAttribute('data-colors');
+  const sizes = el.getAttribute('data-sizes');
+
+  document.getElementById('prodNameAutocomplete').value = name;
+  document.getElementById('prodNameHidden').value = name;
+  document.getElementById('prodDesc').value = desc;
+  document.getElementById('prodCat').value = cat;
+  document.getElementById('prodSubcat').value = subcat;
+  document.getElementById('prodPrice').value = price;
+  document.getElementById('prodColors').value = colors;
+  document.getElementById('prodSizes').value = sizes;
+  
+  document.getElementById('nameSuggestions').style.display = 'none';
+}
+
+// Attach event listener when the modal opens
+function attachProductNameAutocomplete() {
+  const nameInput = document.getElementById('prodNameAutocomplete');
+  if (!nameInput) return;
+  nameInput.addEventListener('input', async function(e) {
+    const query = e.target.value.trim();
+    if (query.length < 2) {
+      document.getElementById('nameSuggestions').style.display = 'none';
+      return;
+    }
+    const suggestions = await searchProductNames(query);
+    showNameSuggestions(suggestions);
+  });
+  // Hide suggestions when clicking outside
+  document.addEventListener('click', function(e) {
+    const suggestionsDiv = document.getElementById('nameSuggestions');
+    if (suggestionsDiv && !suggestionsDiv.contains(e.target) && e.target !== nameInput) {
+      suggestionsDiv.style.display = 'none';
+    }
+  });
+}
