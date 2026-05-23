@@ -822,278 +822,600 @@ if (logoElem) {
 }
 
 /**
- * uploadPhonePrices() — 修复版
- * 
- * 修复内容:
- *   🔴 CSV 逗号分割 → 改用标准引号解析
- *   🔴 storageRaw 为空崩溃 → 增加防御性检查
- *   🟡 parseFloat 容错差 → 清理 $ 和千位分隔符
- *   🟡 TB 判断不完整 → 支持 1TB / 1tb / 1024 / 1000 等多种写法
- *   ➕ 空数据时给出明确提示
- *   ➕ 错误详情不再只计数，会展示出来
+ * uploadPhonePrices()
+ *
+ * Features:
+ * ✅ Proper CSV parser with quote support
+ * ✅ Handles commas inside quoted fields
+ * ✅ Strong validation and error handling
+ * ✅ Prevents empty values from crashing
+ * ✅ Cleans and validates price values
+ * ✅ Smart storage formatting (GB/TB)
+ * ✅ Deduplicates storage variants
+ * ✅ Keeps lowest price per storage option
+ * ✅ English-only messages
+ * ✅ Supabase session validation
+ * ✅ Better desktop modal support
+ * ✅ Better product normalization
+ * ✅ Clear import summary
  */
 
 async function uploadPhonePrices() {
   const fileInput = document.getElementById('phonePriceCsv');
   const statusDiv = document.getElementById('phonePriceStatus');
-  if (!fileInput.files.length) {
-    statusDiv.innerHTML = '<span style="color:red;">Please select a CSV file.</span>';
+
+  // =========================
+  // Validate file
+  // =========================
+  if (!fileInput || !fileInput.files.length) {
+    statusDiv.innerHTML =
+      '<span style="color:red;">Please select a CSV file first.</span>';
+    return;
+  }
+
+  // =========================
+  // Check Supabase session
+  // =========================
+  try {
+    const {
+      data: { session }
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      statusDiv.innerHTML =
+        '<span style="color:red;">Your session has expired. Please log in again.</span>';
+      return;
+    }
+  } catch (err) {
+    statusDiv.innerHTML =
+      `<span style="color:red;">Failed to verify login session: ${err.message}</span>`;
     return;
   }
 
   const file = fileInput.files[0];
   const reader = new FileReader();
 
-  reader.onload = async function(e) {
-    const csvText = e.target.result;
-    const header = parseCSVLine(csvText.split(/\r?\n/)[0]);
-    const headers = header.map(h => h.trim().toLowerCase());
+  reader.onload = async function (e) {
+    try {
+      const csvText = e.target.result;
 
-    const nameIdx = headers.indexOf('product_name');
-    const storageIdx = headers.indexOf('storage_gb');
-    const priceIdx = headers.indexOf('price_usd');
-
-    if (nameIdx === -1 || storageIdx === -1 || priceIdx === -1) {
-      const found = headers.join(', ') || '(none)';
-      statusDiv.innerHTML = `<span style="color:red;">CSV 缺少必需列。找到: [${found}]，需要: product_name, storage_gb, price_usd</span>`;
-      return;
-    }
-
-    // ---------- 解析所有行 ----------
-    const allLines = csvText.split(/\r?\n/);
-    const priceMap = new Map();
-    const rowErrors = [];   // 收集具体错误信息
-
-    for (let i = 1; i < allLines.length; i++) {
-      const line = allLines[i];
-      if (!line.trim()) continue;
-
-      // ✅ 修复1: 用标准 CSV 解析替代 split(',')
-      const cols = parseCSVLine(line);
-
-      // 检查列数
-      const minCols = Math.max(nameIdx, storageIdx, priceIdx) + 1;
-      if (cols.length < minCols) {
-        rowErrors.push(`[行${i}] 列数不足（需${minCols}列，实际${cols.length}列）`);
-        continue;
+      if (!csvText || !csvText.trim()) {
+        statusDiv.innerHTML =
+          '<span style="color:red;">The CSV file is empty.</span>';
+        return;
       }
 
-      const baseName = cols[nameIdx];
-      let storageRaw = cols[storageIdx];
-      const priceRaw = cols[priceIdx];
+      // =========================
+      // Split lines safely
+      // =========================
+      const allLines = csvText
+        .split(/\r?\n/)
+        .filter(line => line.trim() !== '');
 
-      // ✅ 修复2: 防御 storageRaw 为空
-      if (storageRaw === undefined || storageRaw === null || storageRaw === '') {
-        rowErrors.push(`[行${i}] storage_gb 为空，跳过 "${baseName || '(空)'}"`);
-        continue;
+      if (allLines.length < 2) {
+        statusDiv.innerHTML =
+          '<span style="color:red;">The CSV file contains no data rows.</span>';
+        return;
       }
 
-      // ✅ 修复3: 清理价格字符串再解析
-      let priceStr = (priceRaw || '').replace(/^[$€£¥]/, '').replace(/,/g, '');
-      const price = parseFloat(priceStr);
+      // =========================
+      // Read headers
+      // =========================
+      const header = parseCSVLine(allLines[0]);
 
-      if (isNaN(price)) {
-        rowErrors.push(`[行${i}] 价格无法解析: "${priceRaw}" → "${baseName || '(空)'}"`);
-        continue;
+      const headers = header.map(h =>
+        String(h || '').trim().toLowerCase()
+      );
+
+      const nameIdx = headers.indexOf('product_name');
+      const storageIdx = headers.indexOf('storage_gb');
+      const priceIdx = headers.indexOf('price_usd');
+
+      if (nameIdx === -1 || storageIdx === -1 || priceIdx === -1) {
+        statusDiv.innerHTML = `
+          <span style="color:red;">
+            Missing required CSV columns.
+            Required:
+            product_name,
+            storage_gb,
+            price_usd
+          </span>
+        `;
+        return;
       }
 
-      if (!baseName) {
-        rowErrors.push(`[行${i}] product_name 为空`);
-        continue;
-      }
+      // =========================
+      // Process rows
+      // =========================
+      const priceMap = new Map();
+      const rowErrors = [];
 
-      if (price < 0) {
-        rowErrors.push(`[行${i}] 价格为负数 ${price}: "${baseName}"`);
-        continue;
-      }
+      for (let i = 1; i < allLines.length; i++) {
+        const line = allLines[i];
 
-      // ✅ 修复4: 更健壮的容量标签
-      const sizeLabel = formatStorageLabel(storageRaw);
+        if (!line.trim()) continue;
 
-      if (!priceMap.has(baseName)) priceMap.set(baseName, []);
-      priceMap.get(baseName).push({ size: sizeLabel, price });
-    }
+        const cols = parseCSVLine(line);
 
-    // ---------- 空数据检查 ----------
-    if (priceMap.size === 0) {
-      const msg = rowErrors.length > 0
-        ? `<span style="color:red;">没有有效数据可导入。</span><br>${rowErrors.map(e => `• ${e}`).join('<br>')}`
-        : '<span style="color:orange;">⚠️ CSV 没有数据行，请检查文件。</span>';
-      statusDiv.innerHTML = msg;
-      return;
-    }
+        const requiredCols =
+          Math.max(nameIdx, storageIdx, priceIdx) + 1;
 
-    // ---------- 写入 Supabase ----------
-    statusDiv.innerHTML = '<span style="color:#0366d6;">⏳ 正在导入，请稍候...</span>';
-
-    let updated = 0, inserted = 0, errors = 0;
-    const errorDetails = [];
-
-    for (let [baseName, sizeOptions] of priceMap.entries()) {
-      sizeOptions.sort((a, b) => a.price - b.price);
-      const lowestPrice = sizeOptions[0].price;
-
-      // 标记最低价
-      const labeled = sizeOptions.map(o => ({ ...o, lowest: o.price === lowestPrice }));
-
-      const { data: existing, error: findError } = await supabase
-        .from('products')
-        .select('id')
-        .eq('name', baseName)
-        .maybeSingle();
-
-      if (findError) {
-        errors++;
-        errorDetails.push(`查询失败: ${baseName} — ${findError.message}`);
-        continue;
-      }
-
-      if (existing) {
-        const { error: updateError } = await supabase
-          .from('products')
-          .update({ price: lowestPrice, size_options: labeled })
-          .eq('id', existing.id);
-        if (updateError) {
-          errors++;
-          errorDetails.push(`更新失败: ${baseName} — ${updateError.message}`);
-        } else {
-          updated++;
+        if (cols.length < requiredCols) {
+          rowErrors.push(
+            `Row ${i + 1}: Missing required columns`
+          );
+          continue;
         }
-      } else {
-        const { error: insertError } = await supabase
-          .from('products')
-          .insert([{
-            name: baseName,
-            description: `${baseName} - Brand new original phone`,
-            cat: 'Phones',
-            subcat: 'Smartphones',
-            price: lowestPrice,
-            colors: ['Black', 'White'],
-            size_options: labeled,
-            main_image: 'https://via.placeholder.com/300?text=Phone',
-            sub_images: []
-          }]);
-        if (insertError) {
-          errors++;
-          errorDetails.push(`插入失败: ${baseName} — ${insertError.message}`);
+
+        // =========================
+        // Normalize values
+        // =========================
+        const baseName = String(cols[nameIdx] || '').trim();
+
+        const storageRaw = cols[storageIdx];
+
+        const priceRaw = cols[priceIdx];
+
+        // =========================
+        // Validate product name
+        // =========================
+        if (!baseName) {
+          rowErrors.push(
+            `Row ${i + 1}: Product name is empty`
+          );
+          continue;
+        }
+
+        // =========================
+        // Validate storage
+        // =========================
+        if (
+          storageRaw == null ||
+          String(storageRaw).trim() === ''
+        ) {
+          rowErrors.push(
+            `Row ${i + 1}: Storage value missing for "${baseName}"`
+          );
+          continue;
+        }
+
+        // =========================
+        // Parse price safely
+        // =========================
+        const priceStr = String(priceRaw || '')
+          .replace(/[$€£¥]/g, '')
+          .replace(/,/g, '')
+          .trim();
+
+        const price = parseFloat(priceStr);
+
+        if (isNaN(price)) {
+          rowErrors.push(
+            `Row ${i + 1}: Invalid price "${priceRaw}" for "${baseName}"`
+          );
+          continue;
+        }
+
+        if (price < 0) {
+          rowErrors.push(
+            `Row ${i + 1}: Negative price for "${baseName}"`
+          );
+          continue;
+        }
+
+        // =========================
+        // Format storage label
+        // =========================
+        const sizeLabel = formatStorageLabel(storageRaw);
+
+        // =========================
+        // Initialize product
+        // =========================
+        if (!priceMap.has(baseName)) {
+          priceMap.set(baseName, []);
+        }
+
+        const variants = priceMap.get(baseName);
+
+        // =========================
+        // Deduplicate storage
+        // Keep lowest price only
+        // =========================
+        const existing = variants.find(
+          v => v.size === sizeLabel
+        );
+
+        if (existing) {
+          if (price < existing.price) {
+            existing.price = price;
+          }
         } else {
-          inserted++;
+          variants.push({
+            size: sizeLabel,
+            price
+          });
         }
       }
-    }
 
-    // ---------- 最终状态 ----------
-    let html = '<span style="color:green;">✅ 导入完成</span><br>';
-    html += `📦 产品总数: ${priceMap.size}<br>`;
-    html += `🔄 更新: ${updated} &nbsp;|&nbsp; ➕ 新增: ${inserted} &nbsp;|&nbsp; ❌ 失败: ${errors}`;
+      // =========================
+      // No valid data
+      // =========================
+      if (priceMap.size === 0) {
+        let html =
+          '<span style="color:red;">No valid products found in the CSV file.</span>';
 
-    if (rowErrors.length > 0) {
-      html += `<br><br><span style="color:#e6a617;">⚠️ CSV 解析警告 (${rowErrors.length}):</span><br>`;
-      html += rowErrors.slice(0, 10).map(e => `• ${e}`).join('<br>');
-      if (rowErrors.length > 10) html += `<br>• ...还有 ${rowErrors.length - 10} 条`;
-    }
-    if (errorDetails.length > 0) {
-      html += `<br><br><span style="color:red;">❌ 数据库错误:</span><br>`;
-      html += errorDetails.map(e => `• ${e}`).join('<br>');
-    }
+        if (rowErrors.length > 0) {
+          html += '<br><br>';
 
-    statusDiv.innerHTML = html;
+          rowErrors.slice(0, 20).forEach(err => {
+            html += `• ${err}<br>`;
+          });
+        }
 
-    // 刷新本地列表
-    await loadProducts();
-    if (document.getElementById('home').classList.contains('active')) {
-      allShuffled = getShuffledWithPhoneBias(allProducts);
-      displayProducts(allShuffled.slice(0, currentDisplayLimit));
+        statusDiv.innerHTML = html;
+        return;
+      }
+
+      // =========================
+      // Start import
+      // =========================
+      statusDiv.innerHTML =
+        '<span style="color:#0366d6;">Importing products, please wait...</span>';
+
+      let updated = 0;
+      let inserted = 0;
+      let errors = 0;
+
+      const databaseErrors = [];
+
+      // =========================
+      // Save products
+      // =========================
+      for (const [baseName, variants] of priceMap.entries()) {
+
+        variants.sort((a, b) => a.price - b.price);
+
+        const lowestPrice = variants[0].price;
+
+        const sizeOptions = variants.map(v => ({
+          size: v.size,
+          price: v.price,
+          lowest: v.price === lowestPrice
+        }));
+
+        // =========================
+        // Check existing product
+        // =========================
+        const {
+          data: existing,
+          error: findError
+        } = await supabase
+          .from('products')
+          .select('id')
+          .eq('name', baseName)
+          .maybeSingle();
+
+        if (findError) {
+          errors++;
+
+          databaseErrors.push(
+            `Failed to check "${baseName}": ${findError.message}`
+          );
+
+          continue;
+        }
+
+        // =========================
+        // Update existing
+        // =========================
+        if (existing) {
+
+          const { error: updateError } =
+            await supabase
+              .from('products')
+              .update({
+                price: lowestPrice,
+                size_options: sizeOptions
+              })
+              .eq('id', existing.id);
+
+          if (updateError) {
+            errors++;
+
+            databaseErrors.push(
+              `Failed to update "${baseName}": ${updateError.message}`
+            );
+          } else {
+            updated++;
+          }
+
+        } else {
+
+          // =========================
+          // Insert new product
+          // =========================
+          const { error: insertError } =
+            await supabase
+              .from('products')
+              .insert([
+                {
+                  name: baseName,
+
+                  description:
+                    `${baseName} - Brand new original smartphone. Shipping to Zimbabwe included.`,
+
+                  cat: 'Phones',
+
+                  subcat: 'Smartphones',
+
+                  price: lowestPrice,
+
+                  colors: [
+                    'Black',
+                    'White'
+                  ],
+
+                  size_options: sizeOptions,
+
+                  main_image:
+                    'https://dummyimage.com/600x600/cccccc/000000&text=Phone',
+
+                  sub_images: []
+                }
+              ]);
+
+          if (insertError) {
+            errors++;
+
+            databaseErrors.push(
+              `Failed to insert "${baseName}": ${insertError.message}`
+            );
+          } else {
+            inserted++;
+          }
+        }
+      }
+
+      // =========================
+      // Final summary
+      // =========================
+      let html =
+        '<span style="color:green;">Products imported successfully.</span><br><br>';
+
+      html += `Total Products: ${priceMap.size}<br>`;
+      html += `Updated: ${updated}<br>`;
+      html += `Inserted: ${inserted}<br>`;
+      html += `Errors: ${errors}<br>`;
+
+      if (rowErrors.length > 0) {
+        html += `
+          <br>
+          <span style="color:#e6a617;">
+            CSV Warnings (${rowErrors.length})
+          </span><br>
+        `;
+
+        rowErrors.slice(0, 15).forEach(err => {
+          html += `• ${err}<br>`;
+        });
+
+        if (rowErrors.length > 15) {
+          html += `• And ${rowErrors.length - 15} more warnings<br>`;
+        }
+      }
+
+      if (databaseErrors.length > 0) {
+        html += `
+          <br>
+          <span style="color:red;">
+            Database Errors
+          </span><br>
+        `;
+
+        databaseErrors.forEach(err => {
+          html += `• ${err}<br>`;
+        });
+      }
+
+      statusDiv.innerHTML = html;
+
+      // =========================
+      // Refresh products
+      // =========================
+      if (typeof loadProducts === 'function') {
+        await loadProducts();
+      }
+
+      if (
+        typeof allProducts !== 'undefined' &&
+        typeof getShuffledWithPhoneBias === 'function' &&
+        typeof displayProducts === 'function'
+      ) {
+
+        const home = document.getElementById('home');
+
+        if (
+          home &&
+          home.classList.contains('active')
+        ) {
+          allShuffled =
+            getShuffledWithPhoneBias(allProducts);
+
+          displayProducts(
+            allShuffled.slice(
+              0,
+              currentDisplayLimit || 20
+            )
+          );
+        }
+      }
+
+    } catch (err) {
+
+      statusDiv.innerHTML = `
+        <span style="color:red;">
+          Import failed: ${err.message}
+        </span>
+      `;
+
+      console.error(err);
     }
+  };
+
+  reader.onerror = function () {
+    statusDiv.innerHTML =
+      '<span style="color:red;">Failed to read the CSV file.</span>';
   };
 
   reader.readAsText(file);
 }
 
-// ==========================================
-// 工具函数
-// ==========================================
-
 /**
- * 标准 CSV 行解析：处理引号包裹字段
- *  "iPhone 15, Pro" → ['iPhone 15, Pro']
+ * CSV parser
+ * Handles:
+ * - quoted values
+ * - commas inside quotes
+ * - escaped quotes
  */
 function parseCSVLine(line) {
+
   const cols = [];
+
   let current = '';
+
   let inQuotes = false;
 
   for (let i = 0; i < line.length; i++) {
+
     const ch = line[i];
+
     if (ch === '"') {
-      // 双引号转义: "" → "
-      if (inQuotes && line[i + 1] === '"') {
+
+      // Escaped quote
+      if (
+        inQuotes &&
+        line[i + 1] === '"'
+      ) {
         current += '"';
         i++;
       } else {
         inQuotes = !inQuotes;
       }
+
     } else if (ch === ',' && !inQuotes) {
+
       cols.push(current.trim());
+
       current = '';
+
     } else {
+
       current += ch;
     }
   }
+
   cols.push(current.trim());
+
   return cols;
 }
 
 /**
- * 智能容量标签
- *   1     → 1TB
- *   1TB   → 1TB
- *   1tb   → 1TB
- *   1024  → 1TB
- *   1000  → 1TB
- *   512   → 512GB
- *   128gb → 128GB
+ * Format storage labels
  */
 function formatStorageLabel(raw) {
-  const s = String(raw).trim().toLowerCase();
 
-  // 已经是 TB 标记
-  if (/^(\d+)\s*tb$/i.test(s)) {
-    return `${RegExp.$1}TB`;
+  const s = String(raw)
+    .trim()
+    .toLowerCase();
+
+  // Already TB
+  const tbMatch = s.match(/^(\d+)\s*tb$/i);
+
+  if (tbMatch) {
+    return `${tbMatch[1]}TB`;
   }
 
-  // 数字 ≥ 1000 → 认为是 TB
+  // Pure number
   const num = parseFloat(s);
-  if (!isNaN(num) && num >= 1000) {
-    const tb = Math.round(num / 1000 * 100) / 100; // 保留两位小数
-    return `${tb}TB`;
+
+  if (!isNaN(num)) {
+
+    // Standard TB sizes
+    if (num === 1024 || num === 1000) {
+      return '1TB';
+    }
+
+    if (num === 2048 || num === 2000) {
+      return '2TB';
+    }
+
+    if (num >= 1000) {
+      return `${Math.round(num / 1000)}TB`;
+    }
+
+    return `${num}GB`;
   }
 
-  // 默认 GB
+  // GB format
   const gbMatch = s.match(/^(\d+)\s*gb$/i);
-  if (gbMatch) return `${gbMatch[1]}GB`;
 
-  // 纯数字
-  if (!isNaN(num) && num > 0) return `${num}GB`;
+  if (gbMatch) {
+    return `${gbMatch[1]}GB`;
+  }
 
-  // 兜底
-  return `${raw}GB`;
+  // Fallback
+  return String(raw).trim();
 }
 
+// ========================================
+// Admin modal click binding
+// ========================================
+document.addEventListener('DOMContentLoaded', function () {
 
-// ==========================================
-// 管理员卡片点击绑定（保持不变）
-// ==========================================
-document.addEventListener('DOMContentLoaded', function() {
-  const bulkCard = document.querySelector('.admin-card[data-modal="bulkPhonePrices"]');
-  if (bulkCard) {
-    bulkCard.addEventListener('click', function(e) {
-      e.stopPropagation();
-      const modal = document.getElementById('modalBulkPhonePrices');
-      if (modal) {
-        modal.style.display = 'flex';
-      } else {
-        console.error('Modal not found: modalBulkPhonePrices');
+  const bulkCard = document.querySelector(
+    '.admin-card[data-modal="bulkPhonePrices"]'
+  );
+
+  if (!bulkCard) {
+    console.warn(
+      'Bulk upload card not found.'
+    );
+    return;
+  }
+
+  bulkCard.addEventListener('click', function () {
+
+    const modal = document.getElementById(
+      'modalBulkPhonePrices'
+    );
+
+    if (!modal) {
+      console.error(
+        'Modal not found: modalBulkPhonePrices'
+      );
+      return;
+    }
+
+    modal.style.display = 'flex';
+
+    // Prevent desktop scroll issues
+    document.body.style.overflow = 'hidden';
+  });
+
+  // Close modal support
+  const modal = document.getElementById(
+    'modalBulkPhonePrices'
+  );
+
+  if (modal) {
+
+    modal.addEventListener('click', function (e) {
+
+      if (e.target === modal) {
+
+        modal.style.display = 'none';
+
+        document.body.style.overflow = '';
       }
     });
   }
