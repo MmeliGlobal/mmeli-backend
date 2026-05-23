@@ -13,7 +13,6 @@
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   
-  <!-- Speed: preconnect & DNS prefetch -->
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <link rel="preconnect" href="https://proljdccjrifqgbmsyco.supabase.co" crossorigin>
@@ -25,8 +24,8 @@
   <link rel="stylesheet" href="style.css">
   
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
-  <script src="script.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="script.js" defer></script>
 </head>
 <body>
 
@@ -146,51 +145,45 @@
   </div>
 </section>
 
-<!-- MODALS (all 12) -->
+<!-- MODALS -->
 <div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
 <div id="modalManageProducts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+
+<!-- ADD PRODUCT MODAL (with autocomplete) -->
 <div id="modalAddProduct" class="modal">
   <div class="modal-content">
     <span class="close-modal">&times;</span>
     <div class="modal-body">
       <h3>Add Product</h3>
-      <div class="autocomplete-wrapper">
+      <div class="autocomplete-wrapper" style="position: relative;">
         <label>Product Name (start typing for suggestions)</label>
-        <input type="text" id="prodNameAutocomplete" placeholder="Type product name..." autocomplete="off">
-        <div id="nameSuggestions" class="autocomplete-items" style="position:absolute; background:white; border:1px solid #ccc; max-height:150px; overflow-y:auto; display:none;"></div>
+        <input type="text" id="prodNameAutocomplete" placeholder="Type product name..." autocomplete="off" style="width:100%;">
+        <div id="nameSuggestions" class="autocomplete-items" style="position:absolute; background:white; border:1px solid #ccc; max-height:150px; overflow-y:auto; display:none; z-index:1000; width:100%;"></div>
       </div>
       <input type="hidden" id="prodNameHidden">
-      <br><br>
-
+      <br>
       <label>Description</label>
-      <textarea id="prodDesc" placeholder="Description"></textarea>
-
+      <textarea id="prodDesc" placeholder="Description" rows="3" style="width:100%;"></textarea>
       <label>Category</label>
-      <input id="prodCat" placeholder="Category">
-
+      <input id="prodCat" placeholder="Category" style="width:100%;">
       <label>Subcategory</label>
-      <input id="prodSubcat" placeholder="Subcategory">
-
+      <input id="prodSubcat" placeholder="Subcategory" style="width:100%;">
       <label>Price (lowest)</label>
-      <input id="prodPrice" placeholder="Price">
-
+      <input id="prodPrice" placeholder="Price" style="width:100%;">
       <label>Colors (comma separated)</label>
-      <input id="prodColors" placeholder="e.g. Black, White, Blue">
-
-      <label>Size options (JSON)</label>
-      <textarea id="prodSizes" placeholder='[{"size":"128GB","price":678.57},{"size":"256GB","price":707.14}]' rows="3"></textarea>
-
+      <input id="prodColors" placeholder="e.g. Black, White, Blue" style="width:100%;">
+      <label>Size options (JSON or size:price, comma)</label>
+      <textarea id="prodSizes" placeholder='[{"size":"128GB","price":678.57}] or "128GB:678.57,256GB:707.14"' rows="3" style="width:100%;"></textarea>
       <label>Main Image URL</label>
-      <input id="prodImage" placeholder="https://...">
-
+      <input id="prodImage" placeholder="https://..." style="width:100%;">
       <label>Supporting Images (URLs, comma)</label>
-      <input id="prodSubImages" placeholder="https://..., https://...">
-
-      <button onclick="addProductWithAutofill()">Save Product</button>
+      <input id="prodSubImages" placeholder="https://..., https://..." style="width:100%;">
+      <button onclick="addProductWithAutofill()" style="margin-top: 12px;">Save Product</button>
       <button onclick="closeModal('modalAddProduct')">Cancel</button>
     </div>
   </div>
 </div>
+
 <div id="modalManageOrders" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
 <div id="modalDiscounts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
 <div id="modalReturns" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
@@ -206,7 +199,7 @@
 <div id="modalBulkPhonePrices" class="modal">
   <div class="modal-content">
     <span class="close-modal">&times;</span>
-  <div class="modal-body"> 
+    <div class="modal-body"> 
       <h3>Upload Phone Price CSV</h3>
       <p style="font-size: 0.85rem;">Columns: product_name, storage_gb, price_usd</p>
       <input type="file" id="phonePriceCsv" accept=".csv">
