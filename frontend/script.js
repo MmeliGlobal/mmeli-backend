@@ -858,31 +858,19 @@ async function uploadPhonePrices() {
   const fileInput = document.getElementById('phonePriceCsv');
   const statusDiv = document.getElementById('phonePriceStatus');
 
-  // =========================
-  // Validate file
-  // =========================
   if (!fileInput || !fileInput.files.length) {
-    statusDiv.innerHTML =
-      '<span style="color:red;">Please select a CSV file first.</span>';
+    statusDiv.innerHTML = '<span style="color:red;">Please select a CSV file first.</span>';
     return;
   }
 
-  // =========================
-  // Check Supabase session
-  // =========================
   try {
-    const {
-      data: { session }
-    } = await supabase.auth.getSession();
-
+    const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      statusDiv.innerHTML =
-        '<span style="color:red;">Your session has expired. Please log in again.</span>';
+      statusDiv.innerHTML = '<span style="color:red;">Your session has expired. Please log in again.</span>';
       return;
     }
   } catch (err) {
-    statusDiv.innerHTML =
-      `<span style="color:red;">Failed to verify login session: ${err.message}</span>`;
+    statusDiv.innerHTML = `<span style="color:red;">Failed to verify login session: ${err.message}</span>`;
     return;
   }
 
@@ -892,393 +880,183 @@ async function uploadPhonePrices() {
   reader.onload = async function (e) {
     try {
       const csvText = e.target.result;
-
       if (!csvText || !csvText.trim()) {
-        statusDiv.innerHTML =
-          '<span style="color:red;">The CSV file is empty.</span>';
+        statusDiv.innerHTML = '<span style="color:red;">The CSV file is empty.</span>';
         return;
       }
 
-      // =========================
-      // Split lines safely
-      // =========================
-      const allLines = csvText
-        .split(/\r?\n/)
-        .filter(line => line.trim() !== '');
-
+      const allLines = csvText.split(/\r?\n/).filter(line => line.trim() !== '');
       if (allLines.length < 2) {
-        statusDiv.innerHTML =
-          '<span style="color:red;">The CSV file contains no data rows.</span>';
+        statusDiv.innerHTML = '<span style="color:red;">The CSV file contains no data rows.</span>';
         return;
       }
 
-      // =========================
-      // Read headers
-      // =========================
       const header = parseCSVLine(allLines[0]);
-
-      const headers = header.map(h =>
-        String(h || '').trim().toLowerCase()
-      );
-
+      const headers = header.map(h => String(h || '').trim().toLowerCase());
       const nameIdx = headers.indexOf('product_name');
       const storageIdx = headers.indexOf('storage_gb');
       const priceIdx = headers.indexOf('price_usd');
 
       if (nameIdx === -1 || storageIdx === -1 || priceIdx === -1) {
-        statusDiv.innerHTML = `
-          <span style="color:red;">
-            Missing required CSV columns.
-            Required:
-            product_name,
-            storage_gb,
-            price_usd
-          </span>
-        `;
+        statusDiv.innerHTML = '<span style="color:red;">Missing required columns: product_name, storage_gb, price_usd</span>';
         return;
       }
 
-      // =========================
-      // Process rows
-      // =========================
+      // Build product map
       const priceMap = new Map();
       const rowErrors = [];
 
       for (let i = 1; i < allLines.length; i++) {
         const line = allLines[i];
-
         if (!line.trim()) continue;
-
         const cols = parseCSVLine(line);
-
-        const requiredCols =
-          Math.max(nameIdx, storageIdx, priceIdx) + 1;
-
-        if (cols.length < requiredCols) {
-          rowErrors.push(
-            `Row ${i + 1}: Missing required columns`
-          );
+        if (cols.length < Math.max(nameIdx, storageIdx, priceIdx) + 1) {
+          rowErrors.push(`Row ${i + 1}: Missing required columns`);
           continue;
         }
 
-        // =========================
-        // Normalize values
-        // =========================
         const baseName = String(cols[nameIdx] || '').trim();
-
         const storageRaw = cols[storageIdx];
-
         const priceRaw = cols[priceIdx];
 
-        // =========================
-        // Validate product name
-        // =========================
         if (!baseName) {
-          rowErrors.push(
-            `Row ${i + 1}: Product name is empty`
-          );
+          rowErrors.push(`Row ${i + 1}: Product name is empty`);
+          continue;
+        }
+        if (storageRaw == null || String(storageRaw).trim() === '') {
+          rowErrors.push(`Row ${i + 1}: Storage value missing for "${baseName}"`);
           continue;
         }
 
-        // =========================
-        // Validate storage
-        // =========================
-        if (
-          storageRaw == null ||
-          String(storageRaw).trim() === ''
-        ) {
-          rowErrors.push(
-            `Row ${i + 1}: Storage value missing for "${baseName}"`
-          );
-          continue;
-        }
-
-        // =========================
-        // Parse price safely
-        // =========================
-        const priceStr = String(priceRaw || '')
-          .replace(/[$€£¥]/g, '')
-          .replace(/,/g, '')
-          .trim();
-
+        const priceStr = String(priceRaw || '').replace(/[$€£¥]/g, '').replace(/,/g, '').trim();
         const price = parseFloat(priceStr);
-
         if (isNaN(price)) {
-          rowErrors.push(
-            `Row ${i + 1}: Invalid price "${priceRaw}" for "${baseName}"`
-          );
+          rowErrors.push(`Row ${i + 1}: Invalid price "${priceRaw}" for "${baseName}"`);
           continue;
         }
-
         if (price < 0) {
-          rowErrors.push(
-            `Row ${i + 1}: Negative price for "${baseName}"`
-          );
+          rowErrors.push(`Row ${i + 1}: Negative price for "${baseName}"`);
           continue;
         }
 
-        // =========================
-        // Format storage label
-        // =========================
         const sizeLabel = formatStorageLabel(storageRaw);
-
-        // =========================
-        // Initialize product
-        // =========================
-        if (!priceMap.has(baseName)) {
-          priceMap.set(baseName, []);
-        }
-
+        if (!priceMap.has(baseName)) priceMap.set(baseName, []);
         const variants = priceMap.get(baseName);
-
-        // =========================
-        // Deduplicate storage
-        // Keep lowest price only
-        // =========================
-        const existing = variants.find(
-          v => v.size === sizeLabel
-        );
-
+        const existing = variants.find(v => v.size === sizeLabel);
         if (existing) {
-          if (price < existing.price) {
-            existing.price = price;
-          }
+          if (price < existing.price) existing.price = price;
         } else {
-          variants.push({
-            size: sizeLabel,
-            price
-          });
+          variants.push({ size: sizeLabel, price });
         }
       }
 
-      // =========================
-      // No valid data
-      // =========================
       if (priceMap.size === 0) {
-        let html =
-          '<span style="color:red;">No valid products found in the CSV file.</span>';
-
+        let html = '<span style="color:red;">No valid products found in the CSV file.</span>';
         if (rowErrors.length > 0) {
           html += '<br><br>';
-
-          rowErrors.slice(0, 20).forEach(err => {
-            html += `• ${err}<br>`;
-          });
+          rowErrors.slice(0, 20).forEach(err => { html += `• ${err}<br>`; });
         }
-
         statusDiv.innerHTML = html;
         return;
       }
 
-      // =========================
-      // Start import
-      // =========================
-      statusDiv.innerHTML =
-        '<span style="color:#0366d6;">Importing products, please wait...</span>';
+      statusDiv.innerHTML = '<span style="color:#0366d6;">Importing products, please wait...</span>';
+      await new Promise(resolve => setTimeout(resolve, 10)); // allow UI update
 
-      let updated = 0;
-      let inserted = 0;
-      let errors = 0;
+      // Fetch ALL existing product names in one query
+      const { data: existingProducts, error: fetchError } = await supabase
+        .from('products')
+        .select('name, id');
+      if (fetchError) throw fetchError;
+      const existingMap = new Map(existingProducts.map(p => [p.name, p.id]));
 
-      const databaseErrors = [];
-
-      // =========================
-      // Save products
-      // =========================
+      // Prepare updates and inserts
+      const toUpdate = []; // { id, name, lowestPrice, sizeOptions }
+      const toInsert = [];
       for (const [baseName, variants] of priceMap.entries()) {
-
         variants.sort((a, b) => a.price - b.price);
-
         const lowestPrice = variants[0].price;
-
-        const sizeOptions = variants.map(v => ({
-          size: v.size,
-          price: v.price,
-          lowest: v.price === lowestPrice
-        }));
-
-        // =========================
-        // Check existing product
-        // =========================
-        const {
-          data: existing,
-          error: findError
-        } = await supabase
-          .from('products')
-          .select('id')
-          .eq('name', baseName)
-          .maybeSingle();
-
-        if (findError) {
-          errors++;
-
-          databaseErrors.push(
-            `Failed to check "${baseName}": ${findError.message}`
-          );
-
-          continue;
-        }
-
-        // =========================
-        // Update existing
-        // =========================
-        if (existing) {
-
-          const { error: updateError } =
-            await supabase
-              .from('products')
-              .update({
-                price: lowestPrice,
-                size_options: sizeOptions
-              })
-              .eq('id', existing.id);
-
-          if (updateError) {
-            errors++;
-
-            databaseErrors.push(
-              `Failed to update "${baseName}": ${updateError.message}`
-            );
-          } else {
-            updated++;
-          }
-
+        const sizeOptions = variants.map(v => ({ size: v.size, price: v.price }));
+        if (existingMap.has(baseName)) {
+          toUpdate.push({
+            id: existingMap.get(baseName),
+            name: baseName,
+            lowestPrice,
+            sizeOptions
+          });
         } else {
-
-          // =========================
-          // Insert new product
-          // =========================
-          const { error: insertError } =
-            await supabase
-              .from('products')
-              .insert([
-                {
-                  name: baseName,
-
-                  description:
-                    `${baseName} - Brand new original smartphone. Shipping to Zimbabwe included.`,
-
-                  cat: 'Phones',
-
-                  subcat: 'Smartphones',
-
-                  price: lowestPrice,
-
-                  colors: [
-                    'Black',
-                    'White'
-                  ],
-
-                  size_options: sizeOptions,
-
-                  main_image:
-                    'https://dummyimage.com/600x600/cccccc/000000&text=Phone',
-
-                  sub_images: []
-                }
-              ]);
-
-          if (insertError) {
-            errors++;
-
-            databaseErrors.push(
-              `Failed to insert "${baseName}": ${insertError.message}`
-            );
-          } else {
-            inserted++;
-          }
+          toInsert.push({
+            name: baseName,
+            description: `${baseName} - Brand new original smartphone. Shipping to Zimbabwe included.`,
+            cat: 'Phones',
+            subcat: 'Smartphones',
+            price: lowestPrice,
+            colors: ['Black', 'White'],
+            size_options: sizeOptions,
+            main_image: 'https://dummyimage.com/600x600/cccccc/000000&text=Phone',
+            sub_images: []
+          });
         }
       }
 
-      // =========================
-      // Final summary
-      // =========================
-      let html =
-        '<span style="color:green;">Products imported successfully.</span><br><br>';
+      // Process updates with concurrency limit (5 at a time) to avoid rate limits
+      let updated = 0, errors = 0;
+      const updateBatchSize = 5;
+      for (let i = 0; i < toUpdate.length; i += updateBatchSize) {
+        const batch = toUpdate.slice(i, i + updateBatchSize);
+        const promises = batch.map(item =>
+          supabase.from('products').update({ price: item.lowestPrice, size_options: item.sizeOptions }).eq('id', item.id)
+        );
+        const results = await Promise.all(promises);
+        for (const res of results) {
+          if (res.error) errors++;
+          else updated++;
+        }
+        // Update progress
+        statusDiv.innerHTML = `<span style="color:#0366d6;">Importing... Updated: ${updated}, Inserting: 0/${toInsert.length}</span>`;
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
 
+      // Insert all new products in one batch (if any)
+      let inserted = 0;
+      if (toInsert.length > 0) {
+        const { error: insertError } = await supabase.from('products').insert(toInsert);
+        if (insertError) {
+          errors += toInsert.length;
+          console.error(insertError);
+        } else {
+          inserted = toInsert.length;
+        }
+      }
+
+      // Final summary
+      let html = '<span style="color:green;">Products imported successfully.</span><br><br>';
       html += `Total Products: ${priceMap.size}<br>`;
       html += `Updated: ${updated}<br>`;
       html += `Inserted: ${inserted}<br>`;
       html += `Errors: ${errors}<br>`;
-
       if (rowErrors.length > 0) {
-        html += `
-          <br>
-          <span style="color:#e6a617;">
-            CSV Warnings (${rowErrors.length})
-          </span><br>
-        `;
-
-        rowErrors.slice(0, 15).forEach(err => {
-          html += `• ${err}<br>`;
-        });
-
-        if (rowErrors.length > 15) {
-          html += `• And ${rowErrors.length - 15} more warnings<br>`;
-        }
+        html += `<br><span style="color:#e6a617;">CSV Warnings (${rowErrors.length})</span><br>`;
+        rowErrors.slice(0, 15).forEach(err => { html += `• ${err}<br>`; });
+        if (rowErrors.length > 15) html += `• And ${rowErrors.length - 15} more warnings<br>`;
       }
-
-      if (databaseErrors.length > 0) {
-        html += `
-          <br>
-          <span style="color:red;">
-            Database Errors
-          </span><br>
-        `;
-
-        databaseErrors.forEach(err => {
-          html += `• ${err}<br>`;
-        });
-      }
-
       statusDiv.innerHTML = html;
 
-      // =========================
       // Refresh products
-      // =========================
-      if (typeof loadProducts === 'function') {
-        await loadProducts();
+      if (typeof loadProducts === 'function') await loadProducts();
+      const home = document.getElementById('home');
+      if (home && home.classList.contains('active') && typeof allProducts !== 'undefined') {
+        allShuffled = getShuffledWithPhoneBias(allProducts);
+        displayProducts(allShuffled.slice(0, currentDisplayLimit || 20));
       }
-
-      if (
-        typeof allProducts !== 'undefined' &&
-        typeof getShuffledWithPhoneBias === 'function' &&
-        typeof displayProducts === 'function'
-      ) {
-
-        const home = document.getElementById('home');
-
-        if (
-          home &&
-          home.classList.contains('active')
-        ) {
-          allShuffled =
-            getShuffledWithPhoneBias(allProducts);
-
-          displayProducts(
-            allShuffled.slice(
-              0,
-              currentDisplayLimit || 20
-            )
-          );
-        }
-      }
-
     } catch (err) {
-
-      statusDiv.innerHTML = `
-        <span style="color:red;">
-          Import failed: ${err.message}
-        </span>
-      `;
-
+      statusDiv.innerHTML = `<span style="color:red;">Import failed: ${err.message}</span>`;
       console.error(err);
     }
   };
 
   reader.onerror = function () {
-    statusDiv.innerHTML =
-      '<span style="color:red;">Failed to read the CSV file.</span>';
+    statusDiv.innerHTML = '<span style="color:red;">Failed to read the CSV file.</span>';
   };
 
   reader.readAsText(file);
