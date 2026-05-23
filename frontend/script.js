@@ -1,30 +1,7 @@
-// ========== API BASE URL (DEFINED FIRST) ==========
-const API = '/api';
-
-// ========== SUPABASE DIRECT UPLOAD ==========
+// ========== SUPABASE CLIENT ==========
 const SUPABASE_URL = 'https://proljdccjrifqgbmsyco.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb2xqZGNjanJpZnFnYm1zeWNvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTc4ODAxOSwiZXhwIjoyMDkxMzY0MDE5fQ.VltzBUq-bLvu0Ny4jPy1kBp5E-4hffQgqFpqHrRWlZA';
-
-async function uploadImageToSupabase(file) {
-  if (!file) return null;
-  const fileName = `${Date.now()}_${file.name}`;
-  const filePath = `products/${fileName}`;
-  const url = `${SUPABASE_URL}/storage/v1/object/${filePath}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-      'Content-Type': file.type
-    },
-    body: file
-  });
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Upload failed: ${response.status} ${text}`);
-  }
-  const result = await response.json();
-  return `${SUPABASE_URL}/storage/v1/object/public/${result.Key}`;
-}
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ========== GLOBALS ==========
 let allProducts = [];
@@ -72,16 +49,34 @@ const subcategoryIcons = {
 };
 const defaultIcon = "https://cdn-icons-png.flaticon.com/512/456/456212.png";
 
-// ---------- API helper ----------
+// ---------- API helper (for backend endpoints) ----------
 async function apiCall(endpoint, options = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(API + endpoint, { ...options, headers });
+  const res = await fetch('/api' + endpoint, { ...options, headers });
   if (!res.ok) {
     const errorText = await res.text();
     throw new Error(errorText || 'Request failed');
   }
   return res.json();
+}
+
+async function uploadImageToSupabase(file) {
+  if (!file) return null;
+  const fileName = `${Date.now()}_${file.name}`;
+  const filePath = `products/${fileName}`;
+  const url = `${SUPABASE_URL}/storage/v1/object/${filePath}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': file.type },
+    body: file
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Upload failed: ${response.status} ${text}`);
+  }
+  const result = await response.json();
+  return `${SUPABASE_URL}/storage/v1/object/public/${result.Key}`;
 }
 
 function shuffleArray(arr) {
@@ -105,7 +100,7 @@ function getShuffledWithPhoneBias(products) {
 
 async function loadProducts() {
   try {
-    const res = await fetch(API + '/products');
+    const res = await fetch('/api/products');
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     allProducts = data;
@@ -194,7 +189,7 @@ function selectSubCategory(cat, sub) {
 async function openProduct(id) {
   try {
     let product = allProducts.find(p => p.id == id);
-    if (!product) { const res = await fetch(API + `/products/${id}`); if (!res.ok) throw new Error(); product = await res.json(); }
+    if (!product) { const res = await fetch(`/api/products/${id}`); if (!res.ok) throw new Error(); product = await res.json(); }
     currentProduct = product;
     renderProductDetail(product);
     switchPage('productPage');
@@ -445,7 +440,7 @@ async function adminLogin() {
     return;
   }
   try {
-    const response = await fetch(API + '/auth/login', {
+    const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -573,19 +568,99 @@ async function updateProductWithImage(id) {
   } catch (err) { alert('Update failed: ' + err.message); }
 }
 async function deleteProduct(id) { if(confirm('Delete product?')) await apiCall(`/products/${id}`, { method:'DELETE' }); openAdminModal('manageProducts'); loadProducts(); }
+
+// ========== ADD PRODUCT WITH AUTOCOMPLETE ==========
 function showAddProductForm(container) {
-  container.innerHTML = `<h3>Add Product</h3>
-    <input id="prodName" placeholder="Name"><br>
-    <input id="prodPrice" placeholder="Price"><br>
-    <input type="file" id="prodImageFile" accept="image/*" required><br>
-    <textarea id="prodDesc" placeholder="Description"></textarea><br>
-    <input id="prodCat" placeholder="Category"><br>
-    <input id="prodSubcat" placeholder="Subcategory"><br>
-    <input id="prodColors" placeholder="Colors (comma)"><br>
-    <input id="prodSizes" placeholder="Sizes (size:price, comma)"><br>
-    <button onclick="addProduct()">Save</button>
-    <button onclick="closeModal('modalAddProduct')">Cancel</button>`;
+  // The modal body is static HTML, no need to overwrite.
+  // Just attach autocomplete event listeners
+  attachProductNameAutocomplete();
 }
+
+async function searchProductNames(query) {
+  if (!query || query.length < 2) return [];
+  const { data, error } = await supabase
+    .from('products')
+    .select('name, description, cat, subcat, price, size_options, colors')
+    .ilike('name', `%${query}%`)
+    .limit(10);
+  if (error) {
+    console.error(error);
+    return [];
+  }
+  return data;
+}
+
+function showNameSuggestions(suggestions) {
+  const suggestionsDiv = document.getElementById('nameSuggestions');
+  if (!suggestionsDiv) return;
+  if (!suggestions.length) {
+    suggestionsDiv.style.display = 'none';
+    return;
+  }
+  suggestionsDiv.innerHTML = suggestions.map(p => `
+    <div data-name="${escapeHtml(p.name)}"
+         data-desc="${escapeHtml(p.description || '')}"
+         data-cat="${escapeHtml(p.cat || '')}"
+         data-subcat="${escapeHtml(p.subcat || '')}"
+         data-price="${p.price}"
+         data-colors="${(p.colors || []).join(',')}"
+         data-sizes='${JSON.stringify(p.size_options || [])}'
+         onclick="selectProductSuggestion(this)">
+      ${escapeHtml(p.name)}
+    </div>
+  `).join('');
+  suggestionsDiv.style.display = 'block';
+}
+
+window.selectProductSuggestion = function(el) {
+  const name = el.getAttribute('data-name');
+  const desc = el.getAttribute('data-desc');
+  const cat = el.getAttribute('data-cat');
+  const subcat = el.getAttribute('data-subcat');
+  const price = el.getAttribute('data-price');
+  const colors = el.getAttribute('data-colors');
+  const sizes = el.getAttribute('data-sizes');
+
+  document.getElementById('prodNameAutocomplete').value = name;
+  document.getElementById('prodNameHidden').value = name;
+  document.getElementById('prodDesc').value = desc;
+  document.getElementById('prodCat').value = cat;
+  document.getElementById('prodSubcat').value = subcat;
+  document.getElementById('prodPrice').value = price;
+  document.getElementById('prodColors').value = colors;
+  document.getElementById('prodSizes').value = sizes;
+
+  document.getElementById('nameSuggestions').style.display = 'none';
+};
+
+function attachProductNameAutocomplete() {
+  const nameInput = document.getElementById('prodNameAutocomplete');
+  if (!nameInput) return;
+  nameInput.removeEventListener('input', nameInput._autocompleteHandler);
+  const handler = async function(e) {
+    const query = e.target.value.trim();
+    if (query.length < 2) {
+      const suggestionsDiv = document.getElementById('nameSuggestions');
+      if (suggestionsDiv) suggestionsDiv.style.display = 'none';
+      return;
+    }
+    const suggestions = await searchProductNames(query);
+    showNameSuggestions(suggestions);
+  };
+  nameInput.addEventListener('input', handler);
+  nameInput._autocompleteHandler = handler;
+
+  document.removeEventListener('click', window._hideSuggestions);
+  window._hideSuggestions = function(e) {
+    const suggestionsDiv = document.getElementById('nameSuggestions');
+    const nameInputEl = document.getElementById('prodNameAutocomplete');
+    if (suggestionsDiv && nameInputEl && !suggestionsDiv.contains(e.target) && e.target !== nameInputEl) {
+      suggestionsDiv.style.display = 'none';
+    }
+  };
+  document.addEventListener('click', window._hideSuggestions);
+}
+
 async function addProductWithAutofill() {
   const name = document.getElementById('prodNameHidden').value || document.getElementById('prodNameAutocomplete').value;
   const description = document.getElementById('prodDesc').value;
@@ -595,17 +670,20 @@ async function addProductWithAutofill() {
   const colors = document.getElementById('prodColors').value.split(',').map(c => c.trim()).filter(c => c);
   let size_options = [];
   const sizesText = document.getElementById('prodSizes').value;
-  try {
-    size_options = JSON.parse(sizesText);
-    if (!Array.isArray(size_options)) throw new Error();
-  } catch(e) {
-    // If not valid JSON, try to parse as old format "size:price,size:price"
-    const pairs = sizesText.split(',');
-    for (let pair of pairs) {
-      let [s, p] = pair.split(':');
-      if (s && p) size_options.push({ size: s.trim(), price: parseFloat(p) });
+  
+  if (sizesText.trim()) {
+    try {
+      size_options = JSON.parse(sizesText);
+      if (!Array.isArray(size_options)) throw new Error();
+    } catch(e) {
+      const pairs = sizesText.split(',');
+      for (let pair of pairs) {
+        let [s, p] = pair.split(':');
+        if (s && p) size_options.push({ size: s.trim(), price: parseFloat(p) });
+      }
     }
   }
+  
   const main_image = document.getElementById('prodImage').value;
   const subImagesStr = document.getElementById('prodSubImages').value;
   const sub_images = subImagesStr ? subImagesStr.split(',').map(u => u.trim()).filter(u => u) : [];
@@ -632,7 +710,7 @@ async function addProductWithAutofill() {
     if (error) throw error;
     alert('Product added successfully');
     closeModal('modalAddProduct');
-    await loadProducts();  // refresh global products
+    await loadProducts();
     if (document.getElementById('home').classList.contains('active')) {
       allShuffled = getShuffledWithPhoneBias(allProducts);
       displayProducts(allShuffled.slice(0, currentDisplayLimit));
@@ -641,6 +719,8 @@ async function addProductWithAutofill() {
     alert('Add failed: ' + err.message);
   }
 }
+
+// ========== OTHER ADMIN MODALS (unchanged) ==========
 async function loadOrdersModal(container) {
   const orders = await apiCall('/orders');
   container.innerHTML = `<h3>Orders</h3>${orders.map(o=>`<div style="border:1px solid #ddd; padding:8px; margin:8px 0;"><strong>${o.tracking_code}</strong> - ${o.status} - $${o.total}<br><button onclick="updateOrderStatus('${o.id}','paid')">Mark Paid</button> <button onclick="updateOrderStatus('${o.id}','packed')">Mark Packed</button> <button onclick="updateOrderStatus('${o.id}','shipped')">Mark Shipped</button> <button onclick="updateOrderStatus('${o.id}','delivered')">Mark Delivered</button></div>`).join('')}<button onclick="closeModal('modalManageOrders')">Close</button>`;
@@ -826,7 +906,7 @@ document.querySelectorAll('.close-modal').forEach(btn => {
 window.addEventListener('click', (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; });
 document.querySelector('.close-popup')?.addEventListener('click', closePopup);
 
-// ========== DOUBLE-CLICK LOGO (fallback) ==========
+// ========== DOUBLE-CLICK LOGO ==========
 const logoElem = document.getElementById('logoArea');
 if (logoElem) {
   logoElem.addEventListener('dblclick', function(e) {
@@ -835,24 +915,48 @@ if (logoElem) {
   });
 }
 
-/**
- * uploadPhonePrices()
- *
- * Features:
- * ✅ Proper CSV parser with quote support
- * ✅ Handles commas inside quoted fields
- * ✅ Strong validation and error handling
- * ✅ Prevents empty values from crashing
- * ✅ Cleans and validates price values
- * ✅ Smart storage formatting (GB/TB)
- * ✅ Deduplicates storage variants
- * ✅ Keeps lowest price per storage option
- * ✅ English-only messages
- * ✅ Supabase session validation
- * ✅ Better desktop modal support
- * ✅ Better product normalization
- * ✅ Clear import summary
- */
+// ========================================
+// FAST CSV UPLOAD (batch + concurrency)
+// ========================================
+function parseCSVLine(line) {
+  const cols = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === ',' && !inQuotes) {
+      cols.push(current.trim());
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  cols.push(current.trim());
+  return cols;
+}
+
+function formatStorageLabel(raw) {
+  const s = String(raw).trim().toLowerCase();
+  const tbMatch = s.match(/^(\d+)\s*tb$/i);
+  if (tbMatch) return `${tbMatch[1]}TB`;
+  const num = parseFloat(s);
+  if (!isNaN(num)) {
+    if (num === 1024 || num === 1000) return '1TB';
+    if (num === 2048 || num === 2000) return '2TB';
+    if (num >= 1000) return `${Math.round(num / 1000)}TB`;
+    return `${num}GB`;
+  }
+  const gbMatch = s.match(/^(\d+)\s*gb$/i);
+  if (gbMatch) return `${gbMatch[1]}GB`;
+  return String(raw).trim();
+}
 
 async function uploadPhonePrices() {
   const fileInput = document.getElementById('phonePriceCsv');
@@ -902,7 +1006,6 @@ async function uploadPhonePrices() {
         return;
       }
 
-      // Build product map
       const priceMap = new Map();
       const rowErrors = [];
 
@@ -914,11 +1017,9 @@ async function uploadPhonePrices() {
           rowErrors.push(`Row ${i + 1}: Missing required columns`);
           continue;
         }
-
         const baseName = String(cols[nameIdx] || '').trim();
         const storageRaw = cols[storageIdx];
         const priceRaw = cols[priceIdx];
-
         if (!baseName) {
           rowErrors.push(`Row ${i + 1}: Product name is empty`);
           continue;
@@ -927,7 +1028,6 @@ async function uploadPhonePrices() {
           rowErrors.push(`Row ${i + 1}: Storage value missing for "${baseName}"`);
           continue;
         }
-
         const priceStr = String(priceRaw || '').replace(/[$€£¥]/g, '').replace(/,/g, '').trim();
         const price = parseFloat(priceStr);
         if (isNaN(price)) {
@@ -938,7 +1038,6 @@ async function uploadPhonePrices() {
           rowErrors.push(`Row ${i + 1}: Negative price for "${baseName}"`);
           continue;
         }
-
         const sizeLabel = formatStorageLabel(storageRaw);
         if (!priceMap.has(baseName)) priceMap.set(baseName, []);
         const variants = priceMap.get(baseName);
@@ -961,29 +1060,21 @@ async function uploadPhonePrices() {
       }
 
       statusDiv.innerHTML = '<span style="color:#0366d6;">Importing products, please wait...</span>';
-      await new Promise(resolve => setTimeout(resolve, 10)); // allow UI update
+      await new Promise(resolve => setTimeout(resolve, 10));
 
-      // Fetch ALL existing product names in one query
-      const { data: existingProducts, error: fetchError } = await supabase
-        .from('products')
-        .select('name, id');
+      // Fetch all existing product names
+      const { data: existingProducts, error: fetchError } = await supabase.from('products').select('name, id');
       if (fetchError) throw fetchError;
       const existingMap = new Map(existingProducts.map(p => [p.name, p.id]));
 
-      // Prepare updates and inserts
-      const toUpdate = []; // { id, name, lowestPrice, sizeOptions }
+      const toUpdate = [];
       const toInsert = [];
       for (const [baseName, variants] of priceMap.entries()) {
         variants.sort((a, b) => a.price - b.price);
         const lowestPrice = variants[0].price;
         const sizeOptions = variants.map(v => ({ size: v.size, price: v.price }));
         if (existingMap.has(baseName)) {
-          toUpdate.push({
-            id: existingMap.get(baseName),
-            name: baseName,
-            lowestPrice,
-            sizeOptions
-          });
+          toUpdate.push({ id: existingMap.get(baseName), lowestPrice, sizeOptions });
         } else {
           toInsert.push({
             name: baseName,
@@ -999,11 +1090,10 @@ async function uploadPhonePrices() {
         }
       }
 
-      // Process updates with concurrency limit (5 at a time) to avoid rate limits
       let updated = 0, errors = 0;
-      const updateBatchSize = 5;
-      for (let i = 0; i < toUpdate.length; i += updateBatchSize) {
-        const batch = toUpdate.slice(i, i + updateBatchSize);
+      // Update with concurrency (5 at a time)
+      for (let i = 0; i < toUpdate.length; i += 5) {
+        const batch = toUpdate.slice(i, i + 5);
         const promises = batch.map(item =>
           supabase.from('products').update({ price: item.lowestPrice, size_options: item.sizeOptions }).eq('id', item.id)
         );
@@ -1012,14 +1102,12 @@ async function uploadPhonePrices() {
           if (res.error) errors++;
           else updated++;
         }
-        // Update progress
         statusDiv.innerHTML = `<span style="color:#0366d6;">Importing... Updated: ${updated}, Inserting: 0/${toInsert.length}</span>`;
         await new Promise(resolve => setTimeout(resolve, 10));
       }
 
-      // Insert all new products in one batch (if any)
       let inserted = 0;
-      if (toInsert.length > 0) {
+      if (toInsert.length) {
         const { error: insertError } = await supabase.from('products').insert(toInsert);
         if (insertError) {
           errors += toInsert.length;
@@ -1029,7 +1117,6 @@ async function uploadPhonePrices() {
         }
       }
 
-      // Final summary
       let html = '<span style="color:green;">Products imported successfully.</span><br><br>';
       html += `Total Products: ${priceMap.size}<br>`;
       html += `Updated: ${updated}<br>`;
@@ -1042,12 +1129,10 @@ async function uploadPhonePrices() {
       }
       statusDiv.innerHTML = html;
 
-      // Refresh products
-      if (typeof loadProducts === 'function') await loadProducts();
-      const home = document.getElementById('home');
-      if (home && home.classList.contains('active') && typeof allProducts !== 'undefined') {
+      await loadProducts();
+      if (document.getElementById('home').classList.contains('active')) {
         allShuffled = getShuffledWithPhoneBias(allProducts);
-        displayProducts(allShuffled.slice(0, currentDisplayLimit || 20));
+        displayProducts(allShuffled.slice(0, currentDisplayLimit));
       }
     } catch (err) {
       statusDiv.innerHTML = `<span style="color:red;">Import failed: ${err.message}</span>`;
@@ -1058,238 +1143,30 @@ async function uploadPhonePrices() {
   reader.onerror = function () {
     statusDiv.innerHTML = '<span style="color:red;">Failed to read the CSV file.</span>';
   };
-
   reader.readAsText(file);
 }
 
-/**
- * CSV parser
- * Handles:
- * - quoted values
- * - commas inside quotes
- * - escaped quotes
- */
-function parseCSVLine(line) {
-
-  const cols = [];
-
-  let current = '';
-
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-
-    const ch = line[i];
-
-    if (ch === '"') {
-
-      // Escaped quote
-      if (
-        inQuotes &&
-        line[i + 1] === '"'
-      ) {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-
-    } else if (ch === ',' && !inQuotes) {
-
-      cols.push(current.trim());
-
-      current = '';
-
-    } else {
-
-      current += ch;
-    }
-  }
-
-  cols.push(current.trim());
-
-  return cols;
-}
-
-/**
- * Format storage labels
- */
-function formatStorageLabel(raw) {
-
-  const s = String(raw)
-    .trim()
-    .toLowerCase();
-
-  // Already TB
-  const tbMatch = s.match(/^(\d+)\s*tb$/i);
-
-  if (tbMatch) {
-    return `${tbMatch[1]}TB`;
-  }
-
-  // Pure number
-  const num = parseFloat(s);
-
-  if (!isNaN(num)) {
-
-    // Standard TB sizes
-    if (num === 1024 || num === 1000) {
-      return '1TB';
-    }
-
-    if (num === 2048 || num === 2000) {
-      return '2TB';
-    }
-
-    if (num >= 1000) {
-      return `${Math.round(num / 1000)}TB`;
-    }
-
-    return `${num}GB`;
-  }
-
-  // GB format
-  const gbMatch = s.match(/^(\d+)\s*gb$/i);
-
-  if (gbMatch) {
-    return `${gbMatch[1]}GB`;
-  }
-
-  // Fallback
-  return String(raw).trim();
-}
-
 // ========================================
-// Admin modal click binding
+// Admin modal click binding for bulk card
 // ========================================
 document.addEventListener('DOMContentLoaded', function () {
-
-  const bulkCard = document.querySelector(
-    '.admin-card[data-modal="bulkPhonePrices"]'
-  );
-
-  if (!bulkCard) {
-    console.warn(
-      'Bulk upload card not found.'
-    );
-    return;
+  const bulkCard = document.querySelector('.admin-card[data-modal="bulkPhonePrices"]');
+  if (bulkCard) {
+    bulkCard.addEventListener('click', function () {
+      const modal = document.getElementById('modalBulkPhonePrices');
+      if (modal) {
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+      }
+    });
   }
-
-  bulkCard.addEventListener('click', function () {
-
-    const modal = document.getElementById(
-      'modalBulkPhonePrices'
-    );
-
-    if (!modal) {
-      console.error(
-        'Modal not found: modalBulkPhonePrices'
-      );
-      return;
-    }
-
-    modal.style.display = 'flex';
-
-    // Prevent desktop scroll issues
-    document.body.style.overflow = 'hidden';
-  });
-
-  // Close modal support
-  const modal = document.getElementById(
-    'modalBulkPhonePrices'
-  );
-
+  const modal = document.getElementById('modalBulkPhonePrices');
   if (modal) {
-
     modal.addEventListener('click', function (e) {
-
       if (e.target === modal) {
-
         modal.style.display = 'none';
-
         document.body.style.overflow = '';
       }
     });
   }
 });
-// Autocomplete for Add Product modal
-async function searchProductNames(query) {
-  if (!query || query.length < 2) {
-    document.getElementById('nameSuggestions').style.display = 'none';
-    return [];
-  }
-  const { data, error } = await supabase
-    .from('products')
-    .select('name, description, cat, subcat, price, size_options, colors')
-    .ilike('name', `%${query}%`)
-    .limit(10);
-  if (error) {
-    console.error(error);
-    return [];
-  }
-  return data;
-}
-
-function showNameSuggestions(suggestions) {
-  const suggestionsDiv = document.getElementById('nameSuggestions');
-  if (!suggestions.length) {
-    suggestionsDiv.style.display = 'none';
-    return;
-  }
-  suggestionsDiv.innerHTML = suggestions.map(p => 
-    `<div data-name="${p.name}" 
-          data-desc="${escapeHtml(p.description || '')}" 
-          data-cat="${escapeHtml(p.cat || '')}" 
-          data-subcat="${escapeHtml(p.subcat || '')}" 
-          data-price="${p.price}" 
-          data-colors="${(p.colors || []).join(',')}" 
-          data-sizes='${JSON.stringify(p.size_options || [])}' 
-          onclick="selectProductSuggestion(this)">
-        ${p.name}
-     </div>`
-  ).join('');
-  suggestionsDiv.style.display = 'block';
-}
-
-function selectProductSuggestion(el) {
-  const name = el.getAttribute('data-name');
-  const desc = el.getAttribute('data-desc');
-  const cat = el.getAttribute('data-cat');
-  const subcat = el.getAttribute('data-subcat');
-  const price = el.getAttribute('data-price');
-  const colors = el.getAttribute('data-colors');
-  const sizes = el.getAttribute('data-sizes');
-
-  document.getElementById('prodNameAutocomplete').value = name;
-  document.getElementById('prodNameHidden').value = name;
-  document.getElementById('prodDesc').value = desc;
-  document.getElementById('prodCat').value = cat;
-  document.getElementById('prodSubcat').value = subcat;
-  document.getElementById('prodPrice').value = price;
-  document.getElementById('prodColors').value = colors;
-  document.getElementById('prodSizes').value = sizes;
-  
-  document.getElementById('nameSuggestions').style.display = 'none';
-}
-
-// Attach event listener when the modal opens
-function attachProductNameAutocomplete() {
-  const nameInput = document.getElementById('prodNameAutocomplete');
-  if (!nameInput) return;
-  nameInput.addEventListener('input', async function(e) {
-    const query = e.target.value.trim();
-    if (query.length < 2) {
-      document.getElementById('nameSuggestions').style.display = 'none';
-      return;
-    }
-    const suggestions = await searchProductNames(query);
-    showNameSuggestions(suggestions);
-  });
-  // Hide suggestions when clicking outside
-  document.addEventListener('click', function(e) {
-    const suggestionsDiv = document.getElementById('nameSuggestions');
-    if (suggestionsDiv && !suggestionsDiv.contains(e.target) && e.target !== nameInput) {
-      suggestionsDiv.style.display = 'none';
-    }
-  });
-}
