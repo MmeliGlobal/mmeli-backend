@@ -159,7 +159,7 @@ async function loadProducts() {
         allProducts = await res.json();
         displayProducts(allProducts.slice(0, currentDisplayLimit));
     } catch(e) {
-        document.getElementById('productsContainer').innerHTML = `<p style="color:red;">Error: ${e.message}. Run the SQL fix in Supabase.</p>`;
+        document.getElementById('productsContainer').innerHTML = `<p style="color:red;">Error: ${e.message}. Run the SQL fix in Supabase first.</p>`;
     }
 }
 
@@ -290,14 +290,14 @@ async function addProduct() {
     
     try {
         const main_image = await uploadImageToSupabase(file);
-        // Send fields that match your database schema (after running the SQL fix)
+        // Send all fields that exist after running the SQL fix
         const productData = {
             name: name,
             price: price,
             description: description,
             main_image: main_image,
-            cat: '',      // empty but column exists
-            subcat: ''    // empty but column exists
+            cat: 'General',
+            subcat: 'General'
         };
         await apiCall('/products', { method: 'POST', body: JSON.stringify(productData) });
         alert('Product added successfully!');
