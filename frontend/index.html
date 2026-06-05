@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Mmeli Global – Simple Shop</title>
+    <title>Mmeli Global – Bulk Upload</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; background: #f5f7fa; padding-bottom: 70px; }
@@ -34,6 +34,8 @@
         .loader { display: inline-block; width: 14px; height: 14px; border: 2px solid white; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 6px; vertical-align: middle; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .error-msg { color: red; background: #ffeeee; padding: 10px; border-radius: 8px; margin: 10px 0; display: none; }
+        .success-msg { color: green; background: #e6ffed; padding: 10px; border-radius: 8px; margin: 10px 0; display: none; }
+        .bulk-area { margin-top: 10px; padding: 10px; border: 1px dashed #ccc; border-radius: 12px; }
     </style>
 </head>
 <body>
@@ -77,23 +79,39 @@
     </div>
     <div id="adminPanel" style="display:none;">
         <h3>Admin Dashboard</h3>
-        <div class="admin-card" onclick="showAddProductForm()">➕ Add Product</div>
+        <div class="admin-card" onclick="showAddProductForm()">➕ Add Single Product</div>
+        <div class="admin-card" onclick="showBulkUploadForm()">📁 Bulk Upload CSV</div>
         <div class="admin-card" onclick="showManageProducts()">📦 Manage Products</div>
         <button onclick="switchPage('home')">Back to Site</button>
     </div>
 </section>
 
-<!-- Add Product Modal -->
+<!-- Single Add Product Modal -->
 <div id="addProductModal" class="modal">
     <div class="modal-content">
         <span class="close-modal" onclick="closeModal('addProductModal')">&times;</span>
-        <h3>Add Product</h3>
+        <h3>Add Single Product</h3>
         <input id="prodName" placeholder="Product name" required>
         <input id="prodPrice" placeholder="Price" type="number" step="0.01" required>
         <input type="file" id="prodImage" accept="image/*" required>
         <textarea id="prodDesc" placeholder="Description (optional)"></textarea>
         <button id="saveBtn" onclick="addProduct()">Save Product</button>
         <div id="uploadError" class="error-msg"></div>
+    </div>
+</div>
+
+<!-- Bulk Upload Modal -->
+<div id="bulkUploadModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModal('bulkUploadModal')">&times;</span>
+        <h3>Bulk Upload Products (CSV)</h3>
+        <p>CSV format: <code>name,price,description,main_image</code><br>
+        Example: <code>iPhone 14,999,Latest model,https://example.com/iphone.jpg</code></p>
+        <input type="file" id="bulkCsvFile" accept=".csv">
+        <button id="bulkUploadBtn" onclick="bulkUploadProducts()">Upload CSV & Create Products</button>
+        <div id="bulkProgress" style="margin-top:10px;"></div>
+        <div id="bulkError" class="error-msg"></div>
+        <div id="bulkSuccess" class="success-msg"></div>
     </div>
 </div>
 
@@ -159,7 +177,7 @@ async function loadProducts() {
         allProducts = await res.json();
         displayProducts(allProducts.slice(0, currentDisplayLimit));
     } catch(e) {
-        document.getElementById('productsContainer').innerHTML = `<p style="color:red;">Error: ${e.message}. Make sure you ran the SQL fix in Supabase.</p>`;
+        document.getElementById('productsContainer').innerHTML = `<p style="color:red;">Error: ${e.message}</p>`;
     }
 }
 
@@ -251,7 +269,7 @@ function checkout() {
     switchPage('home');
 }
 
-// ------------------- SUPABASE UPLOAD -------------------
+// ------------------- SUPABASE UPLOAD (single) -------------------
 async function uploadImageToSupabase(file) {
     const fileName = Date.now() + '_' + file.name;
     const url = `${SUPABASE_URL}/storage/v1/object/products/${fileName}`;
@@ -268,7 +286,7 @@ async function uploadImageToSupabase(file) {
     return `${SUPABASE_URL}/storage/v1/object/public/${data.Key}`;
 }
 
-// ------------------- ADMIN: ADD PRODUCT -------------------
+// ------------------- ADD SINGLE PRODUCT -------------------
 async function addProduct() {
     const name = document.getElementById('prodName').value.trim();
     const price = parseFloat(document.getElementById('prodPrice').value);
@@ -302,7 +320,6 @@ async function addProduct() {
         alert('Product added successfully!');
         closeModal('addProductModal');
         loadProducts();
-        // Clear form
         document.getElementById('prodName').value = '';
         document.getElementById('prodPrice').value = '';
         document.getElementById('prodImage').value = '';
@@ -314,6 +331,96 @@ async function addProduct() {
         btn.disabled = false;
         btn.innerText = originalText;
     }
+}
+
+// ------------------- BULK UPLOAD (CSV) -------------------
+async function bulkUploadProducts() {
+    const fileInput = document.getElementById('bulkCsvFile');
+    const file = fileInput.files[0];
+    const progressDiv = document.getElementById('bulkProgress');
+    const errorDiv = document.getElementById('bulkError');
+    const successDiv = document.getElementById('bulkSuccess');
+    
+    errorDiv.style.display = 'none';
+    successDiv.style.display = 'none';
+    progressDiv.innerHTML = '';
+    
+    if (!file) {
+        errorDiv.innerText = 'Please select a CSV file.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    const text = await file.text();
+    const lines = text.split(/\r?\n/);
+    if (lines.length < 2) {
+        errorDiv.innerText = 'CSV must have at least a header row and one data row.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    // Assume header: name,price,description,main_image
+    const products = [];
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line === '') continue;
+        const parts = line.split(',').map(p => p.trim());
+        if (parts.length < 4) {
+            errorDiv.innerText = `Row ${i+1} has less than 4 columns. Skipping.`;
+            errorDiv.style.display = 'block';
+            continue;
+        }
+        const name = parts[0];
+        const price = parseFloat(parts[1]);
+        const description = parts[2];
+        const main_image = parts[3];
+        if (name && !isNaN(price) && main_image) {
+            products.push({ name, price, description, main_image });
+        }
+    }
+    
+    if (products.length === 0) {
+        errorDiv.innerText = 'No valid products found in CSV.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    progressDiv.innerHTML = `Processing ${products.length} products...`;
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (let i = 0; i < products.length; i++) {
+        const p = products[i];
+        try {
+            const productData = {
+                name: p.name,
+                price: p.price,
+                description: p.description,
+                main_image: p.main_image,
+                cat: 'General',
+                subcat: 'General'
+            };
+            await apiCall('/products', { method: 'POST', body: JSON.stringify(productData) });
+            successCount++;
+            progressDiv.innerHTML = `Processed ${i+1}/${products.length} (${successCount} ok, ${failCount} failed)`;
+        } catch (err) {
+            failCount++;
+            progressDiv.innerHTML = `Processed ${i+1}/${products.length} (${successCount} ok, ${failCount} failed) - Last error: ${err.message}`;
+        }
+    }
+    
+    progressDiv.innerHTML = `Done! ${successCount} products added, ${failCount} failed.`;
+    if (successCount > 0) {
+        successDiv.innerText = `${successCount} products added successfully.`;
+        successDiv.style.display = 'block';
+        loadProducts();
+    }
+    if (failCount > 0) {
+        errorDiv.innerText = `${failCount} products failed. Check console for details.`;
+        errorDiv.style.display = 'block';
+    }
+    // Clear file input
+    fileInput.value = '';
 }
 
 // ------------------- ADMIN: MANAGE PRODUCTS -------------------
@@ -348,6 +455,10 @@ async function deleteProduct(id) {
 
 function showAddProductForm() {
     document.getElementById('addProductModal').style.display = 'flex';
+}
+
+function showBulkUploadForm() {
+    document.getElementById('bulkUploadModal').style.display = 'flex';
 }
 
 // ------------------- ADMIN LOGIN & ACCOUNT CREATION -------------------
