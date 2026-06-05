@@ -2,209 +2,551 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Mmeli Global – Premium E‑commerce</title>
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta property="og:title" content="Mmeli Global | Premium Products">
-  <meta property="og:description" content="Shop premium products, track shipments, get quotations, and manage your account.">
-  <meta property="og:image" content="logo.png">
-  <meta property="og:url" content="https://mmeliglobal.com">
-  <meta property="og:type" content="website">
-
-  <link rel="preconnect" href="https://unpkg.com">
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-  <link rel="preconnect" href="https://proljdccjrifqgbmsyco.supabase.co" crossorigin>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Mmeli Global Supply | Premium Logistics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link rel="stylesheet" href="style.css">
-
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
-  <script src="script.js"></script>
 </head>
 <body>
+<div class="app-container">
 
-<header class="header">
-  <div class="logo" id="logoArea">
-    <img src="logo.png" alt="Mmeli Global Logo" id="siteLogo" style="height:40px;" loading="lazy">
-    <span>Mmeli Global</span>
-  </div>
-  <div class="cart-icon" onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i> <span id="cartCount">0</span></div>
-</header>
-
-<div class="search-bar">
-  <div class="search-wrapper">
-    <input type="text" id="searchInput" placeholder="Search products..." autocomplete="off">
-    <i class="fas fa-search" onclick="searchProducts()"></i>
-    <label for="scanInput" style="cursor:pointer;"><i class="fas fa-camera"></i></label>
-    <input type="file" id="scanInput" hidden accept="image/*">
-  </div>
-  <div id="autocompleteList" class="autocomplete-items"></div>
-</div>
-
-<div id="mainMenu" class="main-menu"></div>
-<div id="subMenu" class="sub-menu"></div>
-
-<section id="home" class="page active">
-  <div id="productsContainer"></div>
-  <div id="loadMoreBtn" style="text-align:center; margin-top:20px;"><button onclick="loadMoreProducts()">Load More</button></div>
-</section>
-
-<section id="productPage" class="page">
-  <div id="productDetailContainer"></div>
-  <div id="productRecommendations" class="recommendations"></div>
-</section>
-
-<section id="cart" class="page">
-  <h3>Your Cart</h3>
-  <div id="cartList"></div>
-  <div class="cart-actions">
-    <input type="text" id="promoCodeInput" placeholder="Discount code">
-    <button onclick="applyDiscount()">Apply</button>
-    <button onclick="goToCheckout()" class="checkout-btn"><i class="fab fa-whatsapp"></i> Proceed to Checkout</button>
-  </div>
-  <div id="cartRecommendations" class="recommendations"></div>
-</section>
-
-<section id="checkoutPage" class="page">
-  <h3>Checkout</h3>
-  <div class="checkout-step active" id="stepShipping">
-    <h4>Shipping Address</h4>
-    <input type="text" id="checkoutAddress" placeholder="Address" value=""><button onclick="nextStep()">Next</button>
-  </div>
-  <div class="checkout-step" id="stepDelivery">
-    <h4>Delivery Method</h4>
-    <label><input type="radio" name="delivery" value="standard" checked> Standard (3-5 days) – $5</label>
-    <label><input type="radio" name="delivery" value="express"> Express (1-2 days) – $15</label>
-    <button onclick="nextStep()">Next</button>
-  </div>
-  <div class="checkout-step" id="stepPayment">
-    <h4>Payment</h4>
-    <p>You will be redirected to WhatsApp to confirm payment.</p>
-    <button onclick="completeCheckout()">Place Order</button>
-  </div>
-</section>
-
-<section id="tracking" class="page">
-  <h3>Track Your Order</h3>
-  <div id="map"></div>
-  <input type="text" id="trackCode" placeholder="Enter Tracking Code">
-  <button onclick="trackOrder()"><i class="fas fa-search"></i> Track</button>
-  <div id="trackInfo"></div>
-  <div id="trackTimeline" class="timeline"></div>
-</section>
-
-<section id="promo" class="page"><h3>Special Offers</h3><div id="promoList"></div></section>
-
-<section id="account" class="page">
-  <div id="loginBox">
-    <h3>Customer Login</h3>
-    <input type="text" id="loginPhone" placeholder="Phone number" required>
-    <input type="password" id="loginPassword" placeholder="Password" required>
-    <button onclick="login()">Login</button>
-    <hr>
-    <h3>New Customer? Register</h3>
-    <input type="text" id="regName" placeholder="Full Name">
-    <input type="email" id="regEmail" placeholder="Email">
-    <input type="tel" id="regPhone" placeholder="Phone">
-    <input type="text" id="regAddress" placeholder="Address">
-    <input type="password" id="regPassword" placeholder="Password">
-    <button onclick="register()">Register</button>
-  </div>
-  <div id="dashboard" style="display:none;">
-    <h3>Welcome, <span id="userName"></span></h3>
-    <div class="customer-buttons">
-      <button onclick="showMyOrders()"><i class="fas fa-box"></i> My Orders</button>
-      <button onclick="showMyQuotations()"><i class="fas fa-file-invoice"></i> My Quotations</button>
-      <button onclick="showMyReturns()"><i class="fas fa-undo-alt"></i> My Returns</button>
-      <button onclick="openShipmentTracking()"><i class="fas fa-shipping-fast"></i> Track Shipment</button>
-      <button onclick="showProfile()"><i class="fas fa-user-edit"></i> Edit Profile</button>
-      <button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
-    </div>
-    <div id="customerData"></div>
-    <div id="customerRecommendations" class="recommendations"></div>
-  </div>
-</section>
-
-<section id="adminDashboard" class="page">
-  <div id="adminLoginDiv"><h3>Admin Login</h3><input type="email" id="adminEmail" placeholder="Email" required><input type="password" id="adminPassword" placeholder="Password" required><button onclick="adminLogin()">Login</button></div>
-  <div id="adminPanel" style="display:none;">
-    <h3>Admin Dashboard</h3>
-    <div class="admin-cards-grid">
-      <div class="admin-card" data-modal="dashboardStats">📊 Dashboard</div>
-      <div class="admin-card" data-modal="manageProducts">🛍️ Products</div>
-      <div class="admin-card" data-modal="addProduct">➕ Add Product</div>
-      <div class="admin-card" data-modal="manageOrders">📦 Orders</div>
-      <div class="admin-card" data-modal="discounts">🏷️ Discounts</div>
-      <div class="admin-card" data-modal="returns">🔄 Returns</div>
-      <div class="admin-card" data-modal="inventory">📦 Inventory</div>
-      <div class="admin-card" data-modal="managePolicies">📜 Policies</div>
-      <div class="admin-card" data-modal="manageShipments">🚚 Shipments</div>
-      <div class="admin-card" data-modal="broadcast">📢 Broadcast</div>
-      <div class="admin-card" data-modal="createQuotation">📄 Create Quotation</div>
-      <div class="admin-card" data-modal="bulkImport">📁 Bulk Import (Excel/CSV)</div>
-    </div>
-    <button onclick="switchPage('account')"><i class="fas fa-arrow-left"></i> Back to Site</button>
-  </div>
-</section>
-
-<!-- MODALS (simplified – same as original but bulk modal exists) -->
-<div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalManageProducts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalAddProduct" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalManageOrders" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalDiscounts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalReturns" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalInventory" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalManagePolicies" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalManageShipments" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalBroadcast" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalCreateQuotation" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalQuotationPreview" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div id="quotationPreviewContent"></div></div></div>
-<div id="shipmentTrackingModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeShipmentModal()">&times;</span><h3>Track Your Shipment</h3><input type="text" id="shipmentCode" placeholder="Enter tracking code"><button onclick="fetchShipmentStatus()">Track</button><div id="shipmentStatus"></div><div id="shipmentTimeline"></div></div></div>
-<div id="quoteModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div id="quotePreview"></div></div></div>
-<div id="popupPromo" class="popup-promo" style="position:fixed; bottom:20px; right:20px; background:white; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.2); display:none; z-index:1100; max-width:280px;"><span class="close-popup" style="float:right; cursor:pointer;">&times;</span><div id="popupContent"></div></div>
-
-<!-- BULK IMPORT MODAL -->
-<div id="modalBulkImport" class="modal">
-  <div class="modal-content">
-    <span class="close-modal">&times;</span>
-    <div class="modal-body">
-      <h3>📂 Bulk Import Products (Excel / CSV)</h3>
-      <p style="font-size:0.85rem;">Supports .xlsx, .xls, .csv. Unknown columns go into <code>metadata</code> (JSON).</p>
-      <label>Before importing, do you want to <strong>clear all existing products</strong>?</label>
-      <div style="margin: 10px 0;">
-        <label><input type="radio" name="clearMode" value="none" checked> Keep existing products (merge/update by name)</label><br>
-        <label><input type="radio" name="clearMode" value="all"> Delete all products before import</label>
+  <!-- ========== HEADER ========== -->
+  <div class="top-header">
+    <div class="logo" onclick="showPage('home')">
+      <div class="logo-icon">MG</div>
+      <div class="logo-text">
+        <h1 id="company-name">MMELI GLOBAL</h1>
+        <p id="company-tagline">Your trusted shipping partner</p>
       </div>
-      <input type="file" id="bulkFileInput" accept=".xlsx,.xls,.csv">
-      <button onclick="importBulkProducts()">🚀 Start Import</button>
-      <div id="bulkStatus" style="margin-top: 12px; font-size:0.9rem;"></div>
     </div>
+    <div class="header-actions">
+      <button id="portalBtn" class="sign-btn" onclick="showPage('customer-portal')">
+        <i class="fas fa-user-circle"></i> Portal
+      </button>
+      <button id="adminBtn" class="sign-btn" onclick="showAdminLogin()">
+        <i class="fas fa-lock"></i> Admin
+      </button>
+    </div>
+  </div>
+
+  <!-- ========== CATEGORIES ROW with FIXED HAMBURGER ========== -->
+  <div class="categories-row">
+    <button class="hamburger-btn" id="hamburgerBtn">
+      <i class="fas fa-bars"></i>
+    </button>
+    <div class="categories-scroll">
+      <span class="category-chip" data-page="home">🏠 Home</span>
+      <span class="category-chip" data-page="services">📦 Services</span>
+      <span class="category-chip" data-page="videos">🎥 Videos</span>
+      <span class="category-chip" data-page="pictures">📸 Gallery</span>
+      <span class="category-chip" data-page="referral">🎁 Refer & Earn</span>
+      <span class="category-chip" data-page="contact">📞 Contact</span>
+      <span class="category-chip" data-page="customer-portal">👤 Portal</span>
+    </div>
+  </div>
+  <div class="golden-line"></div>
+
+  <!-- ========== SIDE DRAWER (HAMBURGER MENU) ========== -->
+  <div id="sideDrawer" class="side-drawer">
+    <div class="drawer-header">
+      <h3>Menu</h3>
+      <button id="closeDrawerBtn">&times;</button>
+    </div>
+    <nav class="drawer-nav">
+      <ul>
+        <li><a onclick="showPage('home'); closeDrawer()">🏠 Home</a></li>
+        <li><a onclick="showPage('services'); closeDrawer()">📦 Services</a></li>
+        <li><a onclick="showPage('videos'); closeDrawer()">🎥 Videos</a></li>
+        <li><a onclick="showPage('pictures'); closeDrawer()">📸 Gallery</a></li>
+        <li><a onclick="showPage('referral'); closeDrawer()">🎁 Refer & Earn</a></li>
+        <li><a onclick="showPage('contact'); closeDrawer()">📞 Contact</a></li>
+        <li><a onclick="showPage('customer-portal'); closeDrawer()">👤 Customer Portal</a></li>
+        <li><a onclick="showAdminLogin(); closeDrawer()">🔐 Admin</a></li>
+      </ul>
+    </nav>
+  </div>
+  <div id="drawerOverlay" class="drawer-overlay"></div>
+
+  <!-- ========== PAGES ========== -->
+  <!-- HOME PAGE -->
+  <div id="home-page" class="page active-page">
+    <div class="desktop-home-content">
+      <div class="page-header">
+        <h2>WELCOME TO MMELI GLOBAL</h2>
+        <p>Your trusted shipping partner between China and Zimbabwe</p>
+      </div>
+      <div class="tracking-box">
+        <h3>🔍 Track Your Package</h3>
+        <div class="search-box">
+          <input type="text" id="trackingInput" placeholder="Enter tracking number (e.g., SEA123456)">
+          <button onclick="trackPackage()">Track</button>
+        </div>
+        <div id="trackingResult" class="tracking-result"></div>
+      </div>
+      <div class="referral-banner">
+        <h3>🎁 REFER & EARN</h3>
+        <p>Get 5 friends to ship with us and receive a discount coupon!</p>
+        <a onclick="showPage('referral')" class="admin-btn">Learn More</a>
+      </div>
+    </div>
+
+    <!-- Mobile home: portal quick cards only -->
+    <div class="mobile-home-content">
+      <div class="portal-quick-grid">
+        <div class="quick-card" data-page="dashboard">📊 Dashboard</div>
+        <div class="quick-card" data-page="shipments">📦 My Shipments</div>
+        <div class="quick-card" data-page="quotations">💰 My Quotations</div>
+        <div class="quick-card" data-page="invoices">📄 My Invoices</div>
+        <div class="quick-card" data-page="packing">📋 Packing List</div>
+        <div class="quick-card" data-page="track">🔍 Track Shipment</div>
+        <div class="quick-card" data-page="place-order">🛒 Place Order</div>
+        <div class="quick-card" data-page="request">📝 Request Pickup</div>
+        <div class="quick-card" data-page="settings">⚙️ Settings</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRACKING DETAIL PAGE (mobile) -->
+  <div id="tracking-detail-page" class="page">
+    <div class="tracking-box">
+      <h3>🔍 Track Your Package</h3>
+      <div style="display:flex; gap:10px;">
+        <input type="text" id="mobileTrackingInput" placeholder="Tracking number">
+        <button class="btn-primary" onclick="mobileTrackPackage()">Track</button>
+      </div>
+      <div id="mobileTrackingResult"></div>
+    </div>
+  </div>
+
+  <!-- SERVICES PAGE -->
+  <div id="services-page" class="page">
+    <div class="page-header"><h2>OUR SERVICES</h2><p>Complete China to Zimbabwe Business Solutions</p></div>
+    <div class="services-grid" id="services-grid"></div>
+  </div>
+
+  <!-- VIDEOS PAGE -->
+  <div id="videos-page" class="page">
+    <div class="page-header"><h2>OUR VIDEOS</h2><p>Watch our services in action</p></div>
+    <div class="video-section">
+      <h3 class="video-section-title">🔍 Sourcing Videos</h3>
+      <div class="video-grid" id="sourcing-videos-grid"></div>
+    </div>
+    <div class="video-section">
+      <h3 class="video-section-title">🚢 Shipping Videos</h3>
+      <div class="video-grid" id="shipping-videos-grid"></div>
+    </div>
+  </div>
+
+  <!-- GALLERY PAGE -->
+  <div id="pictures-page" class="page">
+    <div class="page-header"><h2>OUR GALLERY</h2><p>Photos of our facilities and packaging</p></div>
+    <h3 class="video-section-title">📸 Packaging Photos</h3>
+    <div class="gallery-grid" id="packaging-gallery"></div>
+    <h3 class="video-section-title" style="margin-top:30px;">🏭 Facility Photos</h3>
+    <div class="gallery-grid" id="facility-gallery"></div>
+  </div>
+
+  <!-- REFERRAL PAGE -->
+  <div id="referral-page" class="page">
+    <div class="page-header"><h2>🎁 REFER & EARN</h2><p>Share and earn rewards</p></div>
+    <div class="referral-banner">
+      <h3>Your Referral Progress</h3>
+      <div class="referral-stats">
+        <div class="stat-card"><div class="stat-number" id="referral-count">3</div><div>Total Referrals</div></div>
+        <div class="stat-card"><div class="stat-number">5</div><div>Needed for Coupon</div></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:60%;"></div></div>
+      <div class="coupon-code">MMELI5OFF</div>
+      <div class="share-link-box"><input type="text" id="referralLink" value="https://mmeliglobal.com/ref/JOHN123" readonly><button class="share-btn" onclick="copyReferralLink()">Copy</button></div>
+    </div>
+  </div>
+
+  <!-- CONTACT PAGE -->
+  <div id="contact-page" class="page">
+    <div class="page-header"><h2>CONTACT US</h2><p>We're here 24/7</p></div>
+    <div class="contact-grid">
+      <div class="contact-card"><h4>📞 China Office</h4><p>+86 190 8583 7465</p><p>Qingzhen, Guiyang, Guizhou</p></div>
+      <div class="contact-card"><h4>📍 Zimbabwe Office</h4><p>+263 776 871 711</p><p>2888 Dulivhadzimu, Beitbridge</p></div>
+      <div class="contact-card"><h4>💬 Quick Contact</h4><p>WhatsApp: +263 776 871 711</p><p>WeChat: +263 776 871 711</p></div>
+    </div>
+  </div>
+
+  <!-- CUSTOMER PORTAL PAGE (with login/signup and hidden portal content) -->
+  <div id="customer-portal-page" class="page">
+    <div class="portal-header">
+      <h2>Mmeli Global Supply <small>Your Trusted Shipping Partner</small></h2>
+      <div class="portal-user" id="portal-user-display">👤 Welcome, Guest</div>
+    </div>
+
+    <!-- Login / Signup forms (always visible when not logged in) -->
+    <div class="quick-login-section" id="customer-login-section">
+      <!-- Login Form -->
+      <div id="loginForm" class="login-form-container">
+        <h3>🔐 Customer Login</h3>
+        <div class="login-input-group">
+          <input type="text" id="loginIdentifier" placeholder="Email or Phone number">
+          <input type="password" id="loginPassword" placeholder="Password">
+          <button onclick="customerLogin()" class="portal-btn">Login</button>
+        </div>
+        <div class="login-footer">
+          <span>New customer? <a href="#" id="showSignupLink">Sign up here</a></span>
+        </div>
+      </div>
+
+      <!-- Signup Form (hidden initially) -->
+      <div id="signupForm" class="login-form-container" style="display:none;">
+        <h3>📝 Create Account</h3>
+        <div class="login-input-group">
+          <input type="text" id="signupName" placeholder="Full Name">
+          <input type="email" id="signupEmail" placeholder="Email">
+          <input type="text" id="signupPhone" placeholder="Phone number">
+          <input type="password" id="signupPassword" placeholder="Password">
+          <input type="password" id="signupConfirm" placeholder="Confirm Password">
+          <textarea id="signupAddress" rows="2" placeholder="Address"></textarea>
+          <button onclick="customerSignup()" class="portal-btn">Create Account</button>
+        </div>
+        <div class="login-footer">
+          <span>Already have an account? <a href="#" id="showLoginLink">Login here</a></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="customer-welcome-section" class="customer-welcome" style="display:none;">
+      <span id="welcome-message"></span>
+      <button onclick="customerLogout()">Logout</button>
+    </div>
+
+    <!-- Portal content: only shown after login -->
+    <div id="portalContent" style="display: none;">
+      <div class="portal-nav">
+        <div class="portal-nav-items">
+          <div class="portal-nav-item active" onclick="showPortalPage('dashboard')">📊 Dashboard</div>
+          <div class="portal-nav-item" onclick="showPortalPage('shipments')">📦 My Shipments</div>
+          <div class="portal-nav-item" onclick="showPortalPage('quotations')">💰 My Quotations</div>
+          <div class="portal-nav-item" onclick="showPortalPage('invoices')">📄 My Invoices</div>
+          <div class="portal-nav-item" onclick="showPortalPage('packing')">📋 Packing List</div>
+          <div class="portal-nav-item" onclick="showPortalPage('track')">🔍 Track Shipment</div>
+          <div class="portal-nav-item" onclick="showPortalPage('place-order')">🛒 Place Order</div>
+          <div class="portal-nav-item" onclick="showPortalPage('request')">📝 Request Pickup</div>
+          <div class="portal-nav-item" onclick="showPortalPage('settings')">⚙️ Settings</div>
+        </div>
+      </div>
+
+      <!-- Dashboard -->
+      <div id="portal-dashboard" class="portal-page active-portal-page">
+        <div class="dashboard-welcome">
+          <h3>Welcome back, <span id="dashboard-name"></span>!</h3>
+          <p>Here's your activity summary.</p>
+        </div>
+        <div class="stats-grid" id="dashboard-stats">
+          <div class="stat-card"><div class="stat-number" id="stat-shipments">0</div><div>Total Shipments</div></div>
+          <div class="stat-card"><div class="stat-number" id="stat-quotations">0</div><div>Quotations</div></div>
+          <div class="stat-card"><div class="stat-number" id="stat-invoices">0</div><div>Invoices</div></div>
+          <div class="stat-card"><div class="stat-number" id="stat-orders">0</div><div>Orders Placed</div></div>
+        </div>
+        <div class="recent-section">
+          <h3>📦 Recent Shipments</h3>
+          <div class="portal-table-container">
+            <table class="portal-table">
+              <thead><tr><th>ID</th><th>Status</th><th>Est. Delivery</th><th>Action</th></tr></thead>
+              <tbody id="dashboard-shipments-list"></tbody>
+            </table>
+          </div>
+        </div>
+        <button class="big-track-btn" onclick="showPortalPage('track')">🔍 TRACK YOUR SHIPMENT</button>
+      </div>
+
+      <!-- My Shipments -->
+      <div id="portal-shipments" class="portal-page">
+        <h3>📦 My Shipments</h3>
+        <div class="portal-table-container">
+          <table class="portal-table">
+            <thead><tr><th>ID</th><th>Service</th><th>Status</th><th>Origin</th><th>Destination</th><th>Est. Delivery</th><th>Current Location</th></tr></thead>
+            <tbody id="shipments-list-portal"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- My Quotations -->
+      <div id="portal-quotations" class="portal-page">
+        <h3>💰 My Quotations</h3>
+        <div class="portal-table-container">
+          <table class="portal-table">
+            <thead><tr><th>Quote ID</th><th>Service</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody id="quotations-list"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- My Invoices -->
+      <div id="portal-invoices" class="portal-page">
+        <h3>📄 My Invoices</h3>
+        <div class="portal-table-container">
+          <table class="portal-table">
+            <thead><tr><th>Invoice ID</th><th>Amount</th><th>Status</th><th>Due Date</th></tr></thead>
+            <tbody id="invoices-list"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Packing List -->
+      <div id="portal-packing" class="portal-page">
+        <h3>📋 Packing List</h3>
+        <div class="portal-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Select Shipment</label>
+              <select id="packing-shipment-select"></select>
+            </div>
+            <div class="form-group">
+              <button class="portal-btn" onclick="viewPackingList()">View Packing List</button>
+            </div>
+          </div>
+          <div id="packing-list-display" class="packing-display"></div>
+        </div>
+      </div>
+
+      <!-- Track Shipment -->
+      <div id="portal-track" class="portal-page">
+        <h3>🔍 Track Shipment</h3>
+        <div class="portal-form">
+          <div class="form-group">
+            <label>Enter Tracking Number</label>
+            <input type="text" id="portal-tracking-input" placeholder="e.g., SEA123456">
+          </div>
+          <button class="portal-btn" onclick="portalTrackPackage()">Track Package</button>
+          <div id="portal-tracking-result" class="tracking-result"></div>
+        </div>
+      </div>
+
+      <!-- Place Order – button opens modal -->
+      <div id="portal-place-order" class="portal-page">
+        <h3>🛒 Place New Order</h3>
+        <div style="text-align: center; margin: 40px 0;">
+          <button class="portal-btn large-btn" onclick="openOrderModal()">📦 New Order</button>
+        </div>
+      </div>
+
+      <!-- Request Pickup – button opens modal -->
+      <div id="portal-request" class="portal-page">
+        <h3>📝 Request Pickup</h3>
+        <div style="text-align: center; margin: 40px 0;">
+          <button class="portal-btn large-btn" onclick="openPickupModal()">🚚 Request Pickup</button>
+        </div>
+      </div>
+
+      <!-- Settings – button opens modal -->
+      <div id="portal-settings" class="portal-page">
+        <h3>⚙️ Account Settings</h3>
+        <div style="text-align: center; margin: 40px 0;">
+          <button class="portal-btn large-btn" onclick="openSettingsModal()">✏️ Edit Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN PAGE -->
+  <div id="admin-page" class="page">
+    <div class="admin-header"><h2>📊 Admin Dashboard</h2><button class="admin-logout" onclick="logout()">Logout</button></div>
+    <div class="admin-tabs">
+      <div class="admin-tab active" onclick="showAdminPanel('dashboard')">🏠 Dashboard</div>
+      <div class="admin-tab" onclick="showAdminPanel('branding')">🖼️ Branding</div>
+      <div class="admin-tab" onclick="showAdminPanel('contact')">📞 Contact</div>
+      <div class="admin-tab" onclick="showAdminPanel('services')">ℹ️ Services</div>
+      <div class="admin-tab" onclick="showAdminPanel('videos')">🎥 Videos</div>
+      <div class="admin-tab" onclick="showAdminPanel('gallery')">📸 Gallery</div>
+      <div class="admin-tab" onclick="showAdminPanel('shipments')">📦 Shipments</div>
+      <div class="admin-tab" onclick="showAdminPanel('customers')">👥 Customers</div>
+      <div class="admin-tab" onclick="showAdminPanel('quotations')">💰 Quotations</div>
+    </div>
+
+    <div id="panel-dashboard" class="admin-panel active-panel"><div class="admin-form"><h3>Welcome to Admin Dashboard</h3><p>Use tabs to manage content.</p><div id="admin-stats"></div></div></div>
+
+    <div id="panel-branding" class="admin-panel"><div class="admin-form"><h3>Branding</h3><div class="form-group"><label>Company Name</label><input id="company-name-input" value="MMELI GLOBAL"></div><div class="form-group"><label>Tagline</label><input id="tagline-input" value="Your trusted shipping partner"></div><button class="admin-btn" onclick="saveBranding()">Save</button></div></div>
+
+    <div id="panel-contact" class="admin-panel"><div class="admin-form"><h3>Contact Info</h3><div class="form-row"><div class="form-group"><label>China Phone</label><input id="china-phone-input" value="+86 190 8583 7465"></div><div class="form-group"><label>Zimbabwe Phone</label><input id="zim-phone-input" value="+263 776 871 711"></div></div><button class="admin-btn" onclick="saveContact()">Save</button></div></div>
+
+    <div id="panel-services" class="admin-panel"><div class="admin-form"><h3>Services</h3><div id="services-list"></div><button class="admin-btn" onclick="openAddServiceModal()">+ Add Service</button></div></div>
+
+    <div id="panel-videos" class="admin-panel"><div class="admin-form"><h3>Videos</h3><div id="videos-list"></div><button class="admin-btn" onclick="openAddVideoModal()">+ Add Video</button></div></div>
+
+    <div id="panel-gallery" class="admin-panel"><div class="admin-form"><h3>Gallery</h3><div id="gallery-list"></div><button class="admin-btn" onclick="openAddGalleryModal()">+ Add Image</button></div></div>
+
+    <div id="panel-shipments" class="admin-panel"><div class="admin-form"><h3>Shipments</h3><button class="admin-btn" onclick="openAddShipmentModal()">+ New Shipment</button><table class="portal-table" id="shipments-table"><tbody id="shipments-list"></tbody></table></div></div>
+
+    <div id="panel-customers" class="admin-panel"><div class="admin-form"><h3>Customers</h3><button class="admin-btn" onclick="openAddCustomerModal()">+ Add Customer</button><table class="portal-table"><tbody id="customers-list"></tbody></table></div></div>
+
+    <div id="panel-quotations" class="admin-panel"><div class="admin-form"><h3>Quotations</h3><button class="admin-btn" onclick="openAddQuotationModal()">+ Add Quotation</button><table class="portal-table"><tbody id="quotations-admin-list"></tbody></table></div></div>
+  </div>
+
+  <!-- ========== FOOTER GRID ========== -->
+  <div class="footer-grid">
+    <div class="footer-col">
+      <h4>Our Services</h4>
+      <ul>
+        <li>Sourcing</li>
+        <li>Procurement</li>
+        <li>Shipping</li>
+        <li>Logistics</li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Support</h4>
+      <ul>
+        <li>FAQs</li>
+        <li>Track your cargo</li>
+        <li>Payment options</li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Contact</h4>
+      <ul>
+        <li>+263 776 871 711</li>
+        <li>+86 190 8583 7465</li>
+        <li>info@mmeliglobal.com</li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Follow Us</h4>
+      <div class="social-icons">
+        <i class="fab fa-facebook-f"></i>
+        <i class="fab fa-instagram"></i>
+        <i class="fab fa-twitter"></i>
+        <i class="fab fa-linkedin-in"></i>
+      </div>
+    </div>
+  </div>
+  <div class="copyright">© 2025 Mmeli Global Supply — your trusted shipping partner</div>
+</div>
+
+<!-- ========== MODALS ========== -->
+<!-- Customer portal modals -->
+<div id="orderModal" class="modal-overlay">
+  <div class="modal-container">
+    <div class="modal-header"><h3>🛒 Place New Order</h3><button class="modal-close" onclick="closeOrderModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-row"><div class="form-group"><label>Service Type</label><select id="order-service-modal"><option>Sea Freight</option><option>Air Freight</option><option>Road Freight</option></select></div><div class="form-group"><label>Package Type</label><select id="order-package-type-modal"><option>Pallet</option><option>Box</option><option>Crate</option><option>Bag</option></select></div></div>
+      <div class="form-row"><div class="form-group"><label>Origin</label><input id="order-origin-modal" placeholder="City, Country"></div><div class="form-group"><label>Destination</label><input id="order-destination-modal" placeholder="City, Country"></div></div>
+      <div class="form-row"><div class="form-group"><label>Weight (kg)</label><input id="order-weight-modal" type="number" step="0.1" placeholder="0.0"></div><div class="form-group"><label>Volume (m³)</label><input id="order-volume-modal" type="number" step="0.01" placeholder="0.00"></div></div>
+      <div class="form-group"><label>Item Description</label><textarea id="order-description-modal" rows="3" placeholder="Describe the goods..."></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="portal-btn" onclick="submitOrderModal()">Submit for Quotation</button></div>
   </div>
 </div>
 
-<nav class="bottom-nav">
-  <div onclick="resetHome()"><i class="fas fa-home"></i></div>
-  <div onclick="switchPage('promo')"><i class="fas fa-fire"></i></div>
-  <div onclick="switchPage('tracking')"><i class="fas fa-map-marker-alt"></i></div>
-  <div onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i></div>
-  <div onclick="switchPage('account')"><i class="fas fa-user"></i></div>
-</nav>
-
-<footer class="footer">
-  <div class="footer-grid">
-    <div><h4>Mmeli Global</h4><p>Premium products delivered worldwide.</p><p><i class="fab fa-whatsapp"></i> +263 77 687 1711</p><p><i class="far fa-envelope"></i> info@mmeliglobal.com</p></div>
-    <div><h4>Quick Links</h4><a href="#" onclick="resetHome()">Home</a><a href="#" onclick="switchPage('promo')">Promotions</a><a href="#" onclick="switchPage('tracking')">Track Order</a><a href="#" onclick="switchPage('account')">My Account</a>
-      <a href="#" onclick="switchPage('adminDashboard')" style="color: #d4af37; font-weight: bold; margin-top: 12px;">🔐 Admin Login</a>
+<div id="pickupModal" class="modal-overlay">
+  <div class="modal-container">
+    <div class="modal-header"><h3>📝 Request Pickup</h3><button class="modal-close" onclick="closePickupModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-row"><div class="form-group"><label>Pickup Date</label><input type="date" id="pickup-date-modal"></div><div class="form-group"><label>Pickup Time</label><input type="time" id="pickup-time-modal"></div></div>
+      <div class="form-group"><label>Pickup Address</label><input id="pickup-address-modal" placeholder="Street, city, code"></div>
+      <div class="form-row"><div class="form-group"><label>Recipient Name</label><input id="recipient-name-modal" placeholder="Full name"></div><div class="form-group"><label>Recipient Phone</label><input id="recipient-phone-modal" placeholder="Phone number"></div></div>
+      <div class="form-group"><label>Recipient Address</label><input id="recipient-address-modal" placeholder="Delivery address"></div>
+      <div class="form-row"><div class="form-group"><label>Number of Packages</label><input type="number" id="package-count-modal" value="1" min="1"></div><div class="form-group"><label>Total Weight (kg)</label><input type="number" id="total-weight-modal" step="0.1" placeholder="0.0"></div></div>
     </div>
-    <div><h4>Policies</h4><a href="#" id="privacyLink">Privacy Policy</a><a href="#" id="termsLink">Terms of Service</a><a href="#" id="shippingLink">Shipping Info</a><a href="#" id="returnsLink">Returns & Refunds</a></div>
-    <div><h4>Newsletter</h4><p>Get updates</p><input type="email" id="subEmail" placeholder="Email"><input type="tel" id="subPhone" placeholder="WhatsApp"><button onclick="subscribe()">Subscribe</button></div>
+    <div class="modal-footer"><button class="portal-btn" onclick="submitPickupModal()">Request Pickup</button></div>
   </div>
-  <div class="footer-bottom">&copy; 2025 Mmeli Global. All rights reserved.</div>
-</footer>
+</div>
 
+<div id="settingsModal" class="modal-overlay">
+  <div class="modal-container">
+    <div class="modal-header"><h3>⚙️ Account Settings</h3><button class="modal-close" onclick="closeSettingsModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-row"><div class="form-group"><label>First Name</label><input id="settings-firstname-modal" placeholder="First name"></div><div class="form-group"><label>Last Name</label><input id="settings-lastname-modal" placeholder="Last name"></div></div>
+      <div class="form-group"><label>Email</label><input id="settings-email-modal" type="email" placeholder="Email"></div>
+      <div class="form-group"><label>Phone</label><input id="settings-phone-modal" placeholder="Phone number"></div>
+      <div class="form-group"><label>Default Address</label><textarea id="settings-address-modal" rows="2" placeholder="Your address"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="portal-btn" onclick="saveSettingsModal()">Save Changes</button></div>
+  </div>
+</div>
+
+<!-- Admin modals -->
+<div id="adminServiceModal" class="modal-overlay">
+  <div class="modal-container">
+    <div class="modal-header"><h3>Add Service</h3><button class="modal-close" onclick="closeAdminServiceModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Title</label><input id="admin-service-title" placeholder="e.g., Sourcing"></div>
+      <div class="form-group"><label>Description</label><textarea id="admin-service-description" rows="3" placeholder="Describe the service..."></textarea></div>
+      <div class="form-group"><label>Icon (emoji)</label><input id="admin-service-icon" placeholder="📦"></div>
+    </div>
+    <div class="modal-footer"><button class="admin-btn" onclick="saveAdminService()">Save</button></div>
+  </div>
+</div>
+
+<div id="adminVideoModal" class="modal-overlay">
+  <div class="modal-container">
+    <div class="modal-header"><h3>Add Video</h3><button class="modal-close" onclick="closeAdminVideoModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Category</label><select id="admin-video-category"><option>sourcing</option><option>shipping</option></select></div>
+      <div class="form-group"><label>Title</label><input id="admin-video-title" placeholder="Video title"></div>
+      <div class="form-group"><label>URL</label><input id="admin-video-url" placeholder="YouTube embed URL"></div>
+      <div class="form-group"><label>Thumbnail URL</label><input id="admin-video-thumbnail" placeholder="Image URL"></div>
+    </div>
+    <div class="modal-footer"><button class="admin-btn" onclick="saveAdminVideo()">Save</button></div>
+  </div>
+</div>
+
+<div id="adminGalleryModal" class="modal-overlay">
+  <div class="modal-container">
+    <div class="modal-header"><h3>Add Gallery Image</h3><button class="modal-close" onclick="closeAdminGalleryModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Category</label><select id="admin-gallery-category"><option>packaging</option><option>facility</option></select></div>
+      <div class="form-group"><label>Image URL</label><input id="admin-gallery-image" placeholder="https://..."></div>
+      <div class="form-group"><label>Caption</label><input id="admin-gallery-caption" placeholder="Brief description"></div>
+    </div>
+    <div class="modal-footer"><button class="admin-btn" onclick="saveAdminGalleryImage()">Save</button></div>
+  </div>
+</div>
+
+<div id="adminShipmentModal" class="modal-overlay">
+  <div class="modal-container">
+    <div class="modal-header"><h3>Add New Shipment</h3><button class="modal-close" onclick="closeAdminShipmentModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-row"><div class="form-group"><label>Tracking #</label><input id="new-tracking-modal" placeholder="SEA123456"></div><div class="form-group"><label>Customer Name</label><input id="customer-name-modal" placeholder="Customer name"></div></div>
+      <div class="form-row"><div class="form-group"><label>Origin</label><input id="shipment-origin-modal" placeholder="City, Country"></div><div class="form-group"><label>Destination</label><input id="shipment-destination-modal" placeholder="City, Country"></div></div>
+      <div class="form-row"><div class="form-group"><label>Weight (kg)</label><input id="shipment-weight-modal" type="number" step="0.1"></div><div class="form-group"><label>Service</label><select id="shipment-service-modal"><option>Sea Freight</option><option>Air Freight</option></select></div></div>
+    </div>
+    <div class="modal-footer"><button class="admin-btn" onclick="saveNewShipmentModal()">Save</button></div>
+  </div>
+</div>
+
+<div id="adminCustomerModal" class="modal-overlay">
+  <div class="modal-container">
+    <div class="modal-header"><h3>Add Customer</h3><button class="modal-close" onclick="closeAdminCustomerModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-row"><div class="form-group"><input id="customer-name-modal" placeholder="Name"></div><div class="form-group"><input id="customer-email-modal" placeholder="Email"></div></div>
+      <div class="form-row"><div class="form-group"><input id="customer-phone-modal" placeholder="Phone"></div><div class="form-group"><input id="customer-password-modal" placeholder="Password"></div></div>
+    </div>
+    <div class="modal-footer"><button class="admin-btn" onclick="saveNewCustomerModal()">Save</button></div>
+  </div>
+</div>
+
+<div id="adminQuotationModal" class="modal-overlay">
+  <div class="modal-container">
+    <div class="modal-header"><h3>Add Quotation</h3><button class="modal-close" onclick="closeAdminQuotationModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-row"><div class="form-group"><label>Quote ID</label><input id="quote-id-modal" placeholder="Q001"></div><div class="form-group"><label>Customer Email</label><input id="quote-email-modal" placeholder="customer@example.com"></div></div>
+      <div class="form-row"><div class="form-group"><label>Service</label><input id="quote-service-modal" placeholder="Sea Freight"></div><div class="form-group"><label>Amount</label><input id="quote-amount-modal" type="number" step="0.01" placeholder="0.00"></div></div>
+    </div>
+    <div class="modal-footer"><button class="admin-btn" onclick="saveNewQuotationModal()">Save</button></div>
+  </div>
+</div>
+
+<!-- Admin Login Overlay -->
+<div id="login-overlay" class="login-overlay">
+  <div class="login-box">
+    <h2>🔐 Admin Login</h2>
+    <input type="password" id="admin-password" placeholder="Enter password">
+    <button onclick="checkAdminLogin()">Login</button>
+    <button onclick="closeAdminLogin()">Cancel</button>
+    <div id="login-error"></div>
+  </div>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>
