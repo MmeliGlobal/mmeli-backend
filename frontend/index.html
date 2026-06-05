@@ -159,7 +159,7 @@ async function loadProducts() {
         allProducts = await res.json();
         displayProducts(allProducts.slice(0, currentDisplayLimit));
     } catch(e) {
-        document.getElementById('productsContainer').innerHTML = `<p style="color:red;">Error: ${e.message}. Run the SQL fix in Supabase first.</p>`;
+        document.getElementById('productsContainer').innerHTML = `<p style="color:red;">Error: ${e.message}. Make sure you ran the SQL fix in Supabase.</p>`;
     }
 }
 
@@ -290,7 +290,6 @@ async function addProduct() {
     
     try {
         const main_image = await uploadImageToSupabase(file);
-        // Send all fields that exist after running the SQL fix
         const productData = {
             name: name,
             price: price,
