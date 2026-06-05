@@ -2,26 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mmeli Global – Fast & Simple</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>Mmeli Global – Fast Shop</title>
   <link rel="preconnect" href="https://proljdccjrifqgbmsyco.supabase.co">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; padding-bottom: 70px; }
+    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto; background: #f8f9fa; padding-bottom: 70px; }
     :root { --navy: #0a192f; --gold: #d4af37; --orange: #e67e22; }
     .header { background: var(--navy); color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
     .logo { display: flex; align-items: center; gap: 10px; cursor: pointer; }
     .logo img { height: 40px; }
     .logo span { font-size: 1.5rem; font-weight: bold; background: linear-gradient(135deg, var(--gold), var(--orange)); -webkit-background-clip: text; background-clip: text; color: transparent; }
     .cart-icon { background: var(--gold); padding: 6px 14px; border-radius: 30px; cursor: pointer; display: flex; align-items: center; gap: 6px; color: var(--navy); font-weight: bold; }
-    .search-bar { background: white; padding: 6px 20px; border-bottom: 2px solid var(--gold); position: relative; }
+    .search-bar { background: white; padding: 6px 20px; border-bottom: 2px solid var(--gold); }
     .search-wrapper { display: flex; gap: 8px; background: #f1f3f5; border-radius: 40px; padding: 4px 12px; }
-    .search-wrapper input { flex: 1; border: none; background: transparent; outline: none; }
-    .autocomplete-items { position: absolute; background: white; border: 1px solid #ddd; max-height: 200px; overflow-y: auto; width: calc(100% - 40px); left: 20px; z-index: 1000; }
+    .search-wrapper input { flex: 1; border: none; background: transparent; outline: none; font-size: 16px; }
+    .search-wrapper i { font-size: 1.2rem; cursor: pointer; color: #666; }
+    .autocomplete-items { background: white; border: 1px solid #ddd; max-height: 200px; overflow-y: auto; position: absolute; left: 20px; right: 20px; z-index: 1000; }
     .main-menu, .sub-menu { display: flex; gap: 12px; padding: 10px 16px; background: white; overflow-x: auto; white-space: nowrap; border-bottom: 1px solid #eee; }
-    .main-menu div, .sub-menu div { background: #f1f3f5; padding: 5px 14px; border-radius: 30px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+    .main-menu div, .sub-menu div { background: #f1f3f5; padding: 6px 14px; border-radius: 30px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; }
     .page { display: none; padding: 16px; }
     .page.active { display: block; }
     #productsContainer { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; }
@@ -31,15 +32,18 @@
     .bottom-nav { position: fixed; bottom: 0; width: 100%; background: var(--navy); display: flex; justify-content: space-around; padding: 10px 0; z-index: 100; }
     .bottom-nav div { font-size: 24px; cursor: pointer; color: var(--gold); }
     .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
-    .modal-content { background: white; max-width: 90%; width: 700px; border-radius: 16px; padding: 20px; max-height: 85vh; overflow-y: auto; }
-    .close-modal { float: right; font-size: 28px; cursor: pointer; }
-    button { background: var(--orange); border: none; color: white; padding: 8px 16px; border-radius: 40px; cursor: pointer; }
-    #map { height: 300px; border-radius: 16px; margin-bottom: 16px; background: #e9ecef; }
-    .admin-cards-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; margin: 20px 0; }
+    .modal-content { background: white; max-width: 95%; width: 600px; border-radius: 20px; padding: 20px; max-height: 85vh; overflow-y: auto; position: relative; }
+    .close-modal { position: absolute; top: 12px; right: 20px; font-size: 28px; cursor: pointer; }
+    button { background: var(--orange); border: none; color: white; padding: 10px 20px; border-radius: 40px; cursor: pointer; font-weight: bold; font-size: 1rem; margin: 5px 0; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    input, select, textarea { width: 100%; padding: 10px; margin: 8px 0; border-radius: 12px; border: 1px solid #ccc; font-size: 16px; }
+    .admin-cards-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; margin: 20px 0; }
     .admin-card { background: white; border-radius: 16px; padding: 16px; cursor: pointer; text-align: center; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .cart-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
-    .recommend-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px,1fr)); gap: 12px; margin-top: 10px; }
-    input, select, textarea { width: 100%; padding: 8px; margin: 5px 0; border-radius: 12px; border: 1px solid #ddd; }
+    .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
+    .recommend-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px,1fr)); gap: 12px; margin-top: 10px; }
+    .loader { display: inline-block; width: 16px; height: 16px; border: 2px solid white; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 8px; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #map { height: 280px; border-radius: 16px; margin: 16px 0; background: #e9ecef; }
     @media (max-width: 600px) { #productsContainer { grid-template-columns: repeat(2, 1fr); } }
   </style>
 </head>
@@ -60,14 +64,14 @@
 
 <section id="home" class="page active"><div id="productsContainer"></div><div style="text-align:center; margin-top:20px;"><button onclick="loadMoreProducts()">Load More</button></div></section>
 <section id="productPage" class="page"><div id="productDetailContainer"></div><div id="productRecommendations"></div></section>
-<section id="cart" class="page"><h3>Your Cart</h3><div id="cartList"></div><div class="cart-actions"><input type="text" id="promoCodeInput" placeholder="Discount code"><button onclick="applyDiscount()">Apply</button><button onclick="goToCheckout()" class="checkout-btn"><i class="fab fa-whatsapp"></i> Checkout</button></div><div id="cartRecommendations"></div></section>
-<section id="checkoutPage" class="page"><h3>Checkout</h3><div id="stepShipping" class="checkout-step active"><h4>Address</h4><input id="checkoutAddress" placeholder="Address"><button onclick="nextStep()">Next</button></div><div id="stepDelivery" class="checkout-step"><h4>Delivery</h4><label><input type="radio" name="delivery" value="standard" checked> Standard $5</label><label><input type="radio" name="delivery" value="express"> Express $15</label><button onclick="nextStep()">Next</button></div><div id="stepPayment" class="checkout-step"><h4>Payment</h4><p>Confirm via WhatsApp</p><button onclick="completeCheckout()">Place Order</button></div></section>
-<section id="tracking" class="page"><h3>Track Order</h3><div id="map"></div><input id="trackCode" placeholder="Tracking code"><button onclick="trackOrder()">Track</button><div id="trackInfo"></div><div id="trackTimeline" class="timeline"></div></section>
-<section id="promo" class="page"><h3>Promotions</h3><div id="promoList"></div></section>
-<section id="account" class="page"><div id="loginBox"><h3>Login</h3><input id="loginEmail" placeholder="Phone"><input id="loginPassword" type="password" placeholder="Password"><button onclick="login()">Login</button><hr><h3>Register</h3><input id="regName" placeholder="Name"><input id="regPhone" placeholder="Phone"><input id="regEmail" placeholder="Email"><input id="regAddress" placeholder="Address"><input id="regPassword" type="password" placeholder="Password"><button onclick="register()">Register</button></div><div id="dashboard" style="display:none;"><h3>Welcome, <span id="userName"></span></h3><div class="customer-buttons"><button onclick="showMyOrders()">My Orders</button><button onclick="showMyQuotations()">Quotations</button><button onclick="showMyReturns()">Returns</button><button onclick="openShipmentTracking()">Track Shipment</button><button onclick="showProfile()">Edit Profile</button><button onclick="logout()">Logout</button></div><div id="customerData"></div></div></section>
+<section id="cart" class="page"><h3>Your Cart</h3><div id="cartList"></div><div><input id="promoCodeInput" placeholder="Discount code"><button onclick="applyDiscount()">Apply</button><button onclick="goToCheckout()"><i class="fab fa-whatsapp"></i> Checkout</button></div><div id="cartRecommendations"></div></section>
+<section id="checkoutPage" class="page"><h3>Checkout</h3><div id="stepShipping" class="checkout-step active"><h4>Address</h4><input id="checkoutAddress" placeholder="Your address"><button onclick="nextStep()">Next</button></div><div id="stepDelivery" class="checkout-step"><h4>Delivery</h4><label><input type="radio" name="delivery" value="standard" checked> Standard ($5)</label><label><input type="radio" name="delivery" value="express"> Express ($15)</label><button onclick="nextStep()">Next</button></div><div id="stepPayment" class="checkout-step"><h4>Payment</h4><p>Click below to confirm via WhatsApp</p><button onclick="completeCheckout()">Place Order</button></div></section>
+<section id="tracking" class="page"><h3>Track Order</h3><div id="map"></div><input id="trackCode" placeholder="Tracking code"><button onclick="trackOrder()">Track</button><div id="trackInfo"></div><div id="trackTimeline"></div></section>
+<section id="promo" class="page"><h3>Special Offers</h3><div id="promoList"></div></section>
+<section id="account" class="page"><div id="loginBox"><h3>Login</h3><input id="loginEmail" placeholder="Phone number"><input id="loginPassword" type="password" placeholder="Password"><button onclick="login()">Login</button><hr><h3>Register</h3><input id="regName" placeholder="Full name"><input id="regPhone" placeholder="Phone"><input id="regEmail" placeholder="Email"><input id="regAddress" placeholder="Address"><input id="regPassword" type="password" placeholder="Password"><button onclick="register()">Register</button></div><div id="dashboard" style="display:none;"><h3>Welcome, <span id="userName"></span></h3><div style="display:flex; flex-wrap:wrap; gap:10px; margin:15px 0;"><button onclick="showMyOrders()">My Orders</button><button onclick="showMyQuotations()">Quotations</button><button onclick="showMyReturns()">Returns</button><button onclick="openShipmentTracking()">Track Shipment</button><button onclick="showProfile()">Edit Profile</button><button onclick="logout()">Logout</button></div><div id="customerData"></div></div></section>
 <section id="adminDashboard" class="page"><div id="adminLoginDiv"><h3>Admin Login</h3><input id="adminEmail" placeholder="Email"><input id="adminPassword" type="password" placeholder="Password"><button onclick="adminLogin()">Login</button></div><div id="adminPanel" style="display:none;"><h3>Admin Dashboard</h3><div class="admin-cards-grid"><div class="admin-card" data-modal="dashboardStats">📊 Dashboard</div><div class="admin-card" data-modal="manageProducts">🛍️ Products</div><div class="admin-card" data-modal="addProduct">➕ Add Product</div><div class="admin-card" data-modal="manageOrders">📦 Orders</div><div class="admin-card" data-modal="discounts">🏷️ Discounts</div><div class="admin-card" data-modal="returns">🔄 Returns</div><div class="admin-card" data-modal="inventory">📦 Inventory</div><div class="admin-card" data-modal="managePolicies">📜 Policies</div><div class="admin-card" data-modal="manageShipments">🚚 Shipments</div><div class="admin-card" data-modal="broadcast">📢 Broadcast</div><div class="admin-card" data-modal="createQuotation">📄 Quotation</div></div><button onclick="switchPage('account')">Back to Site</button></div></section>
 
-<!-- Modals (simplified) -->
+<!-- Modals -->
 <div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
 <div id="modalManageProducts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
 <div id="modalAddProduct" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
@@ -85,12 +89,12 @@
 <nav class="bottom-nav"><div onclick="resetHome()"><i class="fas fa-home"></i></div><div onclick="switchPage('promo')"><i class="fas fa-fire"></i></div><div onclick="switchPage('tracking')"><i class="fas fa-map-marker-alt"></i></div><div onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i></div><div onclick="switchPage('account')"><i class="fas fa-user"></i></div></nav>
 
 <script>
-// ==================== SUPABASE SETUP ====================
+// ==================== SUPABASE (for image upload) ====================
 const SUPABASE_URL = 'https://proljdccjrifqgbmsyco.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb2xqZGNjanJpZnFnYm1zeWNvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTc4ODAxOSwiZXhwIjoyMDkxMzY0MDE5fQ.VltzBUq-bLvu0Ny4jPy1kBp5E-4hffQgqFpqHrRWlZA';
 
 async function uploadImageToSupabase(file) {
-    if (!file) return null;
+    if (!file) throw new Error('No file selected');
     const fileName = Date.now() + '_' + file.name;
     const url = `${SUPABASE_URL}/storage/v1/object/products/${fileName}`;
     const res = await fetch(url, {
@@ -98,7 +102,10 @@ async function uploadImageToSupabase(file) {
         headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': file.type },
         body: file
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) {
+        let errMsg = await res.text();
+        throw new Error(`Upload failed (${res.status}): ${errMsg}`);
+    }
     const data = await res.json();
     return `${SUPABASE_URL}/storage/v1/object/public/${data.Key}`;
 }
@@ -109,10 +116,10 @@ let allProducts = [], currentProduct = null, cart = JSON.parse(localStorage.getI
 let token = localStorage.getItem('token'), user = JSON.parse(localStorage.getItem('user') || 'null');
 let map = null, appliedDiscount = null, currentDisplayLimit = 150, allShuffled = [], searchDebounceTimer = null;
 
-// Category data (simplified for space – add your full hierarchy if needed)
+// Simple category data (you can keep yours)
 const categoryHierarchy = {
-    "Phones": { "Smartphones": ["Android Phones"], "Accessories": ["Chargers"] },
-    "Electronics": { "Consumer Electronics": ["TVs"] }
+    "Phones": { "Smartphones": ["Android Phones", "iPhones"] },
+    "Electronics": { "Consumer Electronics": ["TVs", "Audio"] }
 };
 const subcategoryIcons = {};
 const defaultIcon = "https://cdn-icons-png.flaticon.com/512/456/456212.png";
@@ -126,7 +133,7 @@ async function apiCall(endpoint, options = {}) {
     return res.json();
 }
 
-// ==================== PRODUCT FUNCTIONS ====================
+// ==================== PRODUCTS ====================
 async function loadProducts() {
     try {
         const res = await fetch(API + '/products');
@@ -137,62 +144,105 @@ async function loadProducts() {
         buildMainMenu();
         localStorage.setItem('cachedProducts', JSON.stringify(allProducts));
     } catch(e) {
-        const cached = localStorage.getItem('cachedProducts');
+        let cached = localStorage.getItem('cachedProducts');
         if(cached) { allProducts = JSON.parse(cached); allShuffled = [...allProducts]; displayProducts(allShuffled.slice(0, currentDisplayLimit)); buildMainMenu(); }
-        else document.getElementById('productsContainer').innerHTML = '<p>Error loading products.</p>';
+        else document.getElementById('productsContainer').innerHTML = '<p>Error loading products. Check backend.</p>';
     }
 }
 function displayProducts(products) {
     const container = document.getElementById('productsContainer');
-    if (!container) return;
+    if(!container) return;
     container.innerHTML = '';
     products.forEach(p => {
-        const card = document.createElement('div');
+        let img = p.main_image || 'https://picsum.photos/300/200';
+        let card = document.createElement('div');
         card.className = 'product-card';
-        card.innerHTML = `<img src="${p.main_image || 'https://picsum.photos/300/200'}" loading="lazy" onerror="this.src='https://picsum.photos/300/200?grayscale'"><div class="product-info"><div>${escapeHtml(p.name)}</div><div>$${p.price}</div></div>`;
+        card.innerHTML = `<img src="${img}" loading="lazy" onerror="this.src='https://picsum.photos/300/200?grayscale'"><div class="product-info"><div>${escapeHtml(p.name)}</div><div>$${p.price}</div></div>`;
         card.onclick = () => openProduct(p.id);
         container.appendChild(card);
     });
 }
 function loadMoreProducts() { currentDisplayLimit += 150; displayProducts(allShuffled.slice(0, currentDisplayLimit)); }
-function buildMainMenu() { /* simplified - just show categories */ }
-function openProduct(id) { /* simplified – you can restore full detail view */ alert('Product detail view – implement if needed'); }
-
-// ==================== CART ====================
+function buildMainMenu() {
+    let menu = document.getElementById('mainMenu');
+    if(!menu) return;
+    menu.innerHTML = '';
+    for(let cat in categoryHierarchy) {
+        let div = document.createElement('div');
+        div.innerText = cat;
+        div.onclick = () => filterByCategory(cat);
+        menu.appendChild(div);
+    }
+}
+function filterByCategory(cat) {
+    let filtered = allProducts.filter(p => p.cat === cat);
+    displayProducts(filtered);
+    document.getElementById('subMenu').innerHTML = '';
+}
+function openProduct(id) {
+    let product = allProducts.find(p => p.id == id);
+    if(product) {
+        currentProduct = product;
+        document.getElementById('productDetailContainer').innerHTML = `
+            <div style="background:white; border-radius:16px; padding:16px;">
+                <img src="${product.main_image}" style="width:100%; border-radius:12px;" onerror="this.src='https://picsum.photos/400/400'">
+                <h2>${product.name}</h2>
+                <p>${product.description || ''}</p>
+                <h3>$${product.price}</h3>
+                <button onclick="addToCart(${product.id}, '${escapeHtml(product.name)}', ${product.price}, '${product.main_image}')">Add to Cart</button>
+                <button onclick="switchPage('home')">Back</button>
+            </div>`;
+        switchPage('productPage');
+    }
+}
+function addToCart(id, name, price, image) {
+    cart.push({ id, name, price, image });
+    localStorage.setItem('cart', JSON.stringify(cart));
+    updateCartCount();
+    alert('Added to cart');
+}
 function updateCartCount() { document.getElementById('cartCount').innerText = cart.length; }
 function renderCart() {
-    const container = document.getElementById('cartList');
-    if(!cart.length) { container.innerHTML = '<p>Cart empty</p>'; return; }
+    let container = document.getElementById('cartList');
+    if(!cart.length) { container.innerHTML = '<p>Cart is empty</p>'; return; }
     let html = '', total = 0;
-    cart.forEach((item,i) => { total += item.price; html += `<div class="cart-item"><div><img src="${item.image}" width="50" onerror="this.src='https://picsum.photos/50/50'"> ${item.name}</div><div>$${item.price} <button onclick="removeFromCart(${i})">Remove</button></div></div>`; });
-    html += `<div><strong>Total: $${total.toFixed(2)}</strong></div>`;
+    cart.forEach((item,i) => {
+        total += item.price;
+        html += `<div class="cart-item"><div><img src="${item.image}" width="50" onerror="this.src='https://picsum.photos/50/50'"> ${item.name}</div><div>$${item.price} <button onclick="removeFromCart(${i})">Remove</button></div></div>`;
+    });
+    html += `<div style="font-weight:bold; margin-top:10px;">Total: $${total.toFixed(2)}</div>`;
     container.innerHTML = html;
 }
 function removeFromCart(i) { cart.splice(i,1); localStorage.setItem('cart',JSON.stringify(cart)); updateCartCount(); renderCart(); }
-function addToCart(id, name, price, image) { cart.push({id,name,price,image}); localStorage.setItem('cart',JSON.stringify(cart)); updateCartCount(); alert('Added'); }
-function goToCheckout() { if(!user) { alert('Login first'); switchPage('account'); return; } switchPage('checkoutPage'); }
-function nextStep() { /* simplified – just complete */ completeCheckout(); }
-async function completeCheckout() { alert('Order placed (demo)'); cart = []; localStorage.setItem('cart','[]'); updateCartCount(); switchPage('home'); }
+function goToCheckout() { if(!user) { alert('Please login first'); switchPage('account'); return; } switchPage('checkoutPage'); }
+function nextStep() { /* simplified */ completeCheckout(); }
+async function completeCheckout() {
+    if(!cart.length) return alert('Cart empty');
+    let msg = `New order: ${cart.map(i=>i.name).join(', ')}`;
+    window.open(`https://wa.me/263776871711?text=${encodeURIComponent(msg)}`);
+    cart = []; localStorage.setItem('cart','[]'); updateCartCount(); alert('Order sent! We will contact you.'); switchPage('home');
+}
+async function applyDiscount() { alert('Discount demo – implement with backend'); }
 
 // ==================== AUTH ====================
 async function register() {
-    const name = document.getElementById('regName').value, phone = document.getElementById('regPhone').value, password = document.getElementById('regPassword').value;
-    if(!name || !phone || !password) return alert('Name, phone, password required');
+    let name = document.getElementById('regName').value, phone = document.getElementById('regPhone').value, password = document.getElementById('regPassword').value;
+    if(!name || !phone || !password) return alert('Name, phone and password required');
     try {
-        const data = await apiCall('/auth/register', { method:'POST', body: JSON.stringify({ name, phone, password }) });
+        let data = await apiCall('/auth/register', { method:'POST', body: JSON.stringify({ name, phone, password }) });
         token = data.token; user = data.user;
         localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user));
         document.getElementById('loginBox').style.display = 'none';
         document.getElementById('dashboard').style.display = 'block';
         document.getElementById('userName').innerText = user.name;
-        alert('Registered');
+        alert('Registration successful');
     } catch(e) { alert('Register failed: ' + e.message); }
 }
 async function login() {
-    const phone = document.getElementById('loginEmail').value, password = document.getElementById('loginPassword').value;
-    if(!phone || !password) return alert('Enter phone and password');
+    let phone = document.getElementById('loginEmail').value, password = document.getElementById('loginPassword').value;
+    if(!phone || !password) return alert('Phone and password required');
     try {
-        const data = await apiCall('/auth/login', { method:'POST', body: JSON.stringify({ phone, password }) });
+        let data = await apiCall('/auth/login', { method:'POST', body: JSON.stringify({ phone, password }) });
         token = data.token; user = data.user;
         localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user));
         document.getElementById('loginBox').style.display = 'none';
@@ -201,12 +251,19 @@ async function login() {
     } catch(e) { alert('Login failed: ' + e.message); }
 }
 function logout() { localStorage.clear(); location.reload(); }
+function showMyOrders() { alert('Orders – implement with backend'); }
+function showMyQuotations() { alert('Quotations'); }
+function showMyReturns() { alert('Returns'); }
+function showProfile() { alert('Profile edit'); }
+function openShipmentTracking() { document.getElementById('shipmentTrackingModal').style.display = 'flex'; }
+function closeShipmentModal() { document.getElementById('shipmentTrackingModal').style.display = 'none'; }
+async function fetchShipmentStatus() { alert('Shipment tracking demo'); }
 
 // ==================== ADMIN ====================
 async function adminLogin() {
-    const email = document.getElementById('adminEmail').value, password = document.getElementById('adminPassword').value;
+    let email = document.getElementById('adminEmail').value, password = document.getElementById('adminPassword').value;
     try {
-        const data = await apiCall('/auth/login', { method:'POST', body: JSON.stringify({ email, password }) });
+        let data = await apiCall('/auth/login', { method:'POST', body: JSON.stringify({ email, password }) });
         if(data.user.role !== 'admin') throw new Error('Not admin');
         token = data.token; user = data.user;
         localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user));
@@ -217,20 +274,20 @@ async function adminLogin() {
 }
 function initAdminCards() {
     document.querySelectorAll('.admin-card').forEach(card => {
-        card.onclick = () => { const modalId = card.getAttribute('data-modal'); if(modalId) openAdminModal(modalId); };
+        card.onclick = () => { let mid = card.getAttribute('data-modal'); if(mid) openAdminModal(mid); };
     });
 }
 function openAdminModal(modalId) {
-    const modal = document.getElementById(`modal${modalId.charAt(0).toUpperCase() + modalId.slice(1)}`);
+    let modal = document.getElementById(`modal${modalId.charAt(0).toUpperCase() + modalId.slice(1)}`);
     if(!modal) return;
-    const body = modal.querySelector('.modal-body');
+    let body = modal.querySelector('.modal-body');
     if(modalId === 'addProduct') showAddProductForm(body);
     else if(modalId === 'manageProducts') loadProductsModal(body);
     modal.style.display = 'flex';
 }
 function showAddProductForm(container) {
     container.innerHTML = `<h3>Add Product</h3>
-        <input id="prodName" placeholder="Name"><br>
+        <input id="prodName" placeholder="Product name"><br>
         <input id="prodPrice" placeholder="Price"><br>
         <input type="file" id="prodImageFile" accept="image/*" required><br>
         <textarea id="prodDesc" placeholder="Description"></textarea><br>
@@ -238,59 +295,113 @@ function showAddProductForm(container) {
         <input id="prodSubcat" placeholder="Subcategory"><br>
         <input id="prodColors" placeholder="Colors (comma)"><br>
         <input id="prodSizes" placeholder="Sizes (size:price, comma)"><br>
-        <button onclick="addProduct()">Save</button>
+        <button id="saveProductBtn" onclick="addProduct()">Save Product</button>
         <button onclick="closeModal('modalAddProduct')">Cancel</button>`;
 }
 async function addProduct() {
-    const name = document.getElementById('prodName').value, price = parseFloat(document.getElementById('prodPrice').value);
-    const cat = document.getElementById('prodCat').value, subcat = document.getElementById('prodSubcat').value;
-    const file = document.getElementById('prodImageFile').files[0];
-    if(!name || isNaN(price) || !cat || !subcat || !file) return alert('All fields and image required');
-    let main_image;
-    try { main_image = await uploadImageToSupabase(file); } catch(e) { alert('Upload failed'); return; }
-    const productData = { name, description: document.getElementById('prodDesc').value, cat, subcat, price, colors: [], size_options: [{size:'Standard',price}], main_image };
-    try { await apiCall('/products', { method:'POST', body: JSON.stringify(productData) }); alert('Added'); closeModal('modalAddProduct'); loadProducts(); } catch(e) { alert('Add failed'); }
+    let name = document.getElementById('prodName').value;
+    let price = parseFloat(document.getElementById('prodPrice').value);
+    let cat = document.getElementById('prodCat').value;
+    let subcat = document.getElementById('prodSubcat').value;
+    let file = document.getElementById('prodImageFile').files[0];
+    let btn = document.getElementById('saveProductBtn');
+    if(!name || isNaN(price) || !cat || !subcat || !file) { alert('Please fill all fields and select an image'); return; }
+    let originalText = btn.innerText;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loader"></span> Uploading...';
+    try {
+        let main_image = await uploadImageToSupabase(file);
+        let sizeStr = document.getElementById('prodSizes').value;
+        let size_options = [];
+        if(sizeStr) sizeStr.split(',').forEach(pair => { let [s,p] = pair.split(':'); if(s && p) size_options.push({ size: s.trim(), price: parseFloat(p) }); });
+        if(size_options.length === 0) size_options = [{ size: 'Standard', price }];
+        let colors = document.getElementById('prodColors').value.split(',').map(c=>c.trim()).filter(c=>c);
+        let productData = {
+            name, description: document.getElementById('prodDesc').value, cat, subcat, price,
+            colors, size_options, main_image
+        };
+        await apiCall('/products', { method: 'POST', body: JSON.stringify(productData) });
+        alert('Product added successfully!');
+        closeModal('modalAddProduct');
+        loadProducts();
+    } catch(err) {
+        alert('Upload error: ' + err.message);
+        console.error(err);
+    } finally {
+        btn.disabled = false;
+        btn.innerText = originalText;
+    }
 }
 async function loadProductsModal(container) {
     let products = await apiCall('/products');
-    container.innerHTML = `<h3>Products</h3><div id="productListContainer">${products.map(p=>`<div><img src="${p.main_image}" width="50"> ${p.name} - $${p.price} <button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div>`).join('')}</div><button onclick="closeModal('modalManageProducts')">Close</button>`;
+    container.innerHTML = `<h3>Manage Products</h3><div id="productList">${products.map(p=>`<div style="border-bottom:1px solid #ddd; padding:10px; display:flex; gap:10px; align-items:center;"><img src="${p.main_image}" width="50" onerror="this.src='https://picsum.photos/50/50'"><div><strong>${p.name}</strong> - $${p.price}<br><button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div></div>`).join('')}</div><button onclick="closeModal('modalManageProducts')">Close</button>`;
 }
 async function editProductModal(id) {
-    const p = await apiCall(`/products/${id}`);
-    const body = document.getElementById('modalManageProducts').querySelector('.modal-body');
-    body.innerHTML = `<h3>Edit</h3><img src="${p.main_image}" width="80"><br><input type="file" id="editImageFile"><br><input id="editName" value="${p.name}"><br><input id="editPrice" value="${p.price}"><br><textarea id="editDesc">${p.description||''}</textarea><br><input id="editCat" value="${p.cat}"><br><input id="editSubcat" value="${p.subcat}"><br><button onclick="updateProductWithImage(${id})">Update</button><button onclick="closeModal('modalManageProducts')">Cancel</button>`;
+    let p = await apiCall(`/products/${id}`);
+    let body = document.getElementById('modalManageProducts').querySelector('.modal-body');
+    body.innerHTML = `<h3>Edit Product</h3>
+        <img src="${p.main_image}" width="80" id="editPreview"><br>
+        <input type="file" id="editImageFile" accept="image/*"><br>
+        <input id="editName" value="${p.name}"><br>
+        <input id="editPrice" value="${p.price}"><br>
+        <textarea id="editDesc">${p.description||''}</textarea><br>
+        <input id="editCat" value="${p.cat}"><br>
+        <input id="editSubcat" value="${p.subcat}"><br>
+        <input id="editColors" value="${(p.colors||[]).join(',')}"><br>
+        <input id="editSizes" value="${(p.size_options||[]).map(s=>`${s.size}:${s.price}`).join(',')}"><br>
+        <button id="updateBtn" onclick="updateProductWithImage(${id})">Update</button>
+        <button onclick="closeModal('modalManageProducts')">Cancel</button>`;
 }
 async function updateProductWithImage(id) {
-    const name = document.getElementById('editName').value, price = parseFloat(document.getElementById('editPrice').value);
-    const cat = document.getElementById('editCat').value, subcat = document.getElementById('editSubcat').value;
-    const file = document.getElementById('editImageFile').files[0];
-    let main_image;
-    if(file) { try { main_image = await uploadImageToSupabase(file); } catch(e) { alert('Upload failed'); return; } }
-    else { const existing = allProducts.find(p=>p.id==id); main_image = existing.main_image; }
-    const productData = { name, description: document.getElementById('editDesc').value, cat, subcat, price, colors: [], size_options: [{size:'Standard',price}], main_image };
-    try { await apiCall(`/products/${id}`, { method:'PUT', body: JSON.stringify(productData) }); alert('Updated'); closeModal('modalManageProducts'); loadProducts(); } catch(e) { alert('Update failed'); }
+    let name = document.getElementById('editName').value;
+    let price = parseFloat(document.getElementById('editPrice').value);
+    let cat = document.getElementById('editCat').value;
+    let subcat = document.getElementById('editSubcat').value;
+    let file = document.getElementById('editImageFile').files[0];
+    let btn = document.getElementById('updateBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loader"></span> Updating...';
+    try {
+        let main_image;
+        if(file) main_image = await uploadImageToSupabase(file);
+        else main_image = (await apiCall(`/products/${id}`)).main_image;
+        let sizeStr = document.getElementById('editSizes').value;
+        let size_options = [];
+        if(sizeStr) sizeStr.split(',').forEach(pair => { let [s,p] = pair.split(':'); if(s && p) size_options.push({ size: s.trim(), price: parseFloat(p) }); });
+        if(size_options.length === 0) size_options = [{ size: 'Standard', price }];
+        let colors = document.getElementById('editColors').value.split(',').map(c=>c.trim()).filter(c=>c);
+        let productData = { name, description: document.getElementById('editDesc').value, cat, subcat, price, colors, size_options, main_image };
+        await apiCall(`/products/${id}`, { method: 'PUT', body: JSON.stringify(productData) });
+        alert('Product updated');
+        closeModal('modalManageProducts');
+        loadProducts();
+    } catch(err) { alert('Update error: ' + err.message); }
+    finally { btn.disabled = false; btn.innerText = 'Update'; }
 }
-async function deleteProduct(id) { if(confirm('Delete?')) await apiCall(`/products/${id}`,{method:'DELETE'}); loadProductsModal(document.getElementById('modalManageProducts').querySelector('.modal-body')); }
+async function deleteProduct(id) { if(confirm('Delete product?')) await apiCall(`/products/${id}`, { method:'DELETE' }); loadProductsModal(document.getElementById('modalManageProducts').querySelector('.modal-body')); loadProducts(); }
 function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
 
 // ==================== TRACKING & MAP ====================
 function initDefaultMap() { if(map) map.remove(); map = L.map('map').setView([-17.825,31.033],6); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map); L.marker([-17.825,31.033]).addTo(map).bindPopup('Mmeli Global'); }
-async function trackOrder() { alert('Track order – implement with your backend'); }
-function openShipmentTracking() { document.getElementById('shipmentTrackingModal').style.display = 'flex'; }
-function closeShipmentModal() { document.getElementById('shipmentTrackingModal').style.display = 'none'; }
-async function fetchShipmentStatus() { alert('Shipment tracking demo'); }
-
-// ==================== UI HELPERS ====================
-function switchPage(pageId) { document.querySelectorAll('.page').forEach(p=>p.classList.remove('active')); document.getElementById(pageId).classList.add('active'); if(pageId === 'cart') renderCart(); if(pageId === 'home') loadProducts(); if(pageId === 'tracking') initDefaultMap(); }
-function resetHome() { currentDisplayLimit=150; allShuffled=[...allProducts]; displayProducts(allShuffled.slice(0,currentDisplayLimit)); document.getElementById('subMenu').innerHTML=''; switchPage('home'); }
-function searchProducts() { /* simple search */ }
+async function trackOrder() { alert('Tracking demo – implement with backend'); }
 function trackOrderCode(code) { document.getElementById('trackCode').value = code; switchPage('tracking'); trackOrder(); }
-function showMyOrders() { alert('My orders – implement with backend'); }
-function showMyQuotations() { alert('My quotations'); }
-function showMyReturns() { alert('My returns'); }
-function showProfile() { alert('Profile edit'); }
-function applyDiscount() { alert('Discount demo'); }
-function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&')return'&amp;';if(m==='<')return'&lt;';if(m==='>')return'&gt;';return m;}); }
+
+// ==================== HELPERS ====================
+function switchPage(pageId) {
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+    if(pageId === 'cart') renderCart();
+    if(pageId === 'home') loadProducts();
+    if(pageId === 'tracking') initDefaultMap();
+}
+function resetHome() { currentDisplayLimit = 150; allShuffled = [...allProducts]; displayProducts(allShuffled.slice(0, currentDisplayLimit)); document.getElementById('subMenu').innerHTML = ''; switchPage('home'); }
+function searchProducts() {
+    let term = document.getElementById('searchInput').value.toLowerCase();
+    if(!term) return displayProducts(allShuffled.slice(0, currentDisplayLimit));
+    let filtered = allProducts.filter(p => p.name.toLowerCase().includes(term));
+    displayProducts(filtered);
+}
+function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
 
 // ==================== INIT ====================
 window.addEventListener('load', function() {
@@ -299,7 +410,6 @@ window.addEventListener('load', function() {
     if(user) { document.getElementById('loginBox').style.display='none'; document.getElementById('dashboard').style.display='block'; document.getElementById('userName').innerText = user.name; }
     loadProducts();
     initDefaultMap();
-    // Attach close modal events
     document.querySelectorAll('.close-modal').forEach(btn => btn.onclick = function() { this.closest('.modal').style.display = 'none'; });
 });
 </script>
