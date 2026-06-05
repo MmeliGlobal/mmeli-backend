@@ -44,6 +44,7 @@
     .loader { display: inline-block; width: 16px; height: 16px; border: 2px solid white; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 8px; vertical-align: middle; }
     @keyframes spin { to { transform: rotate(360deg); } }
     #map { height: 280px; border-radius: 16px; margin: 16px 0; background: #e9ecef; }
+    .create-admin-btn { background: #2c7da0; margin-top: 10px; }
     @media (max-width: 600px) { #productsContainer { grid-template-columns: repeat(2, 1fr); } }
   </style>
 </head>
@@ -69,7 +70,33 @@
 <section id="tracking" class="page"><h3>Track Order</h3><div id="map"></div><input id="trackCode" placeholder="Tracking code"><button onclick="trackOrder()">Track</button><div id="trackInfo"></div><div id="trackTimeline"></div></section>
 <section id="promo" class="page"><h3>Special Offers</h3><div id="promoList"></div></section>
 <section id="account" class="page"><div id="loginBox"><h3>Login</h3><input id="loginEmail" placeholder="Phone number"><input id="loginPassword" type="password" placeholder="Password"><button onclick="login()">Login</button><hr><h3>Register</h3><input id="regName" placeholder="Full name"><input id="regPhone" placeholder="Phone"><input id="regEmail" placeholder="Email"><input id="regAddress" placeholder="Address"><input id="regPassword" type="password" placeholder="Password"><button onclick="register()">Register</button></div><div id="dashboard" style="display:none;"><h3>Welcome, <span id="userName"></span></h3><div style="display:flex; flex-wrap:wrap; gap:10px; margin:15px 0;"><button onclick="showMyOrders()">My Orders</button><button onclick="showMyQuotations()">Quotations</button><button onclick="showMyReturns()">Returns</button><button onclick="openShipmentTracking()">Track Shipment</button><button onclick="showProfile()">Edit Profile</button><button onclick="logout()">Logout</button></div><div id="customerData"></div></div></section>
-<section id="adminDashboard" class="page"><div id="adminLoginDiv"><h3>Admin Login</h3><input id="adminEmail" placeholder="Email"><input id="adminPassword" type="password" placeholder="Password"><button onclick="adminLogin()">Login</button></div><div id="adminPanel" style="display:none;"><h3>Admin Dashboard</h3><div class="admin-cards-grid"><div class="admin-card" data-modal="dashboardStats">📊 Dashboard</div><div class="admin-card" data-modal="manageProducts">🛍️ Products</div><div class="admin-card" data-modal="addProduct">➕ Add Product</div><div class="admin-card" data-modal="manageOrders">📦 Orders</div><div class="admin-card" data-modal="discounts">🏷️ Discounts</div><div class="admin-card" data-modal="returns">🔄 Returns</div><div class="admin-card" data-modal="inventory">📦 Inventory</div><div class="admin-card" data-modal="managePolicies">📜 Policies</div><div class="admin-card" data-modal="manageShipments">🚚 Shipments</div><div class="admin-card" data-modal="broadcast">📢 Broadcast</div><div class="admin-card" data-modal="createQuotation">📄 Quotation</div></div><button onclick="switchPage('account')">Back to Site</button></div></section>
+<section id="adminDashboard" class="page">
+  <div id="adminLoginDiv">
+    <h3>Admin Login</h3>
+    <input id="adminEmail" placeholder="Email" value="admin@mmeliglobal.com">
+    <input id="adminPassword" type="password" placeholder="Password">
+    <button onclick="adminLogin()">Login</button>
+    <button class="create-admin-btn" onclick="createAdminAccount()">🔧 Create Admin Account (admin@mmeliglobal.com / admin123)</button>
+    <p style="font-size:12px; margin-top:10px;">If you don't have an admin account, click the blue button above to create one.</p>
+  </div>
+  <div id="adminPanel" style="display:none;">
+    <h3>Admin Dashboard</h3>
+    <div class="admin-cards-grid">
+      <div class="admin-card" data-modal="dashboardStats">📊 Dashboard</div>
+      <div class="admin-card" data-modal="manageProducts">🛍️ Products</div>
+      <div class="admin-card" data-modal="addProduct">➕ Add Product</div>
+      <div class="admin-card" data-modal="manageOrders">📦 Orders</div>
+      <div class="admin-card" data-modal="discounts">🏷️ Discounts</div>
+      <div class="admin-card" data-modal="returns">🔄 Returns</div>
+      <div class="admin-card" data-modal="inventory">📦 Inventory</div>
+      <div class="admin-card" data-modal="managePolicies">📜 Policies</div>
+      <div class="admin-card" data-modal="manageShipments">🚚 Shipments</div>
+      <div class="admin-card" data-modal="broadcast">📢 Broadcast</div>
+      <div class="admin-card" data-modal="createQuotation">📄 Quotation</div>
+    </div>
+    <button onclick="switchPage('account')">Back to Site</button>
+  </div>
+</section>
 
 <!-- Modals -->
 <div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
@@ -116,7 +143,7 @@ let allProducts = [], currentProduct = null, cart = JSON.parse(localStorage.getI
 let token = localStorage.getItem('token'), user = JSON.parse(localStorage.getItem('user') || 'null');
 let map = null, appliedDiscount = null, currentDisplayLimit = 150, allShuffled = [], searchDebounceTimer = null;
 
-// Simple category data (you can keep yours)
+// Category data (simplified – you can expand)
 const categoryHierarchy = {
     "Phones": { "Smartphones": ["Android Phones", "iPhones"] },
     "Electronics": { "Consumer Electronics": ["TVs", "Audio"] }
@@ -131,6 +158,32 @@ async function apiCall(endpoint, options = {}) {
     const res = await fetch(API + endpoint, { ...options, headers });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
+}
+
+// ==================== CREATE ADMIN ACCOUNT ====================
+async function createAdminAccount() {
+    const email = 'admin@mmeliglobal.com';
+    const password = 'admin123';
+    const name = 'Administrator';
+    const phone = '0000000000';
+    try {
+        // Try to register
+        await apiCall('/auth/register', {
+            method: 'POST',
+            body: JSON.stringify({ name, phone, email, password, address: 'Admin' })
+        });
+        alert('Admin account created! Use email: admin@mmeliglobal.com , password: admin123');
+        // Optionally set role to admin if your backend doesn't do it automatically
+        // If your backend sets role as 'user' by default, you might need an extra call.
+        // For now, we assume your backend either sets role='admin' for this email or you have a way.
+        // If login still fails, you may need to manually update role in DB.
+    } catch(e) {
+        if (e.message.includes('already exists')) {
+            alert('Admin account already exists. Try logging in with admin@mmeliglobal.com and admin123');
+        } else {
+            alert('Failed to create admin: ' + e.message);
+        }
+    }
 }
 
 // ==================== PRODUCTS ====================
@@ -215,7 +268,7 @@ function renderCart() {
 }
 function removeFromCart(i) { cart.splice(i,1); localStorage.setItem('cart',JSON.stringify(cart)); updateCartCount(); renderCart(); }
 function goToCheckout() { if(!user) { alert('Please login first'); switchPage('account'); return; } switchPage('checkoutPage'); }
-function nextStep() { /* simplified */ completeCheckout(); }
+function nextStep() { completeCheckout(); }
 async function completeCheckout() {
     if(!cart.length) return alert('Cart empty');
     let msg = `New order: ${cart.map(i=>i.name).join(', ')}`;
@@ -264,12 +317,13 @@ async function adminLogin() {
     let email = document.getElementById('adminEmail').value, password = document.getElementById('adminPassword').value;
     try {
         let data = await apiCall('/auth/login', { method:'POST', body: JSON.stringify({ email, password }) });
-        if(data.user.role !== 'admin') throw new Error('Not admin');
+        if(data.user.role !== 'admin') throw new Error('Not an admin account. Use the "Create Admin Account" button first.');
         token = data.token; user = data.user;
         localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user));
         document.getElementById('adminLoginDiv').style.display = 'none';
         document.getElementById('adminPanel').style.display = 'block';
         initAdminCards();
+        alert('Admin login successful!');
     } catch(e) { alert('Admin login failed: ' + e.message); }
 }
 function initAdminCards() {
