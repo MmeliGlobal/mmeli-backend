@@ -159,7 +159,7 @@ async function loadProducts() {
         allProducts = await res.json();
         displayProducts(allProducts.slice(0, currentDisplayLimit));
     } catch(e) {
-        document.getElementById('productsContainer').innerHTML = `<p style="color:red;">Error: ${e.message}</p>`;
+        document.getElementById('productsContainer').innerHTML = `<p style="color:red;">Error: ${e.message}. Run the SQL fix in Supabase.</p>`;
     }
 }
 
@@ -171,7 +171,7 @@ function displayProducts(products) {
         return;
     }
     products.forEach(p => {
-        const img = p.main_image || 'https://picsum.photos/200/200';
+        const img = p.main_image || p.image || 'https://picsum.photos/200/200';
         const card = document.createElement('div');
         card.className = 'product-card';
         card.innerHTML = `
@@ -192,14 +192,15 @@ function loadMoreProducts() {
 }
 
 function showProductDetail(p) {
+    const img = p.main_image || p.image || 'https://picsum.photos/400/400';
     const container = document.getElementById('productDetail');
     container.innerHTML = `
         <div style="background:white; border-radius:16px; padding:16px;">
-            <img src="${p.main_image}" style="width:100%; border-radius:12px;" onerror="this.src='https://picsum.photos/400/400'">
+            <img src="${img}" style="width:100%; border-radius:12px;" onerror="this.src='https://picsum.photos/400/400'">
             <h2>${escapeHtml(p.name)}</h2>
             <p>${escapeHtml(p.description || '')}</p>
             <h3>$${p.price}</h3>
-            <button onclick="addToCart(${p.id}, '${escapeHtml(p.name)}', ${p.price}, '${p.main_image}')">Add to Cart</button>
+            <button onclick="addToCart(${p.id}, '${escapeHtml(p.name)}', ${p.price}, '${img}')">Add to Cart</button>
         </div>
     `;
     switchPage('productPage');
@@ -267,7 +268,7 @@ async function uploadImageToSupabase(file) {
     return `${SUPABASE_URL}/storage/v1/object/public/${data.Key}`;
 }
 
-// ------------------- ADMIN: ADD PRODUCT (NO CATEGORY) -------------------
+// ------------------- ADMIN: ADD PRODUCT -------------------
 async function addProduct() {
     const name = document.getElementById('prodName').value.trim();
     const price = parseFloat(document.getElementById('prodPrice').value);
@@ -289,13 +290,14 @@ async function addProduct() {
     
     try {
         const main_image = await uploadImageToSupabase(file);
-        // Send ONLY fields that exist in your database.
-        // Remove 'cat' and 'subcat' completely to avoid column error.
+        // Send fields that match your database schema (after running the SQL fix)
         const productData = {
             name: name,
             price: price,
             description: description,
-            main_image: main_image
+            main_image: main_image,
+            cat: '',      // empty but column exists
+            subcat: ''    // empty but column exists
         };
         await apiCall('/products', { method: 'POST', body: JSON.stringify(productData) });
         alert('Product added successfully!');
@@ -322,7 +324,7 @@ async function showManageProducts() {
         const listDiv = document.getElementById('productsList');
         listDiv.innerHTML = products.map(p => `
             <div style="border-bottom:1px solid #ddd; padding:10px; display:flex; gap:10px; align-items:center;">
-                <img src="${p.main_image || 'https://picsum.photos/50/50'}" width="50" style="border-radius:8px;">
+                <img src="${p.main_image || p.image || 'https://picsum.photos/50/50'}" width="50" style="border-radius:8px;">
                 <div style="flex:1"><strong>${escapeHtml(p.name)}</strong> - $${p.price}</div>
                 <button onclick="deleteProduct(${p.id})">Delete</button>
             </div>
@@ -338,7 +340,7 @@ async function deleteProduct(id) {
     try {
         await apiCall(`/products/${id}`, { method: 'DELETE' });
         alert('Deleted');
-        showManageProducts(); // refresh list
+        showManageProducts();
         loadProducts();
     } catch(e) {
         alert('Delete failed: ' + e.message);
