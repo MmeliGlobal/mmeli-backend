@@ -1,1 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Mmeli Global – Premium E‑commerce</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta property="og:title" content="Mmeli Global | Premium Products">
+  <meta property="og:description" content="Shop premium products, track shipments, get quotations, and manage your account.">
+  <meta property="og:image" content="logo.png">
+  <meta property="og:url" content="https://mmeliglobal.com">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
 
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="preconnect" href="https://proljdccjrifqgbmsyco.supabase.co" crossorigin>
+  <link rel="dns-prefetch" href="https://unpkg.com">
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <script src="script.js" defer></script>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo" id="logoArea">
+    <img src="logo.png" alt="Mmeli Global Logo" id="siteLogo" style="height:40px;" loading="lazy">
+    <span>Mmeli Global</span>
+  </div>
+  <div class="cart-icon" onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i> <span id="cartCount">0
