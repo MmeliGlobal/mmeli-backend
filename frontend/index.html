@@ -2,307 +2,204 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Mmeli Global – Shop & Bulk Upload</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: system-ui, 'Segoe UI', Roboto; background: #f5f7fa; padding-bottom: 70px; }
-        .header { background: #0a192f; color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
-        .logo { font-size: 1.4rem; font-weight: bold; cursor: pointer; }
-        .cart-icon { background: #d4af37; padding: 6px 12px; border-radius: 30px; cursor: pointer; color: #0a192f; font-weight: bold; }
-        .nav-tabs { display: flex; gap: 10px; background: white; padding: 8px 16px; border-bottom: 1px solid #ddd; }
-        .nav-tab { padding: 8px 16px; cursor: pointer; border-radius: 30px; background: #f1f3f5; }
-        .nav-tab.active { background: #e67e22; color: white; }
-        .page { display: none; padding: 16px; }
-        .page.active { display: block; }
-        #productsContainer { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
-        .product-card { background: white; border-radius: 16px; overflow: hidden; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-        .product-card img { width: 100%; aspect-ratio: 1; object-fit: cover; }
-        .product-info { padding: 10px; text-align: center; }
-        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: #0a192f; display: flex; justify-content: space-around; padding: 10px 0; z-index: 10; }
-        .bottom-nav div { color: #d4af37; font-size: 22px; cursor: pointer; }
-        button, .btn { background: #e67e22; border: none; color: white; padding: 8px 16px; border-radius: 40px; cursor: pointer; font-weight: bold; }
-        input, select, textarea { width: 100%; padding: 10px; margin: 8px 0; border-radius: 12px; border: 1px solid #ccc; font-size: 16px; }
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-content { background: white; max-width: 95%; width: 600px; border-radius: 20px; padding: 20px; max-height: 80vh; overflow-y: auto; }
-        .close-modal { float: right; font-size: 24px; cursor: pointer; }
-        .admin-card { background: white; border-radius: 12px; padding: 16px; margin: 8px 0; text-align: center; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .progress-bar { background: #e0e0e0; border-radius: 20px; overflow: hidden; margin: 10px 0; height: 20px; }
-        .progress-fill { background: #e67e22; width: 0%; height: 100%; transition: width 0.2s; }
-        .status-log { background: #f0f0f0; padding: 10px; border-radius: 8px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; }
-        @media (max-width: 600px) { #productsContainer { grid-template-columns: repeat(2, 1fr); } }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Mmeli Global – Premium E‑commerce</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta property="og:title" content="Mmeli Global | Premium Products">
+    <meta property="og:description" content="Shop premium products, track shipments, get quotations, and manage your account.">
+    <meta property="og:image" content="logo.png">
+    <meta property="og:url" content="https://mmeliglobal.com">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <!-- Preconnect for speed -->
+    <link rel="preconnect" href="https://unpkg.com">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://proljdccjrifqgbmsyco.supabase.co" crossorigin>
+
+    <!-- External resources -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Leaflet & SheetJS for bulk upload -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <script src="script.js" defer></script>
 </head>
 <body>
 
 <header class="header">
-    <div class="logo" onclick="switchPage('home')">Mmeli Global</div>
-    <div class="cart-icon" onclick="switchPage('cart')">🛒 <span id="cartCount">0</span></div>
+    <div class="logo" id="logoArea">
+        <img src="logo.png" alt="Mmeli Global Logo" id="siteLogo" style="height:40px;" loading="lazy">
+        <span>Mmeli Global</span>
+    </div>
+    <div class="cart-icon" onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i> <span id="cartCount">0</span></div>
 </header>
 
-<div class="nav-tabs">
-    <div class="nav-tab active" data-page="home">🏠 Shop</div>
-    <div class="nav-tab" data-page="admin">👤 Admin</div>
-    <div class="nav-tab" data-page="bulk">📦 Bulk Upload</div>
+<div class="search-bar">
+    <div class="search-wrapper">
+        <input type="text" id="searchInput" placeholder="Search products..." autocomplete="off">
+        <i class="fas fa-search" onclick="searchProducts()"></i>
+        <label for="scanInput" style="cursor:pointer;"><i class="fas fa-camera"></i></label>
+        <input type="file" id="scanInput" hidden accept="image/*">
+    </div>
+    <div id="autocompleteList" class="autocomplete-items"></div>
 </div>
 
-<!-- SHOP PAGE -->
-<div id="homePage" class="page active">
+<div id="mainMenu" class="main-menu"></div>
+<div id="subMenu" class="sub-menu"></div>
+
+<section id="home" class="page active">
     <div id="productsContainer"></div>
-    <div style="text-align:center; margin-top:20px;"><button onclick="loadMoreProducts()">Load More</button></div>
-</div>
+    <div id="loadMoreBtn" style="text-align:center; margin-top:20px;"><button onclick="loadMoreProducts()">Load More</button></div>
+</section>
 
-<!-- CART PAGE (simple) -->
-<div id="cartPage" class="page">
+<section id="productPage" class="page">
+    <div id="productDetailContainer"></div>
+    <div id="productRecommendations" class="recommendations"></div>
+</section>
+
+<section id="cart" class="page">
     <h3>Your Cart</h3>
     <div id="cartList"></div>
-    <button onclick="checkout()">Proceed to Checkout (WhatsApp)</button>
-</div>
-
-<!-- ADMIN PAGE (login + dashboard) -->
-<div id="adminPage" class="page">
-    <div id="adminLoginDiv">
-        <h3>Admin Login</h3>
-        <input type="email" id="adminEmail" placeholder="Email" value="admin@mmeliglobal.com">
-        <input type="password" id="adminPassword" placeholder="Password">
-        <button onclick="adminLogin()">Login</button>
-        <button onclick="createAdminAccount()" style="background:#2c7da0;">🔧 Create Admin (admin@mmeliglobal.com / admin123)</button>
+    <div class="cart-actions">
+        <input type="text" id="promoCodeInput" placeholder="Discount code">
+        <button onclick="applyDiscount()">Apply</button>
+        <button onclick="goToCheckout()" class="checkout-btn"><i class="fab fa-whatsapp"></i> Proceed to Checkout</button>
     </div>
+    <div id="cartRecommendations" class="recommendations"></div>
+</section>
+
+<section id="checkoutPage" class="page">
+    <h3>Checkout</h3>
+    <div class="checkout-step active" id="stepShipping">
+        <h4>Shipping Address</h4>
+        <input type="text" id="checkoutAddress" placeholder="Address" value=""><button onclick="nextStep()">Next</button>
+    </div>
+    <div class="checkout-step" id="stepDelivery">
+        <h4>Delivery Method</h4>
+        <label><input type="radio" name="delivery" value="standard" checked> Standard (3-5 days) – $5</label>
+        <label><input type="radio" name="delivery" value="express"> Express (1-2 days) – $15</label>
+        <button onclick="nextStep()">Next</button>
+    </div>
+    <div class="checkout-step" id="stepPayment">
+        <h4>Payment</h4>
+        <p>You will be redirected to WhatsApp to confirm payment.</p>
+        <button onclick="completeCheckout()">Place Order</button>
+    </div>
+</section>
+
+<section id="tracking" class="page">
+    <h3>Track Your Order</h3>
+    <div id="map"></div>
+    <input type="text" id="trackCode" placeholder="Enter Tracking Code">
+    <button onclick="trackOrder()"><i class="fas fa-search"></i> Track</button>
+    <div id="trackInfo"></div>
+    <div id="trackTimeline" class="timeline"></div>
+</section>
+
+<section id="promo" class="page"><h3>Special Offers</h3><div id="promoList"></div></section>
+
+<section id="account" class="page">
+    <div id="loginBox">
+        <h3>Customer Login</h3>
+        <input type="email" id="loginEmail" placeholder="Phone number" required><input type="password" id="loginPassword" placeholder="Password" required><button onclick="login()">Login</button>
+        <hr><h3>New Customer? Register</h3>
+        <input type="text" id="regName" placeholder="Full Name"><input type="email" id="regEmail" placeholder="Email"><input type="tel" id="regPhone" placeholder="Phone"><input type="text" id="regAddress" placeholder="Address"><input type="password" id="regPassword" placeholder="Password"><button onclick="register()">Register</button>
+    </div>
+    <div id="dashboard" style="display:none;">
+        <h3>Welcome, <span id="userName"></span></h3>
+        <div class="customer-buttons">
+            <button onclick="showMyOrders()"><i class="fas fa-box"></i> My Orders</button>
+            <button onclick="showMyQuotations()"><i class="fas fa-file-invoice"></i> My Quotations</button>
+            <button onclick="showMyReturns()"><i class="fas fa-undo-alt"></i> My Returns</button>
+            <button onclick="openShipmentTracking()"><i class="fas fa-shipping-fast"></i> Track Shipment</button>
+            <button onclick="showProfile()"><i class="fas fa-user-edit"></i> Edit Profile</button>
+            <button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        </div>
+        <div id="customerData"></div>
+        <div id="customerRecommendations" class="recommendations"></div>
+    </div>
+</section>
+
+<section id="adminDashboard" class="page">
+    <div id="adminLoginDiv"><h3>Admin Login</h3><input type="email" id="adminEmail" placeholder="Email" required><input type="password" id="adminPassword" placeholder="Password" required><button onclick="adminLogin()">Login</button></div>
     <div id="adminPanel" style="display:none;">
         <h3>Admin Dashboard</h3>
-        <div class="admin-card" onclick="showAddProductForm()">➕ Add Single Product</div>
-        <div class="admin-card" onclick="switchPage('bulk')">📁 Bulk Upload Products</div>
-        <div class="admin-card" onclick="showManageProducts()">📦 Manage Products</div>
-        <button onclick="switchPage('home')">Back to Shop</button>
+        <div class="admin-cards-grid">
+            <div class="admin-card" data-modal="dashboardStats">📊 Dashboard</div>
+            <div class="admin-card" data-modal="manageProducts">🛍️ Products</div>
+            <div class="admin-card" data-modal="addProduct">➕ Add Product</div>
+            <div class="admin-card" data-modal="bulkUpload">📁 Bulk Upload (CSV/Excel)</div>
+            <div class="admin-card" data-modal="manageOrders">📦 Orders</div>
+            <div class="admin-card" data-modal="discounts">🏷️ Discounts</div>
+            <div class="admin-card" data-modal="returns">🔄 Returns</div>
+            <div class="admin-card" data-modal="inventory">📦 Inventory</div>
+            <div class="admin-card" data-modal="managePolicies">📜 Policies</div>
+            <div class="admin-card" data-modal="manageShipments">🚚 Shipments</div>
+            <div class="admin-card" data-modal="broadcast">📢 Broadcast</div>
+            <div class="admin-card" data-modal="createQuotation">📄 Create Quotation</div>
+        </div>
+        <button onclick="switchPage('account')"><i class="fas fa-arrow-left"></i> Back to Site</button>
+    </div>
+</section>
+
+<!-- MODALS (all 12 + bulk upload modal) -->
+<div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalManageProducts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalAddProduct" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalManageOrders" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalDiscounts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalReturns" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalInventory" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalManagePolicies" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalManageShipments" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalBroadcast" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalCreateQuotation" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+<div id="modalQuotationPreview" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div id="quotationPreviewContent"></div></div></div>
+<div id="shipmentTrackingModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeShipmentModal()">&times;</span><h3>Track Your Shipment</h3><input type="text" id="shipmentCode" placeholder="Enter tracking code"><button onclick="fetchShipmentStatus()">Track</button><div id="shipmentStatus"></div><div id="shipmentTimeline"></div></div></div>
+<div id="quoteModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div id="quotePreview"></div></div></div>
+<div id="popupPromo" class="popup-promo" style="position:fixed; bottom:20px; right:20px; background:white; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.2); display:none; z-index:1100; max-width:280px;"><span class="close-popup" style="float:right; cursor:pointer;">&times;</span><div id="popupContent"></div></div>
+
+<!-- Bulk Upload Modal -->
+<div id="modalBulkUpload" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModal('modalBulkUpload')">&times;</span>
+        <h3>Bulk Upload Products (CSV/Excel)</h3>
+        <p>Upload file, map columns, and import in parallel (5 at a time).</p>
+        <input type="file" id="bulkFileInput" accept=".xlsx, .xls, .csv">
+        <div id="bulkMappingArea" style="display:none; margin-top:16px;"></div>
+        <div id="bulkProgressArea" style="display:none; margin-top:16px;">
+            <div class="progress-bar"><div class="progress-fill" id="bulkProgressFill"></div></div>
+            <div id="bulkProgressText"></div>
+            <div class="bulk-status-log" id="bulkStatusLog"></div>
+        </div>
+        <button id="bulkStartBtn" style="display:none; margin-top:16px;">⚡ Start Bulk Import</button>
+        <button onclick="closeModal('modalBulkUpload')">Close</button>
     </div>
 </div>
-
-<!-- BULK UPLOAD PAGE -->
-<div id="bulkPage" class="page">
-    <h2>🚀 Bulk Upload Products (Lightning Fast)</h2>
-    <p>Upload Excel/CSV, map columns, upload in parallel.</p>
-    <input type="file" id="bulkFileInput" accept=".xlsx, .xls, .csv">
-    <div id="bulkMappingArea" style="display:none;">
-        <h3>Column Mapping</h3>
-        <div id="bulkMappingList"></div>
-        <button id="bulkStartBtn">⚡ Start Bulk Upload</button>
-    </div>
-    <div id="bulkProgressArea" style="display:none;">
-        <div class="progress-bar"><div class="progress-fill" id="bulkProgressFill"></div></div>
-        <div id="bulkProgressText"></div>
-        <div class="status-log" id="bulkStatusLog"></div>
-    </div>
-    <button id="backToShopFromBulk" style="margin-top:20px; background:#0a192f;" onclick="switchPage('home')">🔙 Back to Shop</button>
-</div>
-
-<!-- Modals for single product & manage products -->
-<div id="addProductModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal('addProductModal')">&times;</span><h3>Add Product</h3><input id="prodName" placeholder="Name"><input id="prodPrice" placeholder="Price"><input type="file" id="prodImage"><textarea id="prodDesc" placeholder="Description"></textarea><button id="saveSingleBtn" onclick="addSingleProduct()">Save</button></div></div>
-<div id="manageProductsModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal('manageProductsModal')">&times;</span><h3>Manage Products</h3><div id="productsList"></div></div></div>
 
 <nav class="bottom-nav">
-    <div onclick="switchPage('home')">🏠</div>
-    <div onclick="switchPage('cart')">🛒</div>
-    <div onclick="switchPage('adminPage')">👤</div>
+    <div onclick="resetHome()"><i class="fas fa-home"></i></div>
+    <div onclick="switchPage('promo')"><i class="fas fa-fire"></i></div>
+    <div onclick="switchPage('tracking')"><i class="fas fa-map-marker-alt"></i></div>
+    <div onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i></div>
+    <div onclick="switchPage('account')"><i class="fas fa-user"></i></div>
 </nav>
 
-<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
-<script>
-// ========== API & AUTH ==========
-const API = '/api';
-let token = localStorage.getItem('token');
-let user = JSON.parse(localStorage.getItem('user') || 'null');
-let allProducts = [];
-let cart = JSON.parse(localStorage.getItem('cart') || '[]');
-let currentDisplayLimit = 150;
+<footer class="footer">
+    <div class="footer-grid">
+        <div><h4>Mmeli Global</h4><p>Premium products delivered worldwide.</p><p><i class="fab fa-whatsapp"></i> +263 77 687 1711</p><p><i class="far fa-envelope"></i> info@mmeliglobal.com</p></div>
+        <div><h4>Quick Links</h4><a href="#" onclick="resetHome()">Home</a><a href="#" onclick="switchPage('promo')">Promotions</a><a href="#" onclick="switchPage('tracking')">Track Order</a><a href="#" onclick="switchPage('account')">My Account</a>
+            <a href="#" onclick="switchPage('adminDashboard')" style="color: #d4af37; font-weight: bold; margin-top: 12px;">🔐 Admin Login</a>
+        </div>
+        <div><h4>Policies</h4><a href="#" id="privacyLink">Privacy Policy</a><a href="#" id="termsLink">Terms of Service</a><a href="#" id="shippingLink">Shipping Info</a><a href="#" id="returnsLink">Returns & Refunds</a></div>
+        <div><h4>Newsletter</h4><p>Get updates</p><input type="email" id="subEmail" placeholder="Email"><input type="tel" id="subPhone" placeholder="WhatsApp"><button onclick="subscribe()">Subscribe</button></div>
+    </div>
+    <div class="footer-bottom">&copy; 2025 Mmeli Global. All rights reserved.</div>
+</footer>
 
-async function apiCall(endpoint, options = {}) {
-    const headers = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(API + endpoint, { ...options, headers });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
-}
-
-// ========== PRODUCTS ==========
-async function loadProducts() {
-    try {
-        const res = await fetch(API + '/products');
-        allProducts = await res.json();
-        displayProducts(allProducts.slice(0, currentDisplayLimit));
-    } catch(e) { console.error(e); }
-}
-function displayProducts(products) {
-    const container = document.getElementById('productsContainer');
-    if (!container) return;
-    container.innerHTML = '';
-    products.forEach(p => {
-        const card = document.createElement('div');
-        card.className = 'product-card';
-        card.innerHTML = `<img src="${p.main_image || 'https://picsum.photos/200/200'}" loading="lazy" onerror="this.src='https://picsum.photos/200/200?grayscale'"><div class="product-info"><div>${escapeHtml(p.name)}</div><div>$${p.price}</div></div>`;
-        card.onclick = () => alert('Product detail not implemented – but you can add to cart');
-        container.appendChild(card);
-    });
-}
-function loadMoreProducts() { currentDisplayLimit += 150; displayProducts(allProducts.slice(0, currentDisplayLimit)); }
-function escapeHtml(s) { return String(s).replace(/[&<>]/g, m => m==='&'?'&amp;':m==='<'?'&lt;':'&gt;'); }
-
-// ========== CART ==========
-function updateCartCount() { document.getElementById('cartCount').innerText = cart.length; }
-function renderCart() {
-    const container = document.getElementById('cartList');
-    if(!cart.length) { container.innerHTML = '<p>Empty</p>'; return; }
-    let html = '', total = 0;
-    cart.forEach((item,i) => { total += item.price; html += `<div>${item.name} - $${item.price} <button onclick="removeFromCart(${i})">Remove</button></div>`; });
-    html += `<strong>Total: $${total}</strong>`;
-    container.innerHTML = html;
-}
-function removeFromCart(i) { cart.splice(i,1); localStorage.setItem('cart',JSON.stringify(cart)); updateCartCount(); renderCart(); }
-function checkout() { alert('Order sent! We will contact you.'); cart = []; updateCartCount(); renderCart(); switchPage('home'); }
-
-// ========== ADMIN LOGIN ==========
-async function createAdminAccount() {
-    try {
-        await apiCall('/auth/register', { method:'POST', body: JSON.stringify({ name:'Admin', phone:'0000000000', email:'admin@mmeliglobal.com', password:'admin123', address:'Admin' }) });
-        alert('Admin created! Use admin@mmeliglobal.com / admin123');
-    } catch(e) { alert(e.message.includes('already') ? 'Already exists' : e.message); }
-}
-async function adminLogin() {
-    const email = document.getElementById('adminEmail').value, password = document.getElementById('adminPassword').value;
-    try {
-        const data = await apiCall('/auth/login', { method:'POST', body: JSON.stringify({ email, password }) });
-        if(data.user.role !== 'admin') throw new Error('Not admin');
-        token = data.token; user = data.user;
-        localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user));
-        document.getElementById('adminLoginDiv').style.display = 'none';
-        document.getElementById('adminPanel').style.display = 'block';
-        alert('Logged in');
-    } catch(e) { alert('Login failed: ' + e.message); }
-}
-function showAddProductForm() { document.getElementById('addProductModal').style.display = 'flex'; }
-async function addSingleProduct() { alert('Single add not fully implemented – use bulk upload'); }
-async function showManageProducts() {
-    const products = await apiCall('/products');
-    const listDiv = document.getElementById('productsList');
-    listDiv.innerHTML = products.map(p => `<div>${p.name} - $${p.price} <button onclick="deleteProduct(${p.id})">Delete</button></div>`).join('');
-    document.getElementById('manageProductsModal').style.display = 'flex';
-}
-async function deleteProduct(id) { if(confirm('Delete?')) await apiCall(`/products/${id}`, {method:'DELETE'}); showManageProducts(); loadProducts(); }
-
-// ========== BULK UPLOAD ==========
-document.getElementById('bulkFileInput').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const data = await file.arrayBuffer();
-    const workbook = XLSX.read(data);
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet);
-    if (!rows.length) return alert('Empty file');
-    window.bulkRows = rows;
-    const cols = Object.keys(rows[0]);
-    const mapDiv = document.getElementById('bulkMappingList');
-    mapDiv.innerHTML = '';
-    const fields = ['name','price','description','main_image','cat','subcat'];
-    const labels = ['Product Name *','Price *','Description','Image URL','Category','Subcategory'];
-    fields.forEach((f, idx) => {
-        const div = document.createElement('div');
-        div.className = 'mapping-row'; // style exists
-        div.style.display = 'flex'; div.style.gap = '10px'; div.style.margin = '8px 0';
-        div.innerHTML = `<span style="width:120px;">${labels[idx]}</span><select id="map_${f}"><option value="">-- Ignore --</option>${cols.map(c=>`<option value="${c}">${c}</option>`).join('')}</select>`;
-        mapDiv.appendChild(div);
-        const select = div.querySelector('select');
-        const lower = cols.map(c=>c.toLowerCase());
-        if (f === 'name') { let i = lower.findIndex(c=>c.includes('name')||c==='model'); if(i!==-1) select.value = cols[i]; }
-        if (f === 'price') { let i = lower.findIndex(c=>c.includes('price')||c.includes('usd')); if(i!==-1) select.value = cols[i]; }
-        if (f === 'description') { let i = lower.findIndex(c=>c.includes('desc')); if(i!==-1) select.value = cols[i]; }
-        if (f === 'cat') { let i = lower.findIndex(c=>c.includes('category')); if(i!==-1) select.value = cols[i]; }
-    });
-    document.getElementById('bulkMappingArea').style.display = 'block';
-});
-
-document.getElementById('bulkStartBtn').addEventListener('click', async () => {
-    const rows = window.bulkRows;
-    if (!rows) return;
-    const mapping = {};
-    for (let f of ['name','price','description','main_image','cat','subcat']) {
-        let sel = document.getElementById(`map_${f}`);
-        if (sel && sel.value) mapping[f] = sel.value;
-    }
-    if (!mapping.name || !mapping.price) return alert('Map name and price');
-    const products = [];
-    for (let row of rows) {
-        let name = row[mapping.name];
-        let price = parseFloat(row[mapping.price]);
-        if (!name || isNaN(price)) continue;
-        let desc = mapping.description ? (row[mapping.description] || '') : '';
-        let img = mapping.main_image ? (row[mapping.main_image] || '') : '';
-        let cat = mapping.cat ? (row[mapping.cat] || 'General') : 'General';
-        let subcat = mapping.subcat ? (row[mapping.subcat] || 'General') : 'General';
-        products.push({ name, price, description:desc, main_image:img, cat, subcat });
-    }
-    if (!products.length) return alert('No valid products');
-    const progressArea = document.getElementById('bulkProgressArea');
-    const fill = document.getElementById('bulkProgressFill');
-    const text = document.getElementById('bulkProgressText');
-    const log = document.getElementById('bulkStatusLog');
-    progressArea.style.display = 'block';
-    log.innerHTML = '';
-    let completed = 0, success = 0, failed = 0;
-    const total = products.length;
-    const concurrency = 5;
-    let idx = 0;
-    function update() {
-        fill.style.width = (completed/total)*100 + '%';
-        text.innerText = `${completed}/${total} (${success} ok, ${failed} failed)`;
-    }
-    async function uploadOne(p) {
-        try {
-            await apiCall('/products', { method:'POST', body: JSON.stringify({
-                name: p.name, price: p.price, description: p.description, main_image: p.main_image,
-                cat: p.cat, subcat: p.subcat, colors: [], size_options: [{size:'Standard', price:p.price}]
-            })});
-            success++;
-            log.innerHTML += `<div style="color:green;">✅ ${p.name}</div>`;
-        } catch(e) {
-            failed++;
-            log.innerHTML += `<div style="color:red;">❌ ${p.name}: ${e.message}</div>`;
-        } finally {
-            completed++;
-            update();
-            log.scrollTop = log.scrollHeight;
-        }
-    }
-    async function worker() { while(idx < total) await uploadOne(products[idx++]); }
-    await Promise.all(Array(concurrency).fill().map(() => worker()));
-    log.innerHTML += `<hr><strong>Done. ${success} added, ${failed} failed.</strong>`;
-});
-
-// ========== NAVIGATION ==========
-function switchPage(pageId) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    if (pageId === 'home') document.getElementById('homePage').classList.add('active');
-    if (pageId === 'cart') { document.getElementById('cartPage').classList.add('active'); renderCart(); }
-    if (pageId === 'adminPage') document.getElementById('adminPage').classList.add('active');
-    if (pageId === 'bulk') document.getElementById('bulkPage').classList.add('active');
-    // update tab active state
-    document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
-    if (pageId === 'home') document.querySelector('.nav-tab[data-page="home"]').classList.add('active');
-    if (pageId === 'adminPage') document.querySelector('.nav-tab[data-page="admin"]').classList.add('active');
-    if (pageId === 'bulk') document.querySelector('.nav-tab[data-page="bulk"]').classList.add('active');
-}
-document.querySelectorAll('.nav-tab').forEach(tab => {
-    tab.onclick = () => switchPage(tab.dataset.page);
-});
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-
-window.onload = () => {
-    loadProducts();
-    updateCartCount();
-    if (user?.role === 'admin') {
-        document.getElementById('adminLoginDiv').style.display = 'none';
-        document.getElementById('adminPanel').style.display = 'block';
-    }
-    window.onclick = (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; };
-};
-</script>
 </body>
 </html>
