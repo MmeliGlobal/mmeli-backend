@@ -3,249 +3,306 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Mmeli Global – Bulk Upload (Lightning Fast)</title>
+    <title>Mmeli Global – Shop & Bulk Upload</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; background: #f5f7fa; padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; background: white; border-radius: 24px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h1, h2 { margin-bottom: 16px; }
-        label { font-weight: bold; display: block; margin: 12px 0 4px; }
-        input, select, button { width: 100%; padding: 10px; margin: 8px 0; border-radius: 12px; border: 1px solid #ccc; font-size: 16px; }
-        button { background: #e67e22; color: white; font-weight: bold; cursor: pointer; border: none; transition: 0.2s; }
-        button:hover { background: #d35400; }
-        .back-btn { background: #0a192f; margin-top: 20px; }
-        .back-btn:hover { background: #1a2a4a; }
-        .mapping-row { display: flex; gap: 10px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
-        .mapping-row select { flex: 2; width: auto; margin: 0; }
-        .mapping-row span { width: 120px; font-weight: bold; }
-        .progress-bar { background: #e0e0e0; border-radius: 20px; overflow: hidden; margin: 16px 0; height: 24px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, 'Segoe UI', Roboto; background: #f5f7fa; padding-bottom: 70px; }
+        .header { background: #0a192f; color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+        .logo { font-size: 1.4rem; font-weight: bold; cursor: pointer; }
+        .cart-icon { background: #d4af37; padding: 6px 12px; border-radius: 30px; cursor: pointer; color: #0a192f; font-weight: bold; }
+        .nav-tabs { display: flex; gap: 10px; background: white; padding: 8px 16px; border-bottom: 1px solid #ddd; }
+        .nav-tab { padding: 8px 16px; cursor: pointer; border-radius: 30px; background: #f1f3f5; }
+        .nav-tab.active { background: #e67e22; color: white; }
+        .page { display: none; padding: 16px; }
+        .page.active { display: block; }
+        #productsContainer { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+        .product-card { background: white; border-radius: 16px; overflow: hidden; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+        .product-card img { width: 100%; aspect-ratio: 1; object-fit: cover; }
+        .product-info { padding: 10px; text-align: center; }
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: #0a192f; display: flex; justify-content: space-around; padding: 10px 0; z-index: 10; }
+        .bottom-nav div { color: #d4af37; font-size: 22px; cursor: pointer; }
+        button, .btn { background: #e67e22; border: none; color: white; padding: 8px 16px; border-radius: 40px; cursor: pointer; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 10px; margin: 8px 0; border-radius: 12px; border: 1px solid #ccc; font-size: 16px; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; max-width: 95%; width: 600px; border-radius: 20px; padding: 20px; max-height: 80vh; overflow-y: auto; }
+        .close-modal { float: right; font-size: 24px; cursor: pointer; }
+        .admin-card { background: white; border-radius: 12px; padding: 16px; margin: 8px 0; text-align: center; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .progress-bar { background: #e0e0e0; border-radius: 20px; overflow: hidden; margin: 10px 0; height: 20px; }
         .progress-fill { background: #e67e22; width: 0%; height: 100%; transition: width 0.2s; }
-        .status { margin-top: 16px; padding: 12px; border-radius: 12px; background: #f0f0f0; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 13px; }
-        .success { color: green; }
-        .error { color: red; }
-        hr { margin: 20px 0; }
-        .nav-links { margin-bottom: 20px; display: flex; gap: 15px; }
-        .nav-links a { color: #e67e22; text-decoration: none; font-weight: bold; }
-        .nav-links a:hover { text-decoration: underline; }
+        .status-log { background: #f0f0f0; padding: 10px; border-radius: 8px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+        @media (max-width: 600px) { #productsContainer { grid-template-columns: repeat(2, 1fr); } }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="nav-links">
-        <a href="/" onclick="event.preventDefault(); window.location.href='/';">🏠 Back to Shop</a>
-        <a href="#" id="reloadPage">🔄 Reload this page</a>
-    </div>
-    <h1>🚀 Bulk Upload Products (Lightning Fast)</h1>
-    <p>Upload an Excel/CSV file. Map columns to product fields. Products will be uploaded in parallel (5 at a time).</p>
 
-    <label>📁 Choose file (.xlsx, .xls, .csv)</label>
-    <input type="file" id="fileInput" accept=".xlsx, .xls, .csv">
+<header class="header">
+    <div class="logo" onclick="switchPage('home')">Mmeli Global</div>
+    <div class="cart-icon" onclick="switchPage('cart')">🛒 <span id="cartCount">0</span></div>
+</header>
 
-    <div id="mappingArea" style="display: none;">
-        <h2>Column Mapping</h2>
-        <div id="mappingList"></div>
-        <button id="startUploadBtn">⚡ Start Bulk Upload (Parallel)</button>
-    </div>
-
-    <div id="progressArea" style="display: none;">
-        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-        <div id="progressText"></div>
-        <div class="status" id="statusLog"></div>
-    </div>
-
-    <button id="backToShopBtn" class="back-btn" style="display: none;" onclick="window.location.href='/';">🔙 Back to Shop</button>
+<div class="nav-tabs">
+    <div class="nav-tab active" data-page="home">🏠 Shop</div>
+    <div class="nav-tab" data-page="admin">👤 Admin</div>
+    <div class="nav-tab" data-page="bulk">📦 Bulk Upload</div>
 </div>
+
+<!-- SHOP PAGE -->
+<div id="homePage" class="page active">
+    <div id="productsContainer"></div>
+    <div style="text-align:center; margin-top:20px;"><button onclick="loadMoreProducts()">Load More</button></div>
+</div>
+
+<!-- CART PAGE (simple) -->
+<div id="cartPage" class="page">
+    <h3>Your Cart</h3>
+    <div id="cartList"></div>
+    <button onclick="checkout()">Proceed to Checkout (WhatsApp)</button>
+</div>
+
+<!-- ADMIN PAGE (login + dashboard) -->
+<div id="adminPage" class="page">
+    <div id="adminLoginDiv">
+        <h3>Admin Login</h3>
+        <input type="email" id="adminEmail" placeholder="Email" value="admin@mmeliglobal.com">
+        <input type="password" id="adminPassword" placeholder="Password">
+        <button onclick="adminLogin()">Login</button>
+        <button onclick="createAdminAccount()" style="background:#2c7da0;">🔧 Create Admin (admin@mmeliglobal.com / admin123)</button>
+    </div>
+    <div id="adminPanel" style="display:none;">
+        <h3>Admin Dashboard</h3>
+        <div class="admin-card" onclick="showAddProductForm()">➕ Add Single Product</div>
+        <div class="admin-card" onclick="switchPage('bulk')">📁 Bulk Upload Products</div>
+        <div class="admin-card" onclick="showManageProducts()">📦 Manage Products</div>
+        <button onclick="switchPage('home')">Back to Shop</button>
+    </div>
+</div>
+
+<!-- BULK UPLOAD PAGE -->
+<div id="bulkPage" class="page">
+    <h2>🚀 Bulk Upload Products (Lightning Fast)</h2>
+    <p>Upload Excel/CSV, map columns, upload in parallel.</p>
+    <input type="file" id="bulkFileInput" accept=".xlsx, .xls, .csv">
+    <div id="bulkMappingArea" style="display:none;">
+        <h3>Column Mapping</h3>
+        <div id="bulkMappingList"></div>
+        <button id="bulkStartBtn">⚡ Start Bulk Upload</button>
+    </div>
+    <div id="bulkProgressArea" style="display:none;">
+        <div class="progress-bar"><div class="progress-fill" id="bulkProgressFill"></div></div>
+        <div id="bulkProgressText"></div>
+        <div class="status-log" id="bulkStatusLog"></div>
+    </div>
+    <button id="backToShopFromBulk" style="margin-top:20px; background:#0a192f;" onclick="switchPage('home')">🔙 Back to Shop</button>
+</div>
+
+<!-- Modals for single product & manage products -->
+<div id="addProductModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal('addProductModal')">&times;</span><h3>Add Product</h3><input id="prodName" placeholder="Name"><input id="prodPrice" placeholder="Price"><input type="file" id="prodImage"><textarea id="prodDesc" placeholder="Description"></textarea><button id="saveSingleBtn" onclick="addSingleProduct()">Save</button></div></div>
+<div id="manageProductsModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal('manageProductsModal')">&times;</span><h3>Manage Products</h3><div id="productsList"></div></div></div>
+
+<nav class="bottom-nav">
+    <div onclick="switchPage('home')">🏠</div>
+    <div onclick="switchPage('cart')">🛒</div>
+    <div onclick="switchPage('adminPage')">👤</div>
+</nav>
 
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <script>
-// ==================== CONFIG ====================
+// ========== API & AUTH ==========
 const API = '/api';
 let token = localStorage.getItem('token');
 let user = JSON.parse(localStorage.getItem('user') || 'null');
+let allProducts = [];
+let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+let currentDisplayLimit = 150;
 
-// Helper: API call with token
 async function apiCall(endpoint, options = {}) {
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(API + endpoint, { ...options, headers });
-    if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText);
-    }
+    if (!res.ok) throw new Error(await res.text());
     return res.json();
 }
 
-// Reload page
-document.getElementById('reloadPage').addEventListener('click', (e) => {
-    e.preventDefault();
-    location.reload();
-});
+// ========== PRODUCTS ==========
+async function loadProducts() {
+    try {
+        const res = await fetch(API + '/products');
+        allProducts = await res.json();
+        displayProducts(allProducts.slice(0, currentDisplayLimit));
+    } catch(e) { console.error(e); }
+}
+function displayProducts(products) {
+    const container = document.getElementById('productsContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    products.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        card.innerHTML = `<img src="${p.main_image || 'https://picsum.photos/200/200'}" loading="lazy" onerror="this.src='https://picsum.photos/200/200?grayscale'"><div class="product-info"><div>${escapeHtml(p.name)}</div><div>$${p.price}</div></div>`;
+        card.onclick = () => alert('Product detail not implemented – but you can add to cart');
+        container.appendChild(card);
+    });
+}
+function loadMoreProducts() { currentDisplayLimit += 150; displayProducts(allProducts.slice(0, currentDisplayLimit)); }
+function escapeHtml(s) { return String(s).replace(/[&<>]/g, m => m==='&'?'&amp;':m==='<'?'&lt;':'&gt;'); }
 
-// ==================== Read file ====================
-document.getElementById('fileInput').addEventListener('change', async (e) => {
+// ========== CART ==========
+function updateCartCount() { document.getElementById('cartCount').innerText = cart.length; }
+function renderCart() {
+    const container = document.getElementById('cartList');
+    if(!cart.length) { container.innerHTML = '<p>Empty</p>'; return; }
+    let html = '', total = 0;
+    cart.forEach((item,i) => { total += item.price; html += `<div>${item.name} - $${item.price} <button onclick="removeFromCart(${i})">Remove</button></div>`; });
+    html += `<strong>Total: $${total}</strong>`;
+    container.innerHTML = html;
+}
+function removeFromCart(i) { cart.splice(i,1); localStorage.setItem('cart',JSON.stringify(cart)); updateCartCount(); renderCart(); }
+function checkout() { alert('Order sent! We will contact you.'); cart = []; updateCartCount(); renderCart(); switchPage('home'); }
+
+// ========== ADMIN LOGIN ==========
+async function createAdminAccount() {
+    try {
+        await apiCall('/auth/register', { method:'POST', body: JSON.stringify({ name:'Admin', phone:'0000000000', email:'admin@mmeliglobal.com', password:'admin123', address:'Admin' }) });
+        alert('Admin created! Use admin@mmeliglobal.com / admin123');
+    } catch(e) { alert(e.message.includes('already') ? 'Already exists' : e.message); }
+}
+async function adminLogin() {
+    const email = document.getElementById('adminEmail').value, password = document.getElementById('adminPassword').value;
+    try {
+        const data = await apiCall('/auth/login', { method:'POST', body: JSON.stringify({ email, password }) });
+        if(data.user.role !== 'admin') throw new Error('Not admin');
+        token = data.token; user = data.user;
+        localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user));
+        document.getElementById('adminLoginDiv').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'block';
+        alert('Logged in');
+    } catch(e) { alert('Login failed: ' + e.message); }
+}
+function showAddProductForm() { document.getElementById('addProductModal').style.display = 'flex'; }
+async function addSingleProduct() { alert('Single add not fully implemented – use bulk upload'); }
+async function showManageProducts() {
+    const products = await apiCall('/products');
+    const listDiv = document.getElementById('productsList');
+    listDiv.innerHTML = products.map(p => `<div>${p.name} - $${p.price} <button onclick="deleteProduct(${p.id})">Delete</button></div>`).join('');
+    document.getElementById('manageProductsModal').style.display = 'flex';
+}
+async function deleteProduct(id) { if(confirm('Delete?')) await apiCall(`/products/${id}`, {method:'DELETE'}); showManageProducts(); loadProducts(); }
+
+// ========== BULK UPLOAD ==========
+document.getElementById('bulkFileInput').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const data = await file.arrayBuffer();
     const workbook = XLSX.read(data);
-    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(firstSheet);
-    if (rows.length === 0) {
-        alert('No data found in file');
-        return;
-    }
-    window.csvData = rows;
-    const sample = rows[0];
-    const columns = Object.keys(sample);
-    // Build mapping UI
-    const mappingDiv = document.getElementById('mappingList');
-    mappingDiv.innerHTML = '';
-    const fields = [
-        { label: 'Product Name *', field: 'name', required: true },
-        { label: 'Price *', field: 'price', required: true },
-        { label: 'Description', field: 'description', required: false },
-        { label: 'Main Image URL', field: 'main_image', required: false },
-        { label: 'Category', field: 'cat', required: false },
-        { label: 'Subcategory', field: 'subcat', required: false }
-    ];
-    fields.forEach(f => {
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet);
+    if (!rows.length) return alert('Empty file');
+    window.bulkRows = rows;
+    const cols = Object.keys(rows[0]);
+    const mapDiv = document.getElementById('bulkMappingList');
+    mapDiv.innerHTML = '';
+    const fields = ['name','price','description','main_image','cat','subcat'];
+    const labels = ['Product Name *','Price *','Description','Image URL','Category','Subcategory'];
+    fields.forEach((f, idx) => {
         const div = document.createElement('div');
-        div.className = 'mapping-row';
-        div.innerHTML = `
-            <span>${f.label}</span>
-            <select id="map_${f.field}" ${f.required ? 'required' : ''}>
-                <option value="">-- Ignore --</option>
-                ${columns.map(col => `<option value="${col}">${col}</option>`).join('')}
-            </select>
-        `;
-        mappingDiv.appendChild(div);
-        // auto-suggest common column names
+        div.className = 'mapping-row'; // style exists
+        div.style.display = 'flex'; div.style.gap = '10px'; div.style.margin = '8px 0';
+        div.innerHTML = `<span style="width:120px;">${labels[idx]}</span><select id="map_${f}"><option value="">-- Ignore --</option>${cols.map(c=>`<option value="${c}">${c}</option>`).join('')}</select>`;
+        mapDiv.appendChild(div);
         const select = div.querySelector('select');
-        const lowerCols = columns.map(c => c.toLowerCase());
-        if (f.field === 'name') {
-            const idx = lowerCols.findIndex(c => c.includes('name') || c === 'model' || c === 'product');
-            if (idx !== -1) select.value = columns[idx];
-        } else if (f.field === 'price') {
-            const idx = lowerCols.findIndex(c => c.includes('price') || c.includes('usd'));
-            if (idx !== -1) select.value = columns[idx];
-        } else if (f.field === 'description') {
-            const idx = lowerCols.findIndex(c => c.includes('description') || c.includes('desc'));
-            if (idx !== -1) select.value = columns[idx];
-        } else if (f.field === 'main_image') {
-            const idx = lowerCols.findIndex(c => c.includes('image') || c.includes('img') || c.includes('url'));
-            if (idx !== -1) select.value = columns[idx];
-        } else if (f.field === 'cat') {
-            const idx = lowerCols.findIndex(c => c.includes('category'));
-            if (idx !== -1) select.value = columns[idx];
-        } else if (f.field === 'subcat') {
-            const idx = lowerCols.findIndex(c => c.includes('subcategory') || c.includes('subcat'));
-            if (idx !== -1) select.value = columns[idx];
-        }
+        const lower = cols.map(c=>c.toLowerCase());
+        if (f === 'name') { let i = lower.findIndex(c=>c.includes('name')||c==='model'); if(i!==-1) select.value = cols[i]; }
+        if (f === 'price') { let i = lower.findIndex(c=>c.includes('price')||c.includes('usd')); if(i!==-1) select.value = cols[i]; }
+        if (f === 'description') { let i = lower.findIndex(c=>c.includes('desc')); if(i!==-1) select.value = cols[i]; }
+        if (f === 'cat') { let i = lower.findIndex(c=>c.includes('category')); if(i!==-1) select.value = cols[i]; }
     });
-    document.getElementById('mappingArea').style.display = 'block';
-    document.getElementById('progressArea').style.display = 'none';
-    document.getElementById('backToShopBtn').style.display = 'none';
+    document.getElementById('bulkMappingArea').style.display = 'block';
 });
 
-// ==================== Bulk Upload (parallel) ====================
-document.getElementById('startUploadBtn').addEventListener('click', async () => {
-    const rows = window.csvData;
-    if (!rows || rows.length === 0) return;
-
-    // Get mapping
-    const fields = ['name', 'price', 'description', 'main_image', 'cat', 'subcat'];
+document.getElementById('bulkStartBtn').addEventListener('click', async () => {
+    const rows = window.bulkRows;
+    if (!rows) return;
     const mapping = {};
-    for (let f of fields) {
-        const select = document.getElementById(`map_${f}`);
-        if (select && select.value) mapping[f] = select.value;
+    for (let f of ['name','price','description','main_image','cat','subcat']) {
+        let sel = document.getElementById(`map_${f}`);
+        if (sel && sel.value) mapping[f] = sel.value;
     }
-    if (!mapping.name || !mapping.price) {
-        alert('Product Name and Price must be mapped');
-        return;
-    }
-
-    // Prepare products
+    if (!mapping.name || !mapping.price) return alert('Map name and price');
     const products = [];
     for (let row of rows) {
         let name = row[mapping.name];
         let price = parseFloat(row[mapping.price]);
         if (!name || isNaN(price)) continue;
-        let description = mapping.description ? (row[mapping.description] || '') : '';
-        let main_image = mapping.main_image ? (row[mapping.main_image] || '') : '';
+        let desc = mapping.description ? (row[mapping.description] || '') : '';
+        let img = mapping.main_image ? (row[mapping.main_image] || '') : '';
         let cat = mapping.cat ? (row[mapping.cat] || 'General') : 'General';
         let subcat = mapping.subcat ? (row[mapping.subcat] || 'General') : 'General';
-        products.push({ name, price, description, main_image, cat, subcat });
+        products.push({ name, price, description:desc, main_image:img, cat, subcat });
     }
-
-    if (products.length === 0) {
-        alert('No valid products found');
-        return;
-    }
-
-    // Show progress area
-    const progressArea = document.getElementById('progressArea');
-    const progressFill = document.getElementById('progressFill');
-    const progressText = document.getElementById('progressText');
-    const statusLog = document.getElementById('statusLog');
+    if (!products.length) return alert('No valid products');
+    const progressArea = document.getElementById('bulkProgressArea');
+    const fill = document.getElementById('bulkProgressFill');
+    const text = document.getElementById('bulkProgressText');
+    const log = document.getElementById('bulkStatusLog');
     progressArea.style.display = 'block';
-    statusLog.innerHTML = '';
-    progressFill.style.width = '0%';
-    
-    let completed = 0;
-    let success = 0;
-    let failed = 0;
+    log.innerHTML = '';
+    let completed = 0, success = 0, failed = 0;
     const total = products.length;
-    const concurrency = 5; // parallel uploads
-    let index = 0;
-    const results = [];
-
-    function updateProgress() {
-        const percent = (completed / total) * 100;
-        progressFill.style.width = percent + '%';
-        progressText.innerText = `${completed}/${total} completed (${success} ok, ${failed} failed)`;
+    const concurrency = 5;
+    let idx = 0;
+    function update() {
+        fill.style.width = (completed/total)*100 + '%';
+        text.innerText = `${completed}/${total} (${success} ok, ${failed} failed)`;
     }
-
-    async function uploadOne(product) {
+    async function uploadOne(p) {
         try {
-            const productData = {
-                name: product.name,
-                price: product.price,
-                description: product.description,
-                main_image: product.main_image,
-                cat: product.cat,
-                subcat: product.subcat,
-                colors: [],
-                size_options: [{ size: 'Standard', price: product.price }]
-            };
-            await apiCall('/products', { method: 'POST', body: JSON.stringify(productData) });
+            await apiCall('/products', { method:'POST', body: JSON.stringify({
+                name: p.name, price: p.price, description: p.description, main_image: p.main_image,
+                cat: p.cat, subcat: p.subcat, colors: [], size_options: [{size:'Standard', price:p.price}]
+            })});
             success++;
-            statusLog.innerHTML += `<div class="success">✅ ${product.name} added</div>`;
-            statusLog.scrollTop = statusLog.scrollHeight;
-        } catch (err) {
+            log.innerHTML += `<div style="color:green;">✅ ${p.name}</div>`;
+        } catch(e) {
             failed++;
-            statusLog.innerHTML += `<div class="error">❌ ${product.name} failed: ${err.message}</div>`;
-            statusLog.scrollTop = statusLog.scrollHeight;
+            log.innerHTML += `<div style="color:red;">❌ ${p.name}: ${e.message}</div>`;
         } finally {
             completed++;
-            updateProgress();
+            update();
+            log.scrollTop = log.scrollHeight;
         }
     }
-
-    async function worker() {
-        while (index < total) {
-            const i = index++;
-            await uploadOne(products[i]);
-        }
-    }
-
-    const workers = Array(concurrency).fill().map(() => worker());
-    await Promise.all(workers);
-    statusLog.innerHTML += `<hr><strong>Done! ${success} added, ${failed} failed.</strong>`;
-    
-    // Show the Back to Shop button after completion
-    document.getElementById('backToShopBtn').style.display = 'block';
+    async function worker() { while(idx < total) await uploadOne(products[idx++]); }
+    await Promise.all(Array(concurrency).fill().map(() => worker()));
+    log.innerHTML += `<hr><strong>Done. ${success} added, ${failed} failed.</strong>`;
 });
 
-// Also make sure the button is always clickable (it is)
+// ========== NAVIGATION ==========
+function switchPage(pageId) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    if (pageId === 'home') document.getElementById('homePage').classList.add('active');
+    if (pageId === 'cart') { document.getElementById('cartPage').classList.add('active'); renderCart(); }
+    if (pageId === 'adminPage') document.getElementById('adminPage').classList.add('active');
+    if (pageId === 'bulk') document.getElementById('bulkPage').classList.add('active');
+    // update tab active state
+    document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+    if (pageId === 'home') document.querySelector('.nav-tab[data-page="home"]').classList.add('active');
+    if (pageId === 'adminPage') document.querySelector('.nav-tab[data-page="admin"]').classList.add('active');
+    if (pageId === 'bulk') document.querySelector('.nav-tab[data-page="bulk"]').classList.add('active');
+}
+document.querySelectorAll('.nav-tab').forEach(tab => {
+    tab.onclick = () => switchPage(tab.dataset.page);
+});
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+window.onload = () => {
+    loadProducts();
+    updateCartCount();
+    if (user?.role === 'admin') {
+        document.getElementById('adminLoginDiv').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'block';
+    }
+    window.onclick = (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; };
+};
 </script>
 </body>
 </html>
