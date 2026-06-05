@@ -1,157 +1,129 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-  <title>Mmeli Global – Fast Shop</title>
-  <link rel="preconnect" href="https://proljdccjrifqgbmsyco.supabase.co">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto; background: #f8f9fa; padding-bottom: 70px; }
-    :root { --navy: #0a192f; --gold: #d4af37; --orange: #e67e22; }
-    .header { background: var(--navy); color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
-    .logo { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-    .logo img { height: 40px; }
-    .logo span { font-size: 1.5rem; font-weight: bold; background: linear-gradient(135deg, var(--gold), var(--orange)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .cart-icon { background: var(--gold); padding: 6px 14px; border-radius: 30px; cursor: pointer; display: flex; align-items: center; gap: 6px; color: var(--navy); font-weight: bold; }
-    .search-bar { background: white; padding: 6px 20px; border-bottom: 2px solid var(--gold); }
-    .search-wrapper { display: flex; gap: 8px; background: #f1f3f5; border-radius: 40px; padding: 4px 12px; }
-    .search-wrapper input { flex: 1; border: none; background: transparent; outline: none; font-size: 16px; }
-    .search-wrapper i { font-size: 1.2rem; cursor: pointer; color: #666; }
-    .autocomplete-items { background: white; border: 1px solid #ddd; max-height: 200px; overflow-y: auto; position: absolute; left: 20px; right: 20px; z-index: 1000; }
-    .main-menu, .sub-menu { display: flex; gap: 12px; padding: 10px 16px; background: white; overflow-x: auto; white-space: nowrap; border-bottom: 1px solid #eee; }
-    .main-menu div, .sub-menu div { background: #f1f3f5; padding: 6px 14px; border-radius: 30px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; }
-    .page { display: none; padding: 16px; }
-    .page.active { display: block; }
-    #productsContainer { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; }
-    .product-card { background: white; border-radius: 16px; overflow: hidden; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: 0.2s; }
-    .product-card img { width: 100%; aspect-ratio: 1; object-fit: cover; }
-    .product-info { padding: 12px; text-align: center; }
-    .bottom-nav { position: fixed; bottom: 0; width: 100%; background: var(--navy); display: flex; justify-content: space-around; padding: 10px 0; z-index: 100; }
-    .bottom-nav div { font-size: 24px; cursor: pointer; color: var(--gold); }
-    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
-    .modal-content { background: white; max-width: 95%; width: 600px; border-radius: 20px; padding: 20px; max-height: 85vh; overflow-y: auto; position: relative; }
-    .close-modal { position: absolute; top: 12px; right: 20px; font-size: 28px; cursor: pointer; }
-    button { background: var(--orange); border: none; color: white; padding: 10px 20px; border-radius: 40px; cursor: pointer; font-weight: bold; font-size: 1rem; margin: 5px 0; }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-    input, select, textarea { width: 100%; padding: 10px; margin: 8px 0; border-radius: 12px; border: 1px solid #ccc; font-size: 16px; }
-    .admin-cards-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; margin: 20px 0; }
-    .admin-card { background: white; border-radius: 16px; padding: 16px; cursor: pointer; text-align: center; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
-    .recommend-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px,1fr)); gap: 12px; margin-top: 10px; }
-    .loader { display: inline-block; width: 16px; height: 16px; border: 2px solid white; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 8px; vertical-align: middle; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    #map { height: 280px; border-radius: 16px; margin: 16px 0; background: #e9ecef; }
-    .create-admin-btn { background: #2c7da0; margin-top: 10px; }
-    @media (max-width: 600px) { #productsContainer { grid-template-columns: repeat(2, 1fr); } }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Mmeli Global – Simple Shop</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; background: #f5f7fa; padding-bottom: 70px; }
+        .header { background: #0a192f; color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+        .logo { font-size: 1.4rem; font-weight: bold; }
+        .cart-icon { background: #d4af37; padding: 6px 12px; border-radius: 30px; cursor: pointer; color: #0a192f; font-weight: bold; }
+        .search-bar { background: white; padding: 8px 16px; border-bottom: 1px solid #ddd; }
+        .search-wrapper { display: flex; background: #f1f3f5; border-radius: 30px; padding: 6px 12px; }
+        .search-wrapper input { flex: 1; border: none; background: transparent; outline: none; font-size: 16px; }
+        .search-wrapper i { font-size: 1.2rem; color: #666; cursor: pointer; }
+        .page { display: none; padding: 16px; }
+        .page.active { display: block; }
+        #productsContainer { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+        .product-card { background: white; border-radius: 16px; overflow: hidden; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.1); transition: 0.2s; }
+        .product-card img { width: 100%; aspect-ratio: 1; object-fit: cover; }
+        .product-info { padding: 10px; text-align: center; }
+        .product-name { font-weight: bold; }
+        .product-price { color: #e67e22; margin-top: 4px; }
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: #0a192f; display: flex; justify-content: space-around; padding: 10px 0; z-index: 10; }
+        .bottom-nav div { color: #d4af37; font-size: 22px; cursor: pointer; }
+        button, .btn { background: #e67e22; border: none; color: white; padding: 8px 16px; border-radius: 40px; cursor: pointer; font-weight: bold; margin: 5px 0; }
+        input, textarea, select { width: 100%; padding: 10px; margin: 8px 0; border-radius: 12px; border: 1px solid #ccc; font-size: 16px; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; max-width: 90%; width: 500px; border-radius: 20px; padding: 20px; max-height: 80vh; overflow-y: auto; }
+        .close-modal { float: right; font-size: 24px; cursor: pointer; }
+        .cart-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 10px 0; }
+        .admin-card { background: white; border-radius: 12px; padding: 16px; margin: 8px 0; text-align: center; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .loader { display: inline-block; width: 14px; height: 14px; border: 2px solid white; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 6px; vertical-align: middle; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
 </head>
 <body>
 
 <header class="header">
-  <div class="logo" id="logoArea"><img src="logo.png" alt="Logo" style="height:40px;"><span>Mmeli Global</span></div>
-  <div class="cart-icon" onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i> <span id="cartCount">0</span></div>
+    <div class="logo" onclick="switchPage('home')">Mmeli Global</div>
+    <div class="cart-icon" onclick="switchPage('cart')">🛒 <span id="cartCount">0</span></div>
 </header>
 
 <div class="search-bar">
-  <div class="search-wrapper"><input type="text" id="searchInput" placeholder="Search products..."><i class="fas fa-search" onclick="searchProducts()"></i></div>
-  <div id="autocompleteList" class="autocomplete-items"></div>
+    <div class="search-wrapper">
+        <input type="text" id="searchInput" placeholder="Search products...">
+        <i class="fas fa-search" onclick="searchProducts()">🔍</i>
+    </div>
 </div>
 
-<div id="mainMenu" class="main-menu"></div>
-<div id="subMenu" class="sub-menu"></div>
+<!-- Main pages -->
+<section id="home" class="page active">
+    <div id="productsContainer"></div>
+    <div style="text-align:center; margin-top:20px;"><button onclick="loadMoreProducts()">Load More</button></div>
+</section>
 
-<section id="home" class="page active"><div id="productsContainer"></div><div style="text-align:center; margin-top:20px;"><button onclick="loadMoreProducts()">Load More</button></div></section>
-<section id="productPage" class="page"><div id="productDetailContainer"></div><div id="productRecommendations"></div></section>
-<section id="cart" class="page"><h3>Your Cart</h3><div id="cartList"></div><div><input id="promoCodeInput" placeholder="Discount code"><button onclick="applyDiscount()">Apply</button><button onclick="goToCheckout()"><i class="fab fa-whatsapp"></i> Checkout</button></div><div id="cartRecommendations"></div></section>
-<section id="checkoutPage" class="page"><h3>Checkout</h3><div id="stepShipping" class="checkout-step active"><h4>Address</h4><input id="checkoutAddress" placeholder="Your address"><button onclick="nextStep()">Next</button></div><div id="stepDelivery" class="checkout-step"><h4>Delivery</h4><label><input type="radio" name="delivery" value="standard" checked> Standard ($5)</label><label><input type="radio" name="delivery" value="express"> Express ($15)</label><button onclick="nextStep()">Next</button></div><div id="stepPayment" class="checkout-step"><h4>Payment</h4><p>Click below to confirm via WhatsApp</p><button onclick="completeCheckout()">Place Order</button></div></section>
-<section id="tracking" class="page"><h3>Track Order</h3><div id="map"></div><input id="trackCode" placeholder="Tracking code"><button onclick="trackOrder()">Track</button><div id="trackInfo"></div><div id="trackTimeline"></div></section>
-<section id="promo" class="page"><h3>Special Offers</h3><div id="promoList"></div></section>
-<section id="account" class="page"><div id="loginBox"><h3>Login</h3><input id="loginEmail" placeholder="Phone number"><input id="loginPassword" type="password" placeholder="Password"><button onclick="login()">Login</button><hr><h3>Register</h3><input id="regName" placeholder="Full name"><input id="regPhone" placeholder="Phone"><input id="regEmail" placeholder="Email"><input id="regAddress" placeholder="Address"><input id="regPassword" type="password" placeholder="Password"><button onclick="register()">Register</button></div><div id="dashboard" style="display:none;"><h3>Welcome, <span id="userName"></span></h3><div style="display:flex; flex-wrap:wrap; gap:10px; margin:15px 0;"><button onclick="showMyOrders()">My Orders</button><button onclick="showMyQuotations()">Quotations</button><button onclick="showMyReturns()">Returns</button><button onclick="openShipmentTracking()">Track Shipment</button><button onclick="showProfile()">Edit Profile</button><button onclick="logout()">Logout</button></div><div id="customerData"></div></div></section>
-<section id="adminDashboard" class="page">
-  <div id="adminLoginDiv">
-    <h3>Admin Login</h3>
-    <input id="adminEmail" placeholder="Email" value="admin@mmeliglobal.com">
-    <input id="adminPassword" type="password" placeholder="Password">
-    <button onclick="adminLogin()">Login</button>
-    <button class="create-admin-btn" onclick="createAdminAccount()">🔧 Create Admin Account (admin@mmeliglobal.com / admin123)</button>
-    <p style="font-size:12px; margin-top:10px;">If you don't have an admin account, click the blue button above to create one.</p>
-  </div>
-  <div id="adminPanel" style="display:none;">
-    <h3>Admin Dashboard</h3>
-    <div class="admin-cards-grid">
-      <div class="admin-card" data-modal="dashboardStats">📊 Dashboard</div>
-      <div class="admin-card" data-modal="manageProducts">🛍️ Products</div>
-      <div class="admin-card" data-modal="addProduct">➕ Add Product</div>
-      <div class="admin-card" data-modal="manageOrders">📦 Orders</div>
-      <div class="admin-card" data-modal="discounts">🏷️ Discounts</div>
-      <div class="admin-card" data-modal="returns">🔄 Returns</div>
-      <div class="admin-card" data-modal="inventory">📦 Inventory</div>
-      <div class="admin-card" data-modal="managePolicies">📜 Policies</div>
-      <div class="admin-card" data-modal="manageShipments">🚚 Shipments</div>
-      <div class="admin-card" data-modal="broadcast">📢 Broadcast</div>
-      <div class="admin-card" data-modal="createQuotation">📄 Quotation</div>
+<section id="productPage" class="page">
+    <div id="productDetail"></div>
+    <button onclick="switchPage('home')">← Back to products</button>
+</section>
+
+<section id="cart" class="page">
+    <h3>Your Cart</h3>
+    <div id="cartList"></div>
+    <button onclick="checkout()">Proceed to Checkout (WhatsApp)</button>
+</section>
+
+<section id="adminPage" class="page">
+    <div id="adminLoginDiv">
+        <h3>Admin Login</h3>
+        <input type="email" id="adminEmail" placeholder="Email" value="admin@mmeliglobal.com">
+        <input type="password" id="adminPassword" placeholder="Password">
+        <button onclick="adminLogin()">Login</button>
+        <button onclick="createAdminAccount()" style="background:#2c7da0;">🔧 Create Admin (admin@mmeliglobal.com / admin123)</button>
     </div>
-    <button onclick="switchPage('account')">Back to Site</button>
-  </div>
+    <div id="adminPanel" style="display:none;">
+        <h3>Admin Dashboard</h3>
+        <div class="admin-card" onclick="showAddProductForm()">➕ Add Product</div>
+        <div class="admin-card" onclick="showManageProducts()">📦 Manage Products</div>
+        <button onclick="switchPage('home')">Back to Site</button>
+    </div>
 </section>
 
 <!-- Modals -->
-<div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalManageProducts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalAddProduct" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalManageOrders" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalDiscounts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalReturns" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalInventory" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalManagePolicies" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalManageShipments" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalBroadcast" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="modalCreateQuotation" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-<div id="shipmentTrackingModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><h3>Track Shipment</h3><input id="shipmentCode" placeholder="Tracking code"><button onclick="fetchShipmentStatus()">Track</button><div id="shipmentStatus"></div><div id="shipmentTimeline"></div></div></div>
-<div id="quoteModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div id="quotePreview"></div></div></div>
+<div id="addProductModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModal('addProductModal')">&times;</span>
+        <h3>Add Product</h3>
+        <input id="prodName" placeholder="Product name"><br>
+        <input id="prodPrice" placeholder="Price"><br>
+        <input type="file" id="prodImage" accept="image/*" required><br>
+        <textarea id="prodDesc" placeholder="Description"></textarea><br>
+        <input id="prodCat" placeholder="Category"><br>
+        <input id="prodSubcat" placeholder="Subcategory"><br>
+        <button id="saveBtn" onclick="addProduct()">Save Product</button>
+    </div>
+</div>
 
-<nav class="bottom-nav"><div onclick="resetHome()"><i class="fas fa-home"></i></div><div onclick="switchPage('promo')"><i class="fas fa-fire"></i></div><div onclick="switchPage('tracking')"><i class="fas fa-map-marker-alt"></i></div><div onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i></div><div onclick="switchPage('account')"><i class="fas fa-user"></i></div></nav>
+<div id="manageProductsModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModal('manageProductsModal')">&times;</span>
+        <h3>Manage Products</h3>
+        <div id="productsList"></div>
+    </div>
+</div>
+
+<nav class="bottom-nav">
+    <div onclick="switchPage('home')">🏠</div>
+    <div onclick="switchPage('cart')">🛒</div>
+    <div onclick="switchPage('adminPage')">👤</div>
+</nav>
 
 <script>
-// ==================== SUPABASE (for image upload) ====================
+// ------------------- CONFIG -------------------
+const API = '/api';
 const SUPABASE_URL = 'https://proljdccjrifqgbmsyco.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb2xqZGNjanJpZnFnYm1zeWNvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTc4ODAxOSwiZXhwIjoyMDkxMzY0MDE5fQ.VltzBUq-bLvu0Ny4jPy1kBp5E-4hffQgqFpqHrRWlZA';
 
-async function uploadImageToSupabase(file) {
-    if (!file) throw new Error('No file selected');
-    const fileName = Date.now() + '_' + file.name;
-    const url = `${SUPABASE_URL}/storage/v1/object/products/${fileName}`;
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': file.type },
-        body: file
-    });
-    if (!res.ok) {
-        let errMsg = await res.text();
-        throw new Error(`Upload failed (${res.status}): ${errMsg}`);
-    }
-    const data = await res.json();
-    return `${SUPABASE_URL}/storage/v1/object/public/${data.Key}`;
-}
+let allProducts = [];
+let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+let token = localStorage.getItem('token');
+let user = JSON.parse(localStorage.getItem('user') || 'null');
+let currentDisplayLimit = 150;
 
-// ==================== GLOBALS ====================
-const API = '/api';
-let allProducts = [], currentProduct = null, cart = JSON.parse(localStorage.getItem('cart') || '[]');
-let token = localStorage.getItem('token'), user = JSON.parse(localStorage.getItem('user') || 'null');
-let map = null, appliedDiscount = null, currentDisplayLimit = 150, allShuffled = [], searchDebounceTimer = null;
-
-// Category data (simplified – you can expand)
-const categoryHierarchy = {
-    "Phones": { "Smartphones": ["Android Phones", "iPhones"] },
-    "Electronics": { "Consumer Electronics": ["TVs", "Audio"] }
-};
-const subcategoryIcons = {};
-const defaultIcon = "https://cdn-icons-png.flaticon.com/512/456/456212.png";
-
-// ==================== API HELPER ====================
+// ------------------- HELPERS -------------------
 async function apiCall(endpoint, options = {}) {
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -160,311 +132,260 @@ async function apiCall(endpoint, options = {}) {
     return res.json();
 }
 
-// ==================== CREATE ADMIN ACCOUNT ====================
-async function createAdminAccount() {
-    const email = 'admin@mmeliglobal.com';
-    const password = 'admin123';
-    const name = 'Administrator';
-    const phone = '0000000000';
-    try {
-        // Try to register
-        await apiCall('/auth/register', {
-            method: 'POST',
-            body: JSON.stringify({ name, phone, email, password, address: 'Admin' })
-        });
-        alert('Admin account created! Use email: admin@mmeliglobal.com , password: admin123');
-        // Optionally set role to admin if your backend doesn't do it automatically
-        // If your backend sets role as 'user' by default, you might need an extra call.
-        // For now, we assume your backend either sets role='admin' for this email or you have a way.
-        // If login still fails, you may need to manually update role in DB.
-    } catch(e) {
-        if (e.message.includes('already exists')) {
-            alert('Admin account already exists. Try logging in with admin@mmeliglobal.com and admin123');
-        } else {
-            alert('Failed to create admin: ' + e.message);
-        }
-    }
+function escapeHtml(str) {
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
 }
 
-// ==================== PRODUCTS ====================
+function updateCartCount() {
+    document.getElementById('cartCount').innerText = cart.length;
+    localStorage.setItem('cart', JSON.stringify(cart));
+}
+
+// ------------------- PRODUCTS -------------------
 async function loadProducts() {
     try {
         const res = await fetch(API + '/products');
-        const data = await res.json();
-        allProducts = data;
-        allShuffled = [...allProducts];
-        displayProducts(allShuffled.slice(0, currentDisplayLimit));
-        buildMainMenu();
-        localStorage.setItem('cachedProducts', JSON.stringify(allProducts));
+        allProducts = await res.json();
+        displayProducts(allProducts.slice(0, currentDisplayLimit));
     } catch(e) {
-        let cached = localStorage.getItem('cachedProducts');
-        if(cached) { allProducts = JSON.parse(cached); allShuffled = [...allProducts]; displayProducts(allShuffled.slice(0, currentDisplayLimit)); buildMainMenu(); }
-        else document.getElementById('productsContainer').innerHTML = '<p>Error loading products. Check backend.</p>';
+        document.getElementById('productsContainer').innerHTML = '<p>Error loading products. Make sure backend is running.</p>';
     }
 }
+
 function displayProducts(products) {
     const container = document.getElementById('productsContainer');
-    if(!container) return;
     container.innerHTML = '';
     products.forEach(p => {
-        let img = p.main_image || 'https://picsum.photos/300/200';
-        let card = document.createElement('div');
+        const img = p.main_image || 'https://picsum.photos/200/200';
+        const card = document.createElement('div');
         card.className = 'product-card';
-        card.innerHTML = `<img src="${img}" loading="lazy" onerror="this.src='https://picsum.photos/300/200?grayscale'"><div class="product-info"><div>${escapeHtml(p.name)}</div><div>$${p.price}</div></div>`;
-        card.onclick = () => openProduct(p.id);
+        card.innerHTML = `
+            <img src="${img}" loading="lazy" onerror="this.src='https://picsum.photos/200/200?grayscale'">
+            <div class="product-info">
+                <div class="product-name">${escapeHtml(p.name)}</div>
+                <div class="product-price">$${p.price}</div>
+            </div>
+        `;
+        card.onclick = () => showProductDetail(p);
         container.appendChild(card);
     });
 }
-function loadMoreProducts() { currentDisplayLimit += 150; displayProducts(allShuffled.slice(0, currentDisplayLimit)); }
-function buildMainMenu() {
-    let menu = document.getElementById('mainMenu');
-    if(!menu) return;
-    menu.innerHTML = '';
-    for(let cat in categoryHierarchy) {
-        let div = document.createElement('div');
-        div.innerText = cat;
-        div.onclick = () => filterByCategory(cat);
-        menu.appendChild(div);
-    }
+
+function loadMoreProducts() {
+    currentDisplayLimit += 150;
+    displayProducts(allProducts.slice(0, currentDisplayLimit));
 }
-function filterByCategory(cat) {
-    let filtered = allProducts.filter(p => p.cat === cat);
-    displayProducts(filtered);
-    document.getElementById('subMenu').innerHTML = '';
+
+function showProductDetail(p) {
+    const container = document.getElementById('productDetail');
+    container.innerHTML = `
+        <div style="background:white; border-radius:16px; padding:16px;">
+            <img src="${p.main_image}" style="width:100%; border-radius:12px;" onerror="this.src='https://picsum.photos/400/400'">
+            <h2>${escapeHtml(p.name)}</h2>
+            <p>${escapeHtml(p.description || '')}</p>
+            <h3>$${p.price}</h3>
+            <button onclick="addToCart(${p.id}, '${escapeHtml(p.name)}', ${p.price}, '${p.main_image}')">Add to Cart</button>
+        </div>
+    `;
+    switchPage('productPage');
 }
-function openProduct(id) {
-    let product = allProducts.find(p => p.id == id);
-    if(product) {
-        currentProduct = product;
-        document.getElementById('productDetailContainer').innerHTML = `
-            <div style="background:white; border-radius:16px; padding:16px;">
-                <img src="${product.main_image}" style="width:100%; border-radius:12px;" onerror="this.src='https://picsum.photos/400/400'">
-                <h2>${product.name}</h2>
-                <p>${product.description || ''}</p>
-                <h3>$${product.price}</h3>
-                <button onclick="addToCart(${product.id}, '${escapeHtml(product.name)}', ${product.price}, '${product.main_image}')">Add to Cart</button>
-                <button onclick="switchPage('home')">Back</button>
-            </div>`;
-        switchPage('productPage');
-    }
-}
+
 function addToCart(id, name, price, image) {
     cart.push({ id, name, price, image });
-    localStorage.setItem('cart', JSON.stringify(cart));
     updateCartCount();
     alert('Added to cart');
 }
-function updateCartCount() { document.getElementById('cartCount').innerText = cart.length; }
+
+function removeFromCart(index) {
+    cart.splice(index, 1);
+    updateCartCount();
+    renderCart();
+}
+
 function renderCart() {
-    let container = document.getElementById('cartList');
-    if(!cart.length) { container.innerHTML = '<p>Cart is empty</p>'; return; }
+    const container = document.getElementById('cartList');
+    if (cart.length === 0) {
+        container.innerHTML = '<p>Cart is empty</p>';
+        return;
+    }
     let html = '', total = 0;
-    cart.forEach((item,i) => {
+    cart.forEach((item, i) => {
         total += item.price;
-        html += `<div class="cart-item"><div><img src="${item.image}" width="50" onerror="this.src='https://picsum.photos/50/50'"> ${item.name}</div><div>$${item.price} <button onclick="removeFromCart(${i})">Remove</button></div></div>`;
+        html += `
+            <div class="cart-item">
+                <div><img src="${item.image}" width="40" style="border-radius:8px;"> ${item.name}</div>
+                <div>$${item.price} <button onclick="removeFromCart(${i})">Remove</button></div>
+            </div>
+        `;
     });
     html += `<div style="font-weight:bold; margin-top:10px;">Total: $${total.toFixed(2)}</div>`;
     container.innerHTML = html;
 }
-function removeFromCart(i) { cart.splice(i,1); localStorage.setItem('cart',JSON.stringify(cart)); updateCartCount(); renderCart(); }
-function goToCheckout() { if(!user) { alert('Please login first'); switchPage('account'); return; } switchPage('checkoutPage'); }
-function nextStep() { completeCheckout(); }
-async function completeCheckout() {
-    if(!cart.length) return alert('Cart empty');
-    let msg = `New order: ${cart.map(i=>i.name).join(', ')}`;
+
+function checkout() {
+    if (cart.length === 0) return alert('Cart is empty');
+    const msg = `New order: ${cart.map(i => i.name).join(', ')}%0ATotal: $${cart.reduce((s,i)=>s+i.price,0)}`;
     window.open(`https://wa.me/263776871711?text=${encodeURIComponent(msg)}`);
-    cart = []; localStorage.setItem('cart','[]'); updateCartCount(); alert('Order sent! We will contact you.'); switchPage('home');
+    cart = [];
+    updateCartCount();
+    renderCart();
+    alert('Order sent! We will contact you.');
+    switchPage('home');
 }
-async function applyDiscount() { alert('Discount demo – implement with backend'); }
 
-// ==================== AUTH ====================
-async function register() {
-    let name = document.getElementById('regName').value, phone = document.getElementById('regPhone').value, password = document.getElementById('regPassword').value;
-    if(!name || !phone || !password) return alert('Name, phone and password required');
-    try {
-        let data = await apiCall('/auth/register', { method:'POST', body: JSON.stringify({ name, phone, password }) });
-        token = data.token; user = data.user;
-        localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user));
-        document.getElementById('loginBox').style.display = 'none';
-        document.getElementById('dashboard').style.display = 'block';
-        document.getElementById('userName').innerText = user.name;
-        alert('Registration successful');
-    } catch(e) { alert('Register failed: ' + e.message); }
-}
-async function login() {
-    let phone = document.getElementById('loginEmail').value, password = document.getElementById('loginPassword').value;
-    if(!phone || !password) return alert('Phone and password required');
-    try {
-        let data = await apiCall('/auth/login', { method:'POST', body: JSON.stringify({ phone, password }) });
-        token = data.token; user = data.user;
-        localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user));
-        document.getElementById('loginBox').style.display = 'none';
-        document.getElementById('dashboard').style.display = 'block';
-        document.getElementById('userName').innerText = user.name;
-    } catch(e) { alert('Login failed: ' + e.message); }
-}
-function logout() { localStorage.clear(); location.reload(); }
-function showMyOrders() { alert('Orders – implement with backend'); }
-function showMyQuotations() { alert('Quotations'); }
-function showMyReturns() { alert('Returns'); }
-function showProfile() { alert('Profile edit'); }
-function openShipmentTracking() { document.getElementById('shipmentTrackingModal').style.display = 'flex'; }
-function closeShipmentModal() { document.getElementById('shipmentTrackingModal').style.display = 'none'; }
-async function fetchShipmentStatus() { alert('Shipment tracking demo'); }
-
-// ==================== ADMIN ====================
-async function adminLogin() {
-    let email = document.getElementById('adminEmail').value, password = document.getElementById('adminPassword').value;
-    try {
-        let data = await apiCall('/auth/login', { method:'POST', body: JSON.stringify({ email, password }) });
-        if(data.user.role !== 'admin') throw new Error('Not an admin account. Use the "Create Admin Account" button first.');
-        token = data.token; user = data.user;
-        localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user));
-        document.getElementById('adminLoginDiv').style.display = 'none';
-        document.getElementById('adminPanel').style.display = 'block';
-        initAdminCards();
-        alert('Admin login successful!');
-    } catch(e) { alert('Admin login failed: ' + e.message); }
-}
-function initAdminCards() {
-    document.querySelectorAll('.admin-card').forEach(card => {
-        card.onclick = () => { let mid = card.getAttribute('data-modal'); if(mid) openAdminModal(mid); };
+// ------------------- ADMIN & SUPABASE UPLOAD -------------------
+async function uploadImageToSupabase(file) {
+    const fileName = Date.now() + '_' + file.name;
+    const url = `${SUPABASE_URL}/storage/v1/object/products/${fileName}`;
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': file.type },
+        body: file
     });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    return `${SUPABASE_URL}/storage/v1/object/public/${data.Key}`;
 }
-function openAdminModal(modalId) {
-    let modal = document.getElementById(`modal${modalId.charAt(0).toUpperCase() + modalId.slice(1)}`);
-    if(!modal) return;
-    let body = modal.querySelector('.modal-body');
-    if(modalId === 'addProduct') showAddProductForm(body);
-    else if(modalId === 'manageProducts') loadProductsModal(body);
-    modal.style.display = 'flex';
-}
-function showAddProductForm(container) {
-    container.innerHTML = `<h3>Add Product</h3>
-        <input id="prodName" placeholder="Product name"><br>
-        <input id="prodPrice" placeholder="Price"><br>
-        <input type="file" id="prodImageFile" accept="image/*" required><br>
-        <textarea id="prodDesc" placeholder="Description"></textarea><br>
-        <input id="prodCat" placeholder="Category"><br>
-        <input id="prodSubcat" placeholder="Subcategory"><br>
-        <input id="prodColors" placeholder="Colors (comma)"><br>
-        <input id="prodSizes" placeholder="Sizes (size:price, comma)"><br>
-        <button id="saveProductBtn" onclick="addProduct()">Save Product</button>
-        <button onclick="closeModal('modalAddProduct')">Cancel</button>`;
-}
+
 async function addProduct() {
-    let name = document.getElementById('prodName').value;
-    let price = parseFloat(document.getElementById('prodPrice').value);
-    let cat = document.getElementById('prodCat').value;
-    let subcat = document.getElementById('prodSubcat').value;
-    let file = document.getElementById('prodImageFile').files[0];
-    let btn = document.getElementById('saveProductBtn');
-    if(!name || isNaN(price) || !cat || !subcat || !file) { alert('Please fill all fields and select an image'); return; }
-    let originalText = btn.innerText;
+    const name = document.getElementById('prodName').value;
+    const price = parseFloat(document.getElementById('prodPrice').value);
+    const cat = document.getElementById('prodCat').value;
+    const subcat = document.getElementById('prodSubcat').value;
+    const file = document.getElementById('prodImage').files[0];
+    const desc = document.getElementById('prodDesc').value;
+    const btn = document.getElementById('saveBtn');
+    
+    if (!name || isNaN(price) || !cat || !subcat || !file) {
+        alert('Please fill all fields and select an image');
+        return;
+    }
+    
+    const originalText = btn.innerText;
     btn.disabled = true;
     btn.innerHTML = '<span class="loader"></span> Uploading...';
+    
     try {
-        let main_image = await uploadImageToSupabase(file);
-        let sizeStr = document.getElementById('prodSizes').value;
-        let size_options = [];
-        if(sizeStr) sizeStr.split(',').forEach(pair => { let [s,p] = pair.split(':'); if(s && p) size_options.push({ size: s.trim(), price: parseFloat(p) }); });
-        if(size_options.length === 0) size_options = [{ size: 'Standard', price }];
-        let colors = document.getElementById('prodColors').value.split(',').map(c=>c.trim()).filter(c=>c);
-        let productData = {
-            name, description: document.getElementById('prodDesc').value, cat, subcat, price,
-            colors, size_options, main_image
-        };
+        const main_image = await uploadImageToSupabase(file);
+        const productData = { name, price, cat, subcat, description: desc, main_image, colors: [], size_options: [{size:'Standard', price}] };
         await apiCall('/products', { method: 'POST', body: JSON.stringify(productData) });
         alert('Product added successfully!');
-        closeModal('modalAddProduct');
+        closeModal('addProductModal');
         loadProducts();
-    } catch(err) {
+    } catch (err) {
         alert('Upload error: ' + err.message);
-        console.error(err);
     } finally {
         btn.disabled = false;
         btn.innerText = originalText;
     }
 }
-async function loadProductsModal(container) {
-    let products = await apiCall('/products');
-    container.innerHTML = `<h3>Manage Products</h3><div id="productList">${products.map(p=>`<div style="border-bottom:1px solid #ddd; padding:10px; display:flex; gap:10px; align-items:center;"><img src="${p.main_image}" width="50" onerror="this.src='https://picsum.photos/50/50'"><div><strong>${p.name}</strong> - $${p.price}<br><button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div></div>`).join('')}</div><button onclick="closeModal('modalManageProducts')">Close</button>`;
+
+async function showManageProducts() {
+    const products = await apiCall('/products');
+    const listDiv = document.getElementById('productsList');
+    listDiv.innerHTML = products.map(p => `
+        <div style="border-bottom:1px solid #ddd; padding:10px; display:flex; gap:10px; align-items:center;">
+            <img src="${p.main_image}" width="50" style="border-radius:8px;">
+            <div style="flex:1"><strong>${escapeHtml(p.name)}</strong> - $${p.price}</div>
+            <button onclick="editProduct(${p.id})">Edit</button>
+            <button onclick="deleteProduct(${p.id})">Delete</button>
+        </div>
+    `).join('');
+    document.getElementById('manageProductsModal').style.display = 'flex';
 }
-async function editProductModal(id) {
-    let p = await apiCall(`/products/${id}`);
-    let body = document.getElementById('modalManageProducts').querySelector('.modal-body');
-    body.innerHTML = `<h3>Edit Product</h3>
-        <img src="${p.main_image}" width="80" id="editPreview"><br>
-        <input type="file" id="editImageFile" accept="image/*"><br>
-        <input id="editName" value="${p.name}"><br>
-        <input id="editPrice" value="${p.price}"><br>
-        <textarea id="editDesc">${p.description||''}</textarea><br>
-        <input id="editCat" value="${p.cat}"><br>
-        <input id="editSubcat" value="${p.subcat}"><br>
-        <input id="editColors" value="${(p.colors||[]).join(',')}"><br>
-        <input id="editSizes" value="${(p.size_options||[]).map(s=>`${s.size}:${s.price}`).join(',')}"><br>
-        <button id="updateBtn" onclick="updateProductWithImage(${id})">Update</button>
-        <button onclick="closeModal('modalManageProducts')">Cancel</button>`;
+
+async function deleteProduct(id) {
+    if (!confirm('Delete this product?')) return;
+    await apiCall(`/products/${id}`, { method: 'DELETE' });
+    alert('Deleted');
+    showManageProducts(); // refresh list
+    loadProducts();
 }
-async function updateProductWithImage(id) {
-    let name = document.getElementById('editName').value;
-    let price = parseFloat(document.getElementById('editPrice').value);
-    let cat = document.getElementById('editCat').value;
-    let subcat = document.getElementById('editSubcat').value;
-    let file = document.getElementById('editImageFile').files[0];
-    let btn = document.getElementById('updateBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="loader"></span> Updating...';
+
+function editProduct(id) {
+    alert('Edit feature: load product data and show form. For simplicity, please delete and re-add for now.');
+}
+
+function showAddProductForm() {
+    document.getElementById('addProductModal').style.display = 'flex';
+}
+
+// ------------------- ADMIN LOGIN & ACCOUNT CREATION -------------------
+async function createAdminAccount() {
     try {
-        let main_image;
-        if(file) main_image = await uploadImageToSupabase(file);
-        else main_image = (await apiCall(`/products/${id}`)).main_image;
-        let sizeStr = document.getElementById('editSizes').value;
-        let size_options = [];
-        if(sizeStr) sizeStr.split(',').forEach(pair => { let [s,p] = pair.split(':'); if(s && p) size_options.push({ size: s.trim(), price: parseFloat(p) }); });
-        if(size_options.length === 0) size_options = [{ size: 'Standard', price }];
-        let colors = document.getElementById('editColors').value.split(',').map(c=>c.trim()).filter(c=>c);
-        let productData = { name, description: document.getElementById('editDesc').value, cat, subcat, price, colors, size_options, main_image };
-        await apiCall(`/products/${id}`, { method: 'PUT', body: JSON.stringify(productData) });
-        alert('Product updated');
-        closeModal('modalManageProducts');
-        loadProducts();
-    } catch(err) { alert('Update error: ' + err.message); }
-    finally { btn.disabled = false; btn.innerText = 'Update'; }
+        await apiCall('/auth/register', {
+            method: 'POST',
+            body: JSON.stringify({ name: 'Admin', phone: '0000000000', email: 'admin@mmeliglobal.com', password: 'admin123', address: 'Admin' })
+        });
+        alert('Admin account created! Email: admin@mmeliglobal.com, Password: admin123');
+    } catch(e) {
+        if (e.message.includes('already exists')) alert('Account already exists. Try logging in.');
+        else alert('Failed: ' + e.message);
+    }
 }
-async function deleteProduct(id) { if(confirm('Delete product?')) await apiCall(`/products/${id}`, { method:'DELETE' }); loadProductsModal(document.getElementById('modalManageProducts').querySelector('.modal-body')); loadProducts(); }
-function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
 
-// ==================== TRACKING & MAP ====================
-function initDefaultMap() { if(map) map.remove(); map = L.map('map').setView([-17.825,31.033],6); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map); L.marker([-17.825,31.033]).addTo(map).bindPopup('Mmeli Global'); }
-async function trackOrder() { alert('Tracking demo – implement with backend'); }
-function trackOrderCode(code) { document.getElementById('trackCode').value = code; switchPage('tracking'); trackOrder(); }
-
-// ==================== HELPERS ====================
-function switchPage(pageId) {
-    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-    document.getElementById(pageId).classList.add('active');
-    if(pageId === 'cart') renderCart();
-    if(pageId === 'home') loadProducts();
-    if(pageId === 'tracking') initDefaultMap();
+async function adminLogin() {
+    const email = document.getElementById('adminEmail').value;
+    const password = document.getElementById('adminPassword').value;
+    try {
+        const data = await apiCall('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+        if (data.user.role !== 'admin') throw new Error('Not an admin account. Use the blue button to create one.');
+        token = data.token;
+        user = data.user;
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        document.getElementById('adminLoginDiv').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'block';
+        alert('Admin login successful!');
+    } catch(e) {
+        alert('Login failed: ' + e.message);
+    }
 }
-function resetHome() { currentDisplayLimit = 150; allShuffled = [...allProducts]; displayProducts(allShuffled.slice(0, currentDisplayLimit)); document.getElementById('subMenu').innerHTML = ''; switchPage('home'); }
+
 function searchProducts() {
-    let term = document.getElementById('searchInput').value.toLowerCase();
-    if(!term) return displayProducts(allShuffled.slice(0, currentDisplayLimit));
-    let filtered = allProducts.filter(p => p.name.toLowerCase().includes(term));
+    const term = document.getElementById('searchInput').value.toLowerCase();
+    if (!term) return displayProducts(allProducts.slice(0, currentDisplayLimit));
+    const filtered = allProducts.filter(p => p.name.toLowerCase().includes(term) || (p.description && p.description.toLowerCase().includes(term)));
     displayProducts(filtered);
 }
-function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
 
-// ==================== INIT ====================
-window.addEventListener('load', function() {
-    document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+function switchPage(pageId) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+    if (pageId === 'home') loadProducts();
+    if (pageId === 'cart') renderCart();
+    if (pageId === 'adminPage') {
+        if (user && user.role === 'admin') {
+            document.getElementById('adminLoginDiv').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'block';
+        } else {
+            document.getElementById('adminLoginDiv').style.display = 'block';
+            document.getElementById('adminPanel').style.display = 'none';
+        }
+    }
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+// Initialize
+window.addEventListener('load', () => {
     updateCartCount();
-    if(user) { document.getElementById('loginBox').style.display='none'; document.getElementById('dashboard').style.display='block'; document.getElementById('userName').innerText = user.name; }
     loadProducts();
-    initDefaultMap();
-    document.querySelectorAll('.close-modal').forEach(btn => btn.onclick = function() { this.closest('.modal').style.display = 'none'; });
+    if (user && user.role === 'admin') {
+        document.getElementById('adminLoginDiv').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'block';
+    }
+    // close modals when clicking outside
+    window.onclick = (e) => {
+        if (e.target.classList && e.target.classList.contains('modal')) e.target.style.display = 'none';
+    };
 });
 </script>
 </body>
