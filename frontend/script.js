@@ -1,775 +1,836 @@
-// ========== SAFE SUPABASE INITIALIZATION – NO GLOBAL VARIABLE CONFLICT ==========
-(function() {
-  if (window._sbClient) return;
-  const SUPABASE_URL = 'https://proljdccjrifqgbmsyco.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb2xqZGNjanJpZnFnYm1zeWNvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTc4ODAxOSwiZXhwIjoyMDkxMzY0MDE5fQ.VltzBUq-bLvu0Ny4jPy1kBp5E-4hffQgqFpqHrRWlZA';
-  // Use the global 'supabase' constructor from the library (not our variable)
-  window._sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-})();
-// Our client instance – using 'sb' to avoid conflict with library's 'supabase'
-const sb = window._sbClient;
-
-// ========== GLOBALS ==========
-let allProducts = [];
-let currentProduct = null;
-let cart = JSON.parse(localStorage.getItem('cart') || '[]');
-let currentUser = null;
-let session = null;
-let map = null;
-let appliedDiscount = null;
-let currentDisplayLimit = 150;
-let allShuffled = [];
-let searchDebounceTimer = null;
-
-// ---------- Helper Functions ----------
-function escapeHtml(str) {
-  if (!str) return '';
-  return str.replace(/[&<>]/g, function(m) {
-    if (m === '&') return '&amp;';
-    if (m === '<') return '&lt;';
-    if (m === '>') return '&gt;';
-    return m;
-  });
-}
-
-function shuffleArray(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-function getShuffledWithPhoneBias(products) {
-  const phones = products.filter(p => p.cat === 'Phones');
-  const nonPhones = products.filter(p => p.cat !== 'Phones');
-  let targetPhone = Math.ceil(products.length * 0.3);
-  targetPhone = Math.min(targetPhone, phones.length);
-  let targetNon = products.length - targetPhone;
-  targetNon = Math.min(targetNon, nonPhones.length);
-  const selectedPhones = shuffleArray([...phones]).slice(0, targetPhone);
-  const selectedNon = shuffleArray([...nonPhones]).slice(0, targetNon);
-  return shuffleArray([...selectedPhones, ...selectedNon]);
-}
-
-// ---------- Category Data ----------
-const categoryHierarchy = {
-  "Phones": { "Smartphones": ["Android Phones", "iPhones", "Rugged Phones"], "Feature Phones": ["Keypad Phones"], "Accessories": ["Chargers", "Power Banks", "Phone Cases", "Screen Protectors"] },
-  "Cameras": { "Cameras": ["Digital Cameras", "DSLR Cameras", "Mirrorless Cameras"], "Video Equipment": ["Camcorders", "Action Cameras"], "Accessories": ["Tripods", "Lighting", "Microphones"] },
-  "Farming": { "Farm Machinery": ["Tractors", "Harvesting Machines", "Planting Machines"], "Irrigation": ["Water Pumps", "Systems"], "Tools": ["Hand Tools", "Power Tools"] },
-  "Construction": { "Heavy Equipment": ["Excavators", "Loaders"], "Materials": ["Cement Products", "Steel Materials"], "Tools": ["Power Tools", "Hand Tools"] },
-  "Electronics": { "Consumer Electronics": ["Televisions", "Audio"], "Accessories": ["Cables", "Adapters"], "Smart Devices": ["Smart Home", "Wearables"] },
-  "Hardware": { "Tools": ["Hand Tools", "Power Tools"], "Fasteners": ["Screws", "Bolts & Nuts"], "Safety Equipment": ["Gloves", "Helmets"] },
-  "Home Appliances": { "Kitchen Appliances": ["Refrigerators", "Cooking", "Small Appliances"], "Cleaning": ["Washing Machines", "Vacuum Cleaners"], "Climate": ["Air Conditioners", "Fans"] },
-  "Beauty": { "Hair Products": ["Wigs", "Extensions", "Hair Care"], "Salon Equipment": ["Chairs", "Stations"], "Beauty Products": ["Skincare", "Makeup"] },
-  "Women Hair": { "Raw Hair": ["Brazilian Hair", "Peruvian Hair"], "Wigs": ["Lace Front Wigs", "Full Lace Wigs"], "Accessories": ["Closures", "Frontals"] },
-  "E-Bikes": { "Electric Bikes": ["City Bikes", "Off Road Bikes"], "Scooters": ["Electric Scooters", "Mobility Scooters"], "Accessories": ["Batteries", "Chargers"] },
-  "Furniture": { "Home Furniture": ["Living Room", "Bedroom"], "Office Furniture": ["Chairs", "Desks"], "Outdoor": ["Garden Chairs", "Tables"] },
-  "Industrial": { "Machines": ["CNC Machines", "Laser Machines"], "Packaging": ["Sealing Machines", "Filling Machines"], "Textile": ["Sewing Machines"] },
-  "Fashion": { "Women Clothing": ["Dresses", "Tops", "Bottoms"], "Men Clothing": ["Shirts", "Pants"], "Footwear": ["Sneakers", "Sandals"], "Accessories": ["Bags", "Jewelry"] },
-  "Fitness": { "Strength Equipment": ["Dumbbells", "Benches"], "Cardio": ["Treadmills", "Bikes"] },
-  "Animal": { "Poultry Equipment": ["Incubators", "Feeders"], "Livestock Equipment": ["Drinkers", "Housing"] },
-  "Packaging": { "Packaging": ["Cartons", "Plastic Packaging"], "Handling": ["Trolleys", "Pallet Equipment"] }
+// ==================== DATA ====================
+let shipments = JSON.parse(localStorage.getItem('shipments')) || {
+    'SEA123456': { id: 'SEA123456', customer: 'John Doe', email: 'john@example.com', phone: '+263 777 123 456', status: 'In Transit', statusClass: 'status-transit', origin: 'Guiyang, China', destination: 'Beitbridge, Zimbabwe', currentLocation: 'Beira, Mozambique', estimatedDelivery: 'Apr 15, 2024', weight: 150, volume: 2.5, service: 'Sea Freight', paymentStatus: 'Paid', amountPaid: 850, packagingPhotos: [], timeline: [{ date: '2024-03-25', event: 'Picked up from sender', location: 'Guiyang' }] },
+    'AIR789012': { id: 'AIR789012', customer: 'Jane Smith', email: 'jane@example.com', phone: '+263 778 456 789', status: 'In Transit', statusClass: 'status-transit', origin: 'Guangzhou, China', destination: 'Harare, Zimbabwe', currentLocation: 'Addis Ababa, Ethiopia', estimatedDelivery: 'Apr 5, 2024', weight: 25, volume: 0.5, service: 'Air Freight', paymentStatus: 'Paid', amountPaid: 450, packagingPhotos: [], timeline: [] },
+    'DEL456789': { id: 'DEL456789', customer: 'Peter Johnson', email: 'peter@example.com', phone: '+263 779 789 012', status: 'Delivered', statusClass: 'status-delivered', origin: 'Shanghai, China', destination: 'Bulawayo, Zimbabwe', currentLocation: 'Bulawayo, Zimbabwe', estimatedDelivery: 'Mar 28, 2024', weight: 200, volume: 3.0, service: 'Sea Freight', paymentStatus: 'Paid', amountPaid: 1200, packagingPhotos: [], timeline: [] }
+};
+let services = JSON.parse(localStorage.getItem('services')) || [
+    { icon: '🔍', title: 'Sourcing', description: 'Find reliable suppliers in China. Factory verification, supplier checks, sampling and negotiation.' },
+    { icon: '🛒', title: 'Procurement', description: 'We purchase products on your behalf. Bulk purchasing, payment handling, contracts and quality control.' },
+    { icon: '🚢', title: 'Shipping', description: 'Sea and air freight to Zimbabwe. Cargo consolidation, customs documentation, insurance available.' },
+    { icon: '📦', title: 'Logistics', description: 'Warehousing and cargo handling. Storage, consolidation, inspection and inventory management.' },
+    { icon: '🚚', title: 'Delivery', description: 'Door-to-door across Zimbabwe. Beitbridge clearing, distribution to Harare, Bulawayo and beyond.' }
+];
+let videos = JSON.parse(localStorage.getItem('videos')) || [
+    { id: 'v1', category: 'sourcing', title: 'Factory Visit in Guangzhou', url: 'https://www.youtube.com/embed/xyz123', thumbnail: 'https://via.placeholder.com/300x200?text=Factory+Visit' },
+    { id: 'v2', category: 'shipping', title: 'Cargo Loading Process', url: 'https://www.youtube.com/embed/abc456', thumbnail: 'https://via.placeholder.com/300x200?text=Cargo+Loading' }
+];
+let gallery = JSON.parse(localStorage.getItem('gallery')) || [
+    { id: 'g1', category: 'packaging', image: 'https://via.placeholder.com/300x200?text=Packaging+1', caption: 'Secure packaging' },
+    { id: 'g2', category: 'facility', image: 'https://via.placeholder.com/300x200?text=Warehouse', caption: 'Our warehouse' }
+];
+let customers = JSON.parse(localStorage.getItem('customers')) || [
+    { email: 'john@example.com', name: 'John Doe', phone: '+263 777 123 456', password: 'pass123', shipments: ['SEA123456'] },
+    { email: 'jane@example.com', name: 'Jane Smith', phone: '+263 778 456 789', password: 'pass123', shipments: ['AIR789012'] },
+    { email: 'peter@example.com', name: 'Peter Johnson', phone: '+263 779 789 012', password: 'pass123', shipments: ['DEL456789'] }
+];
+let quotations = JSON.parse(localStorage.getItem('quotations')) || [
+    { id: 'Q001', email: 'john@example.com', service: 'Sea Freight', amount: 850, status: 'accepted' },
+    { id: 'Q002', email: 'jane@example.com', service: 'Air Freight', amount: 450, status: 'pending' }
+];
+let invoices = JSON.parse(localStorage.getItem('invoices')) || [
+    { id: 'INV001', email: 'john@example.com', amount: 850, status: 'paid' }
+];
+let packingLists = JSON.parse(localStorage.getItem('packingLists')) || {
+    'SEA123456': { items: ['Electronics - 10 boxes', 'Clothing - 5 cartons'], totalWeight: 150, totalVolume: 2.5 },
+    'AIR789012': { items: ['Documents - 1 box'], totalWeight: 25, totalVolume: 0.5 }
 };
 
-const subcategoryIcons = {
-  "Smartphones": "https://cdn-icons-png.flaticon.com/512/1055/1055685.png", "Feature Phones": "https://cdn-icons-png.flaticon.com/512/180/180027.png", "Accessories": "https://cdn-icons-png.flaticon.com/512/1510/1510665.png",
-  "Cameras": "https://cdn-icons-png.flaticon.com/512/1046/1046773.png", "Video Equipment": "https://cdn-icons-png.flaticon.com/512/1686/1686802.png", "Farm Machinery": "https://cdn-icons-png.flaticon.com/512/2964/2964420.png",
-  "Irrigation": "https://cdn-icons-png.flaticon.com/512/1591/1591730.png", "Heavy Equipment": "https://cdn-icons-png.flaticon.com/512/2991/2991654.png", "Materials": "https://cdn-icons-png.flaticon.com/512/1665/1665742.png",
-  "Consumer Electronics": "https://cdn-icons-png.flaticon.com/512/2320/2320352.png", "Tools": "https://cdn-icons-png.flaticon.com/512/1843/1843315.png", "Fasteners": "https://cdn-icons-png.flaticon.com/512/1046/1046795.png",
-  "Kitchen Appliances": "https://cdn-icons-png.flaticon.com/512/4060/4060889.png", "Cleaning": "https://cdn-icons-png.flaticon.com/512/2195/2195960.png", "Hair Products": "https://cdn-icons-png.flaticon.com/512/2909/2909902.png",
-  "Salon Equipment": "https://cdn-icons-png.flaticon.com/512/3135/3135715.png", "Raw Hair": "https://cdn-icons-png.flaticon.com/512/3508/3508206.png", "Wigs": "https://cdn-icons-png.flaticon.com/512/2936/2936842.png",
-  "Electric Bikes": "https://cdn-icons-png.flaticon.com/512/3095/3095722.png", "Scooters": "https://cdn-icons-png.flaticon.com/512/1355/1355425.png", "Home Furniture": "https://cdn-icons-png.flaticon.com/512/3448/3448609.png",
-  "Office Furniture": "https://cdn-icons-png.flaticon.com/512/2672/2672223.png", "Machines": "https://cdn-icons-png.flaticon.com/512/2140/2140641.png", "Packaging": "https://cdn-icons-png.flaticon.com/512/2421/2421755.png",
-  "Women Clothing": "https://cdn-icons-png.flaticon.com/512/921/921504.png", "Men Clothing": "https://cdn-icons-png.flaticon.com/512/1087/1087811.png", "Footwear": "https://cdn-icons-png.flaticon.com/512/2906/2906266.png",
-  "Strength Equipment": "https://cdn-icons-png.flaticon.com/512/2121/2121811.png", "Cardio": "https://cdn-icons-png.flaticon.com/512/2362/2362147.png", "Poultry Equipment": "https://cdn-icons-png.flaticon.com/512/2752/2752783.png",
-  "Livestock Equipment": "https://cdn-icons-png.flaticon.com/512/1995/1995584.png"
-};
-const defaultIcon = "https://cdn-icons-png.flaticon.com/512/456/456212.png";
+let currentCustomer = null;
+let adminLoggedIn = false;
+let pendingPortalPage = null;
 
-const categoryImages = {
-  'Phones': 'https://cdn-icons-png.flaticon.com/512/1055/1055685.png', 'Cameras': 'https://cdn-icons-png.flaticon.com/512/1046/1046773.png', 'Farming': 'https://cdn-icons-png.flaticon.com/512/2964/2964420.png',
-  'Construction': 'https://cdn-icons-png.flaticon.com/512/2991/2991654.png', 'Electronics': 'https://cdn-icons-png.flaticon.com/512/2320/2320352.png', 'Hardware': 'https://cdn-icons-png.flaticon.com/512/1843/1843315.png',
-  'Home Appliances': 'https://cdn-icons-png.flaticon.com/512/4060/4060889.png', 'Beauty': 'https://cdn-icons-png.flaticon.com/512/2909/2909902.png', 'Women Hair': 'https://cdn-icons-png.flaticon.com/512/3508/3508206.png',
-  'E-Bikes': 'https://cdn-icons-png.flaticon.com/512/3095/3095722.png', 'Furniture': 'https://cdn-icons-png.flaticon.com/512/3448/3448609.png', 'Industrial': 'https://cdn-icons-png.flaticon.com/512/2140/2140641.png',
-  'Fashion': 'https://cdn-icons-png.flaticon.com/512/921/921504.png', 'Fitness': 'https://cdn-icons-png.flaticon.com/512/2121/2121811.png', 'Animal': 'https://cdn-icons-png.flaticon.com/512/2752/2752783.png',
-  'Packaging': 'https://cdn-icons-png.flaticon.com/512/2421/2421755.png'
-};
+// ==================== HELPERS ====================
+function saveAllData() {
+    localStorage.setItem('shipments', JSON.stringify(shipments));
+    localStorage.setItem('services', JSON.stringify(services));
+    localStorage.setItem('videos', JSON.stringify(videos));
+    localStorage.setItem('gallery', JSON.stringify(gallery));
+    localStorage.setItem('customers', JSON.stringify(customers));
+    localStorage.setItem('quotations', JSON.stringify(quotations));
+    localStorage.setItem('invoices', JSON.stringify(invoices));
+    localStorage.setItem('packingLists', JSON.stringify(packingLists));
+}
+function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]); }
 
-// ---------- Load Products from Supabase ----------
-async function loadProducts() {
-  try {
-    const { data, error } = await sb
-      .from('products')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    allProducts = data || [];
-    allShuffled = getShuffledWithPhoneBias(allProducts);
-    displayProducts(allShuffled.slice(0, currentDisplayLimit));
-    buildMainMenu();
-    if (!sessionStorage.getItem('popupShown')) { showRandomPromo(); sessionStorage.setItem('popupShown', 'true'); }
-    localStorage.setItem('cachedProducts', JSON.stringify(allProducts));
-  } catch (err) {
-    console.error(err);
-    const cached = localStorage.getItem('cachedProducts');
-    if (cached) {
-      allProducts = JSON.parse(cached);
-      allShuffled = getShuffledWithPhoneBias(allProducts);
-      displayProducts(allShuffled.slice(0, currentDisplayLimit));
-      buildMainMenu();
-      document.getElementById('productsContainer').innerHTML += '<p style="text-align:center;">Using cached products.</p>';
+// ==================== PAGE NAVIGATION ====================
+function showPage(pageId) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+    const page = document.getElementById(pageId + '-page');
+    if (page) page.classList.add('active-page');
+    // Update chips active
+    document.querySelectorAll('.category-chip').forEach(chip => {
+        if (chip.getAttribute('data-page') === pageId) chip.classList.add('active');
+        else chip.classList.remove('active');
+    });
+    if (pageId === 'customer-portal') renderCustomerPortal();
+    if (pageId === 'services') renderServicesPage();
+    if (pageId === 'videos') renderVideosPage();
+    if (pageId === 'pictures') renderGalleryPage();
+    if (pageId === 'referral') updateReferralStats();
+    if (pageId === 'admin') {
+        renderAdminDashboard();
+        renderAdminServices();
+        renderAdminVideos();
+        renderAdminGallery();
+        renderAdminShipments();
+        renderAdminCustomers();
+        renderAdminQuotations();
+    }
+}
+
+// ==================== RENDER PAGES ====================
+function renderServicesPage() {
+    const container = document.getElementById('services-grid');
+    if (!container) return;
+    container.innerHTML = '';
+    services.forEach(s => {
+        const card = document.createElement('div');
+        card.className = 'service-card';
+        card.innerHTML = `<div class="service-icon">${s.icon}</div><h3>${escapeHtml(s.title)}</h3><p>${escapeHtml(s.description)}</p>`;
+        container.appendChild(card);
+    });
+}
+function renderVideosPage() {
+    const sourcingGrid = document.getElementById('sourcing-videos-grid');
+    const shippingGrid = document.getElementById('shipping-videos-grid');
+    if (!sourcingGrid || !shippingGrid) return;
+    sourcingGrid.innerHTML = ''; shippingGrid.innerHTML = '';
+    videos.forEach(v => {
+        const card = document.createElement('div');
+        card.className = 'video-card';
+        card.innerHTML = `<img src="${v.thumbnail}" class="video-thumb" alt="${v.title}"><h4>${escapeHtml(v.title)}</h4>`;
+        card.onclick = () => window.open(v.url, '_blank');
+        if (v.category === 'sourcing') sourcingGrid.appendChild(card);
+        else shippingGrid.appendChild(card);
+    });
+}
+function renderGalleryPage() {
+    const packagingGallery = document.getElementById('packaging-gallery');
+    const facilityGallery = document.getElementById('facility-gallery');
+    if (!packagingGallery || !facilityGallery) return;
+    packagingGallery.innerHTML = ''; facilityGallery.innerHTML = '';
+    gallery.forEach(g => {
+        const img = document.createElement('img');
+        img.src = g.image;
+        img.alt = g.caption;
+        img.className = 'gallery-img';
+        if (g.category === 'packaging') packagingGallery.appendChild(img);
+        else facilityGallery.appendChild(img);
+    });
+}
+
+// ==================== TRACKING ====================
+function trackPackage() {
+    const id = document.getElementById('trackingInput').value.trim();
+    const shipment = shipments[id];
+    const resultDiv = document.getElementById('trackingResult');
+    if (!shipment) { resultDiv.innerHTML = '<div style="color:red;">Not found</div>'; return; }
+    resultDiv.innerHTML = `<div><strong>${shipment.id}</strong> - ${shipment.status}<br>Current: ${shipment.currentLocation}<br>Est: ${shipment.estimatedDelivery}</div>`;
+}
+function mobileTrackPackage() {
+    const id = document.getElementById('mobileTrackingInput').value.trim();
+    const shipment = shipments[id];
+    const resultDiv = document.getElementById('mobileTrackingResult');
+    if (!shipment) { resultDiv.innerHTML = '<div style="color:red;">Not found</div>'; return; }
+    resultDiv.innerHTML = `<div><strong>${shipment.id}</strong> - ${shipment.status}<br>Current: ${shipment.currentLocation}<br>Est: ${shipment.estimatedDelivery}</div>`;
+}
+
+// ==================== CUSTOMER PORTAL ====================
+function quickLogin(email) {
+    const customer = customers.find(c => c.email === email);
+    if (customer) { currentCustomer = customer; renderCustomerPortal(); }
+    else alert('Customer not found');
+    if (currentCustomer && pendingPortalPage) {
+        setTimeout(() => {
+            const page = pendingPortalPage;
+            pendingPortalPage = null;
+            const navItem = Array.from(document.querySelectorAll('.portal-nav-item')).find(
+                item => item.innerText.toLowerCase().includes(page.replace('-', ' '))
+            );
+            if (navItem) navItem.click();
+            else showPortalPage(page);
+        }, 100);
+    }
+}
+function manualLogin() {
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    const customer = customers.find(c => c.email === email && c.password === password);
+    if (customer) { currentCustomer = customer; renderCustomerPortal(); }
+    else alert('Invalid credentials');
+    if (currentCustomer && pendingPortalPage) {
+        setTimeout(() => {
+            const page = pendingPortalPage;
+            pendingPortalPage = null;
+            const navItem = Array.from(document.querySelectorAll('.portal-nav-item')).find(
+                item => item.innerText.toLowerCase().includes(page.replace('-', ' '))
+            );
+            if (navItem) navItem.click();
+            else showPortalPage(page);
+        }, 100);
+    }
+}
+function customerLogout() { currentCustomer = null; renderCustomerPortal(); }
+function renderCustomerPortal() {
+    const loginSection = document.getElementById('customer-login-section');
+    const welcomeSection = document.getElementById('customer-welcome-section');
+    const userDisplay = document.getElementById('portal-user-display');
+    if (currentCustomer) {
+        loginSection.style.display = 'none';
+        welcomeSection.style.display = 'flex';
+        document.getElementById('welcome-message').innerText = `Welcome, ${currentCustomer.name}`;
+        userDisplay.innerText = `👤 ${currentCustomer.name}`;
+        const dashboardStats = document.getElementById('dashboard-stats');
+        if (dashboardStats) dashboardStats.innerHTML = `<div class="stat-card">Shipments: ${currentCustomer.shipments.length}</div><div class="stat-card">Quotes: ${quotations.filter(q=>q.email===currentCustomer.email).length}</div>`;
+        const shipmentsList = document.getElementById('dashboard-shipments-list');
+        if (shipmentsList) {
+            shipmentsList.innerHTML = '';
+            currentCustomer.shipments.forEach(sid => {
+                const s = shipments[sid];
+                if (s) shipmentsList.innerHTML += `<tr><td>${s.id}</td><td>${s.status}</td><td>${s.estimatedDelivery}</td></tr>`;
+            });
+        }
+        const packingSelect = document.getElementById('packing-shipment-select');
+        if (packingSelect) {
+            packingSelect.innerHTML = '';
+            currentCustomer.shipments.forEach(sid => packingSelect.innerHTML += `<option value="${sid}">${sid}</option>`);
+        }
+        document.getElementById('settings-firstname').value = currentCustomer.name.split(' ')[0] || '';
+        document.getElementById('settings-lastname').value = currentCustomer.name.split(' ')[1] || '';
+        document.getElementById('settings-email').value = currentCustomer.email;
+        document.getElementById('settings-phone').value = currentCustomer.phone || '';
     } else {
-      document.getElementById('productsContainer').innerHTML = '<p>Error loading products. Check Supabase.</p>';
+        loginSection.style.display = 'block';
+        welcomeSection.style.display = 'none';
+        userDisplay.innerText = '👤 Welcome, Guest';
     }
-  }
 }
-
-function displayProducts(products) {
-  const container = document.getElementById('productsContainer');
-  if (!container) return;
-  container.innerHTML = '';
-  if (products.length === 0) { container.innerHTML = '<p>No products found.</p>'; return; }
-  products.forEach(p => {
-    let extra = '';
-    if (p.metadata) {
-      if (p.metadata.storage) extra += ` ${p.metadata.storage}`;
-      if (p.metadata.brand) extra += ` · ${p.metadata.brand}`;
+function showPortalPage(page) {
+    document.querySelectorAll('.portal-page').forEach(p => p.classList.remove('active-portal-page'));
+    const portalPage = document.getElementById(`portal-${page}`);
+    if (portalPage) portalPage.classList.add('active-portal-page');
+    document.querySelectorAll('.portal-nav-item').forEach(item => item.classList.remove('active'));
+    if (event && event.target) event.target.classList.add('active');
+    if (page === 'shipments') {
+        const tbody = document.getElementById('shipments-list-portal');
+        if (tbody && currentCustomer) {
+            tbody.innerHTML = '';
+            currentCustomer.shipments.forEach(sid => {
+                const s = shipments[sid];
+                if (s) tbody.innerHTML += `<tr><td>${s.id}</td><td>${s.service}</td><td>${s.status}</td><td>${s.estimatedDelivery}</td></tr>`;
+            });
+        }
     }
-    const card = document.createElement('div');
-    card.className = 'product-card';
-    card.innerHTML = `
-      <img src="${p.main_image || 'https://picsum.photos/300/200'}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.src='https://picsum.photos/300/200?grayscale'">
-      <div class="product-info">
-        <div class="product-name">${escapeHtml(p.name)}${extra}</div>
-        <div class="product-price">$${p.price}</div>
-      </div>`;
-    card.onclick = (e) => { e.stopPropagation(); openProduct(p.id); };
-    container.appendChild(card);
-  });
+    if (page === 'quotations') {
+        const tbody = document.getElementById('quotations-list');
+        if (tbody && currentCustomer) {
+            tbody.innerHTML = '';
+            quotations.filter(q => q.email === currentCustomer.email).forEach(q => tbody.innerHTML += `<tr><td>${q.id}</td><td>${q.service}</td><td>$${q.amount}</td><td>${q.status}</td></tr>`);
+        }
+    }
+    if (page === 'invoices') {
+        const tbody = document.getElementById('invoices-list');
+        if (tbody && currentCustomer) {
+            tbody.innerHTML = '';
+            invoices.filter(i => i.email === currentCustomer.email).forEach(i => tbody.innerHTML += `<tr><td>${i.id}</td><td>$${i.amount}</td><td>${i.status}</td></tr>`);
+        }
+    }
+}
+function viewPackingList() {
+    const tracking = document.getElementById('packing-shipment-select').value;
+    const list = packingLists[tracking];
+    const display = document.getElementById('packing-list-display');
+    if (!list) { display.innerHTML = '<p>No packing list found.</p>'; return; }
+    display.innerHTML = `<h4>Packing List for ${tracking}</h4><ul>${list.items.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul><p>Total Weight: ${list.totalWeight} kg | Volume: ${list.totalVolume} m³</p>`;
+}
+function portalTrackPackage() {
+    const id = document.getElementById('portal-tracking-input').value.trim();
+    const shipment = shipments[id];
+    const resultDiv = document.getElementById('portal-tracking-result');
+    if (!shipment) { resultDiv.innerHTML = '<div style="color:red;">Not found</div>'; return; }
+    resultDiv.innerHTML = `<div><strong>${shipment.id}</strong> - ${shipment.status}<br>Current: ${shipment.currentLocation}<br>Est: ${shipment.estimatedDelivery}</div>`;
+}
+function submitOrder() { alert('Order submitted. A quotation will be sent shortly.'); }
+function requestPickup() { alert('Pickup request submitted. We will contact you.'); }
+function saveSettings() {
+    if (!currentCustomer) return;
+    const firstName = document.getElementById('settings-firstname').value;
+    const lastName = document.getElementById('settings-lastname').value;
+    currentCustomer.name = `${firstName} ${lastName}`.trim();
+    currentCustomer.email = document.getElementById('settings-email').value;
+    currentCustomer.phone = document.getElementById('settings-phone').value;
+    currentCustomer.address = document.getElementById('settings-address').value;
+    const idx = customers.findIndex(c => c.email === currentCustomer.email);
+    if (idx !== -1) customers[idx] = currentCustomer;
+    saveAllData();
+    alert('Settings saved');
+    renderCustomerPortal();
 }
 
-function loadMoreProducts() {
-  currentDisplayLimit += 150;
-  displayProducts(allShuffled.slice(0, currentDisplayLimit));
-  if (currentDisplayLimit >= allShuffled.length) document.getElementById('loadMoreBtn').style.display = 'none';
+// ==================== ADMIN ====================
+function showAdminLogin() { document.getElementById('login-overlay').style.display = 'flex'; }
+function closeAdminLogin() { document.getElementById('login-overlay').style.display = 'none'; document.getElementById('admin-password').value = ''; document.getElementById('login-error').innerText = ''; }
+function checkAdminLogin() {
+    const pass = document.getElementById('admin-password').value;
+    if (pass === 'admin123') {
+        adminLoggedIn = true;
+        closeAdminLogin();
+        showPage('admin');
+    } else { document.getElementById('login-error').innerText = 'Incorrect password'; }
+}
+function logout() { adminLoggedIn = false; showPage('home'); }
+function showAdminPanel(panelId) {
+    document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active-panel'));
+    document.getElementById(`panel-${panelId}`).classList.add('active-panel');
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    if (event && event.target) event.target.classList.add('active');
+    if (panelId === 'dashboard') renderAdminDashboard();
+    if (panelId === 'services') renderAdminServices();
+    if (panelId === 'videos') renderAdminVideos();
+    if (panelId === 'gallery') renderAdminGallery();
+    if (panelId === 'shipments') renderAdminShipments();
+    if (panelId === 'customers') renderAdminCustomers();
+    if (panelId === 'quotations') renderAdminQuotations();
+}
+function renderAdminDashboard() {
+    const statsDiv = document.getElementById('admin-stats');
+    if (statsDiv) statsDiv.innerHTML = `<div>Shipments: ${Object.keys(shipments).length}</div><div>Customers: ${customers.length}</div><div>Services: ${services.length}</div>`;
+}
+function renderAdminServices() {
+    const container = document.getElementById('services-list');
+    if (!container) return;
+    container.innerHTML = '';
+    services.forEach((s, idx) => {
+        container.innerHTML += `<div style="border-bottom:1px solid #ccc; padding:10px;"><strong>${s.icon} ${s.title}</strong><p>${s.description}</p><button onclick="deleteService(${idx})">Delete</button></div>`;
+    });
+}
+function deleteService(idx) { services.splice(idx,1); saveAllData(); renderAdminServices(); }
+function showAddServiceForm() { document.getElementById('add-service-form').style.display = 'block'; }
+function addService() {
+    const title = document.getElementById('service-title').value;
+    const desc = document.getElementById('service-description').value;
+    const icon = document.getElementById('service-icon').value || '📦';
+    if (title && desc) services.push({ icon, title, description: desc });
+    saveAllData(); renderAdminServices(); document.getElementById('add-service-form').style.display = 'none';
+    document.getElementById('service-title').value = ''; document.getElementById('service-description').value = ''; document.getElementById('service-icon').value = '';
+}
+function renderAdminVideos() {
+    const container = document.getElementById('videos-list');
+    if (!container) return;
+    container.innerHTML = '';
+    videos.forEach((v, idx) => {
+        container.innerHTML += `<div><strong>${v.title}</strong> (${v.category})<button onclick="deleteVideo(${idx})">Delete</button></div>`;
+    });
+}
+function deleteVideo(idx) { videos.splice(idx,1); saveAllData(); renderAdminVideos(); }
+function showAddVideoForm() { document.getElementById('add-video-form').style.display = 'block'; }
+function addVideo() {
+    const category = document.getElementById('video-category').value;
+    const title = document.getElementById('video-title').value;
+    const url = document.getElementById('video-url').value;
+    const thumb = document.getElementById('video-thumbnail').value || 'https://via.placeholder.com/300x200';
+    if (title && url) videos.push({ id: 'v'+Date.now(), category, title, url, thumbnail: thumb });
+    saveAllData(); renderAdminVideos(); document.getElementById('add-video-form').style.display = 'none';
+    document.getElementById('video-title').value = ''; document.getElementById('video-url').value = '';
+}
+function renderAdminGallery() {
+    const container = document.getElementById('gallery-list');
+    if (!container) return;
+    container.innerHTML = '';
+    gallery.forEach((g, idx) => {
+        container.innerHTML += `<div><img src="${g.image}" width="50"> ${g.caption} (${g.category})<button onclick="deleteGallery(${idx})">Delete</button></div>`;
+    });
+}
+function deleteGallery(idx) { gallery.splice(idx,1); saveAllData(); renderAdminGallery(); }
+function showAddGalleryForm() { document.getElementById('add-gallery-form').style.display = 'block'; }
+function addGalleryImage() {
+    const category = document.getElementById('gallery-category').value;
+    const image = document.getElementById('gallery-image').value;
+    const caption = document.getElementById('gallery-caption').value;
+    if (image) gallery.push({ id: 'g'+Date.now(), category, image, caption });
+    saveAllData(); renderAdminGallery(); document.getElementById('add-gallery-form').style.display = 'none';
+    document.getElementById('gallery-image').value = ''; document.getElementById('gallery-caption').value = '';
+}
+function renderAdminShipments() {
+    const container = document.getElementById('shipments-list');
+    if (!container) return;
+    container.innerHTML = '';
+    Object.values(shipments).forEach(s => {
+        container.innerHTML += `<tr><td>${s.id}</td><td>${s.customer}</td><td>${s.status}</td><td>${s.estimatedDelivery}</td></tr>`;
+    });
+}
+function showNewShipmentForm() { document.getElementById('new-shipment-form').style.display = 'block'; }
+function saveNewShipment() {
+    const id = document.getElementById('new-tracking').value;
+    const customerName = document.getElementById('customer-name').value;
+    const origin = document.getElementById('shipment-origin').value;
+    const dest = document.getElementById('shipment-destination').value;
+    const weight = parseFloat(document.getElementById('shipment-weight').value);
+    const service = document.getElementById('shipment-service').value;
+    if (!id || !customerName) return;
+    const newShip = {
+        id, customer: customerName, email: '', phone: '', status: 'Processing', statusClass: 'status-processing',
+        origin, destination: dest, currentLocation: origin, estimatedDelivery: 'Pending', weight, volume: 0,
+        service, paymentStatus: 'Pending', amountPaid: 0, packagingPhotos: [], timeline: []
+    };
+    shipments[id] = newShip;
+    saveAllData();
+    renderAdminShipments();
+    cancelNewShipment();
+}
+function cancelNewShipment() { document.getElementById('new-shipment-form').style.display = 'none'; }
+function renderAdminCustomers() {
+    const container = document.getElementById('customers-list');
+    if (!container) return;
+    container.innerHTML = '';
+    customers.forEach(c => {
+        container.innerHTML += `<tr><td>${c.name}</td><td>${c.email}</td><td>${c.phone}</td><td>${c.shipments.length}</td></tr>`;
+    });
+}
+function showNewCustomerForm() { document.getElementById('new-customer-form').style.display = 'block'; }
+function saveNewCustomer() {
+    const name = document.getElementById('customer-name-input').value;
+    const email = document.getElementById('customer-email-input').value;
+    const phone = document.getElementById('customer-phone-input').value;
+    const password = document.getElementById('customer-password-input').value || 'pass123';
+    if (!name || !email) return;
+    customers.push({ email, name, phone, password, shipments: [] });
+    saveAllData();
+    renderAdminCustomers();
+    cancelNewCustomer();
+}
+function cancelNewCustomer() { document.getElementById('new-customer-form').style.display = 'none'; }
+function renderAdminQuotations() {
+    const container = document.getElementById('quotations-admin-list');
+    if (!container) return;
+    container.innerHTML = '';
+    quotations.forEach(q => {
+        container.innerHTML += `<tr><td>${q.id}</td><td>${q.email}</td><td>${q.service}</td><td>$${q.amount}</td><td>${q.status}</td></tr>`;
+    });
+}
+function showNewQuotationForm() { document.getElementById('new-quotation-form').style.display = 'block'; }
+function saveNewQuotation() {
+    const id = document.getElementById('quote-id-input').value;
+    const email = document.getElementById('quote-email-input').value;
+    const service = document.getElementById('quote-service-input').value;
+    const amount = parseFloat(document.getElementById('quote-amount-input').value);
+    if (!id || !email || !service || isNaN(amount)) return;
+    quotations.push({ id, email, service, amount, status: 'pending' });
+    saveAllData();
+    renderAdminQuotations();
+    cancelNewQuotation();
+}
+function cancelNewQuotation() { document.getElementById('new-quotation-form').style.display = 'none'; }
+
+// ==================== BRANDING & CONTACT ====================
+function saveBranding() {
+    const companyName = document.getElementById('company-name-input').value;
+    const tagline = document.getElementById('tagline-input').value;
+    document.getElementById('company-name').innerText = companyName;
+    document.getElementById('company-tagline').innerText = tagline;
+    alert('Branding saved');
+}
+function saveContact() { alert('Contact info saved'); }
+function copyReferralLink() {
+    const link = document.getElementById('referralLink');
+    link.select(); document.execCommand('copy'); alert('Link copied!');
+}
+function updateReferralStats() {
+    const countSpan = document.getElementById('referral-count');
+    if (countSpan) countSpan.innerText = '3';
 }
 
-// ---------- Menu Functions ----------
-function buildMainMenu() {
-  const mainMenu = document.getElementById('mainMenu');
-  mainMenu.innerHTML = '';
-  const categories = Object.keys(categoryHierarchy);
-  categories.forEach(cat => {
-    const catDiv = document.createElement('div');
-    const imgUrl = categoryImages[cat] || defaultIcon;
-    catDiv.innerHTML = `<img src="${imgUrl}" style="width:20px;height:20px;" loading="lazy"> ${cat}`;
-    catDiv.onclick = () => selectMainCategory(cat);
-    mainMenu.appendChild(catDiv);
-  });
+// ==================== PORTAL CARDS & HAMBURGER ====================
+function openPortalAndPage(pageId) {
+    showPage('customer-portal');
+    if (currentCustomer) {
+        const navItem = Array.from(document.querySelectorAll('.portal-nav-item')).find(
+            item => item.innerText.toLowerCase().includes(pageId.replace('-', ' '))
+        );
+        if (navItem) navItem.click();
+        else showPortalPage(pageId);
+        pendingPortalPage = null;
+    } else {
+        pendingPortalPage = pageId;
+        const loginSection = document.getElementById('customer-login-section');
+        if (loginSection) {
+            let hint = loginSection.querySelector('.login-hint');
+            if (!hint) {
+                hint = document.createElement('div');
+                hint.className = 'login-hint';
+                hint.style.fontSize = '0.75rem';
+                hint.style.marginTop = '10px';
+                hint.style.color = '#1a4b8c';
+                hint.style.textAlign = 'center';
+                loginSection.appendChild(hint);
+            }
+            hint.innerText = '🔐 Please log in to continue.';
+        }
+    }
 }
+document.querySelectorAll('.quick-card').forEach(card => {
+    card.addEventListener('click', () => {
+        const page = card.getAttribute('data-page');
+        openPortalAndPage(page);
+    });
+});
+document.querySelectorAll('.category-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+        const pageId = chip.getAttribute('data-page');
+        if (pageId) showPage(pageId);
+    });
+});
+const hamburgerBtn = document.getElementById('hamburgerBtn');
+const sideDrawer = document.getElementById('sideDrawer');
+const drawerOverlay = document.getElementById('drawerOverlay');
+const closeDrawerBtn = document.getElementById('closeDrawerBtn');
+function openDrawer() { sideDrawer.classList.add('open'); drawerOverlay.classList.add('open'); }
+function closeDrawer() { sideDrawer.classList.remove('open'); drawerOverlay.classList.remove('open'); }
+if (hamburgerBtn) hamburgerBtn.addEventListener('click', openDrawer);
+if (closeDrawerBtn) closeDrawerBtn.addEventListener('click', closeDrawer);
+if (drawerOverlay) drawerOverlay.addEventListener('click', closeDrawer);
 
-function selectMainCategory(cat) {
-  const filtered = allProducts.filter(p => p.cat === cat);
-  displayProducts(getShuffledWithPhoneBias(filtered));
-  const subMenu = document.getElementById('subMenu');
-  subMenu.innerHTML = '';
-  const subs = categoryHierarchy[cat];
-  if (subs) {
-    Object.keys(subs).forEach(sub => {
-      const subDiv = document.createElement('div');
-      const iconUrl = subcategoryIcons[sub] || defaultIcon;
-      subDiv.innerHTML = `<img src="${iconUrl}" style="width:20px;height:20px;margin-right:4px;" loading="lazy"> ${sub}`;
-      subDiv.onclick = () => selectSubCategory(cat, sub);
-      subMenu.appendChild(subDiv);
+// ==================== INIT ====================
+function init() {
+    renderServicesPage();
+    renderVideosPage();
+    renderGalleryPage();
+    updateReferralStats();
+}
+init();
+// ========== CUSTOMER LOGIN & SIGNUP (append to end of script.js) ==========
+
+// Toggle between login and signup forms
+document.addEventListener('DOMContentLoaded', function() {
+  const showSignupLink = document.getElementById('showSignupLink');
+  const showLoginLink = document.getElementById('showLoginLink');
+  const loginForm = document.getElementById('loginForm');
+  const signupForm = document.getElementById('signupForm');
+
+  if (showSignupLink) {
+    showSignupLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      loginForm.style.display = 'none';
+      signupForm.style.display = 'block';
     });
   }
-}
-
-function selectSubCategory(cat, sub) {
-  const leaves = categoryHierarchy[cat][sub];
-  if (leaves) {
-    const filtered = allProducts.filter(p => leaves.includes(p.subcat));
-    displayProducts(getShuffledWithPhoneBias(filtered));
+  if (showLoginLink) {
+    showLoginLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      signupForm.style.display = 'none';
+      loginForm.style.display = 'block';
+    });
   }
-}
+});
 
-// ---------- Product Detail ----------
-async function openProduct(id) {
-  const product = allProducts.find(p => p.id == id);
-  if (!product) return;
-  currentProduct = product;
-  renderProductDetail(product);
-  switchPage('productPage');
-  history.pushState(null, '', `#/product/${id}`);
-}
-
-function renderProductDetail(p) {
-  const container = document.getElementById('productDetailContainer');
-  let extraInfo = '';
-  if (p.metadata) {
-    extraInfo = '<div class="product-metadata">';
-    for (const [key, val] of Object.entries(p.metadata)) {
-      if (val && key !== 'size_options') extraInfo += `<strong>${escapeHtml(key)}:</strong> ${escapeHtml(String(val))}<br>`;
-    }
-    extraInfo += '</div>';
+// Login function (email or phone + password)
+function customerLogin() {
+  const identifier = document.getElementById('loginIdentifier').value.trim();
+  const password = document.getElementById('loginPassword').value.trim();
+  if (!identifier || !password) {
+    alert('Please enter both email/phone and password.');
+    return;
   }
-  container.innerHTML = `
-    <div class="product-detail-layout">
-      <div class="product-detail-left">
-        <div class="product-actions-top">
-          <button class="back-btn-top" onclick="goBackHome()"><i class="fas fa-arrow-left"></i> Back</button>
-          <button class="share-btn-top" onclick="shareProduct()"><i class="fas fa-share-alt"></i> Share</button>
-        </div>
-        <img src="${p.main_image}" style="width:100%; border-radius:16px;" onerror="this.src='https://picsum.photos/600/600?grayscale'">
-        <h2>${escapeHtml(p.name)}</h2>
-        <p>${escapeHtml(p.description || '')}</p>
-        ${extraInfo}
-        <div class="color-size-row">
-          <div><label>Color:</label><select id="productColor">${(p.colors || ['Default']).map(c => `<option>${escapeHtml(c)}</option>`).join('')}</select></div>
-          <div><label>Size:</label><select id="productSize">${(p.size_options || [{size:'Standard',price:p.price}]).map(s => `<option value="${s.price}">${escapeHtml(s.size)} - $${s.price}</option>`).join('')}</select></div>
-        </div>
-        <div class="add-to-cart-center"><button onclick="addToCartFromDetail()"><i class="fas fa-cart-plus"></i> Add to Cart</button></div>
-      </div>
-      <div class="product-detail-right">
-        <h4>You may also like</h4>
-        <div id="productRecommendGrid" class="recommend-grid"></div>
-      </div>
-    </div>
-  `;
-  loadProductRecommendations(p.cat, p.id);
-}
-
-async function loadProductRecommendations(cat, excludeId) {
-  let recs = allProducts.filter(p => p.cat === cat && p.id !== excludeId).slice(0, 20);
-  if (recs.length < 20) recs = allProducts.filter(p => p.id !== excludeId).slice(0, 20);
-  const grid = document.getElementById('productRecommendGrid');
-  if (grid) grid.innerHTML = recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${p.main_image}" loading="lazy" onerror="this.src='https://picsum.photos/120/120?grayscale'"><div>${escapeHtml(p.name)}<br><strong>$${p.price}</strong></div></div>`).join('');
-}
-
-function addToCartFromDetail() {
-  const sizeSelect = document.getElementById('productSize');
-  const price = sizeSelect ? parseFloat(sizeSelect.value) : currentProduct.price;
-  const size = sizeSelect ? sizeSelect.options[sizeSelect.selectedIndex].text.split(' - ')[0] : 'Standard';
-  const color = document.getElementById('productColor')?.value || 'Default';
-  cart.push({ id: currentProduct.id, name: currentProduct.name, price, size, color, image: currentProduct.main_image });
-  localStorage.setItem('cart', JSON.stringify(cart));
-  updateCartCount();
-  alert('Added to cart');
-}
-
-function shareProduct() {
-  const url = window.location.href;
-  const text = `Check out ${currentProduct.name} on Mmeli Global!`;
-  if (navigator.share) navigator.share({ title: currentProduct.name, text, url });
-  else {
-    const wa = `https://wa.me/263776871711?text=${encodeURIComponent(text + ' ' + url)}`;
-    alert(`Share via WhatsApp: ${wa}`);
+  // Find customer by email or phone
+  const customer = customers.find(c => 
+    (c.email && c.email.toLowerCase() === identifier.toLowerCase()) ||
+    (c.phone && c.phone === identifier)
+  );
+  if (!customer || customer.password !== password) {
+    alert('Invalid credentials. Please try again.');
+    return;
   }
-}
-
-// ---------- Cart Functions ----------
-function updateCartCount() { document.getElementById('cartCount').innerText = cart.length; }
-
-function renderCart() {
-  const container = document.getElementById('cartList');
-  if (!cart.length) { container.innerHTML = '<p>Cart is empty.</p>'; return; }
-  let html = '', total = 0;
-  cart.forEach((item, i) => {
-    total += item.price;
-    html += `<div class="cart-item"><div><img src="${item.image}" width="50" style="border-radius:8px;" onerror="this.src='https://picsum.photos/50/50?grayscale'"> ${escapeHtml(item.name)} (${escapeHtml(item.size)}, ${escapeHtml(item.color)})</div><div>$${item.price} <button onclick="removeFromCart(${i})">Remove</button></div></div>`;
-  });
-  html += `<div class="cart-item"><strong>Total: $${total.toFixed(2)}</strong></div>`;
-  container.innerHTML = html;
-  loadCartRecommendations();
-}
-
-function removeFromCart(i) { cart.splice(i,1); localStorage.setItem('cart',JSON.stringify(cart)); updateCartCount(); renderCart(); }
-
-async function loadCartRecommendations() {
-  let recs = allProducts.slice(0,20);
-  const grid = document.getElementById('cartRecommendations');
-  if(grid) grid.innerHTML = `<h4>You may also like</h4><div class="recommend-grid">${recs.map(p => `<div class="recommend-card" onclick="openProduct(${p.id})"><img src="${p.main_image}" loading="lazy" onerror="this.src='https://picsum.photos/120/120?grayscale'"><div>${escapeHtml(p.name)}<br><strong>$${p.price}</strong></div></div>`).join('')}</div>`;
-}
-
-function goToCheckout() {
-  if (!currentUser) { alert('Please login first'); switchPage('account'); return; }
-  if (!cart.length) { alert('Cart empty'); return; }
-  document.getElementById('checkoutAddress').value = currentUser.user_metadata?.address || '';
-  document.querySelectorAll('.checkout-step').forEach(s => s.classList.remove('active'));
-  document.getElementById('stepShipping').classList.add('active');
-  switchPage('checkoutPage');
-}
-
-let checkoutData = { shippingAddress: '', deliveryMethod: 'standard', deliveryCost: 5 };
-
-function nextStep() {
-  const active = document.querySelector('.checkout-step.active');
-  if (active.id === 'stepShipping') {
-    checkoutData.shippingAddress = document.getElementById('checkoutAddress').value;
-    if (!checkoutData.shippingAddress) { alert('Enter address'); return; }
-    active.classList.remove('active');
-    document.getElementById('stepDelivery').classList.add('active');
-  } else if (active.id === 'stepDelivery') {
-    const selected = document.querySelector('input[name="delivery"]:checked').value;
-    checkoutData.deliveryMethod = selected;
-    checkoutData.deliveryCost = selected === 'express' ? 15 : 5;
-    active.classList.remove('active');
-    document.getElementById('stepPayment').classList.add('active');
-  }
-}
-
-async function completeCheckout() {
-  const trackingCode = 'MM' + Math.floor(Math.random()*1000000);
-  let total = cart.reduce((s,i)=>s+i.price,0);
-  if (appliedDiscount) total -= appliedDiscount.amount;
-  total += checkoutData.deliveryCost;
-  const order = {
-    tracking_code: trackingCode,
-    user_id: currentUser.id,
-    user_data: { email: currentUser.email, phone: currentUser.phone, address: checkoutData.shippingAddress },
-    items: cart,
-    total,
-    status: 'Processing',
-    paid: false,
-    packed: false,
-    shipped: false,
-    delivered: false,
-    created_at: new Date()
-  };
-  const { error } = await sb.from('orders').insert([order]);
-  if (error) { alert('Order failed: ' + error.message); return; }
-  let msg = `New order%0ATracking: ${trackingCode}%0ATotal: $${total}%0AItems:%0A` + cart.map(i=>`${i.name} - $${i.price}`).join('%0A');
-  window.open(`https://wa.me/263776871711?text=${msg}`);
-  cart = []; localStorage.setItem('cart',JSON.stringify(cart)); updateCartCount(); renderCart(); appliedDiscount = null;
-  alert(`Order placed! Tracking code: ${trackingCode}`);
-  switchPage('home');
-}
-
-async function applyDiscount() {
-  const code = document.getElementById('promoCodeInput').value;
-  if (!code) return;
-  const total = cart.reduce((s,i)=>s+i.price,0);
-  const discountAmount = total * 0.1;
-  appliedDiscount = { code, amount: discountAmount };
-  let discountSpan = document.getElementById('discountDisplay');
-  if (!discountSpan) { discountSpan = document.createElement('span'); discountSpan.id = 'discountDisplay'; document.getElementById('cartList').after(discountSpan); }
-  discountSpan.innerHTML = `<br>Discount applied: -$${discountAmount.toFixed(2)}`;
-}
-
-// ---------- Tracking ----------
-async function trackOrder() {
-  const code = document.getElementById('trackCode').value.trim();
-  if (!code) return alert('Enter tracking code');
-  const { data: order, error } = await sb.from('orders').select('*').eq('tracking_code', code).single();
-  if (error || !order) { alert('Order not found'); return; }
-  document.getElementById('trackInfo').innerHTML = `<strong>Status:</strong> ${order.status}<br><strong>Items:</strong> ${order.items.map(i=>i.name).join(', ')}<br><strong>Total:</strong> $${order.total}`;
-  const steps = ['Ordered', 'Paid', 'Packed', 'Shipped', 'Delivered'];
-  const stepStatus = { Ordered: true, Paid: order.paid, Packed: order.packed, Shipped: order.shipped, Delivered: order.delivered };
-  document.getElementById('trackTimeline').innerHTML = `<div class="timeline">${steps.map(s => `<div class="timeline-step ${stepStatus[s] ? 'completed' : ''}">${s}</div>`).join('')}</div>`;
-  if (map) map.remove();
-  map = L.map('map').setView([-17.825,31.033], 6);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-}
-
-function initDefaultMap() {
-  if (map) map.remove();
-  map = L.map('map').setView([-17.825,31.033], 6);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-  L.marker([-17.825,31.033]).addTo(map).bindPopup('Mmeli Global').openPopup();
-}
-
-// ---------- Auth ----------
-async function initAuth() {
-  const { data: { session: currentSession } } = await sb.auth.getSession();
-  session = currentSession;
-  if (session) {
-    currentUser = session.user;
-    const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
-    if (profile) currentUser.role = profile.role || 'customer';
-    else currentUser.role = 'customer';
-    document.getElementById('loginBox').style.display = 'none';
-    document.getElementById('dashboard').style.display = 'block';
-    document.getElementById('userName').innerText = currentUser.user_metadata?.full_name || currentUser.email || currentUser.phone;
+  currentCustomer = customer;
+  renderCustomerPortal();
+  // If there was a pending portal page after login, open it
+  if (pendingPortalPage) {
+    setTimeout(() => {
+      const page = pendingPortalPage;
+      pendingPortalPage = null;
+      const navItem = Array.from(document.querySelectorAll('.portal-nav-item')).find(
+        item => item.innerText.toLowerCase().includes(page.replace('-', ' '))
+      );
+      if (navItem) navItem.click();
+      else showPortalPage(page);
+    }, 100);
   } else {
-    document.getElementById('loginBox').style.display = 'block';
-    document.getElementById('dashboard').style.display = 'none';
+    // default to dashboard
+    showPortalPage('dashboard');
   }
 }
 
-async function register() {
-  const name = document.getElementById('regName').value;
-  const phone = document.getElementById('regPhone').value;
-  const email = document.getElementById('regEmail').value;
-  const address = document.getElementById('regAddress').value;
-  const password = document.getElementById('regPassword').value;
-  if (!name || !phone || !password) return alert('Name, phone, and password required');
-  const { data, error } = await sb.auth.signUp({
+// Signup function
+function customerSignup() {
+  const name = document.getElementById('signupName').value.trim();
+  const email = document.getElementById('signupEmail').value.trim();
+  const phone = document.getElementById('signupPhone').value.trim();
+  const password = document.getElementById('signupPassword').value.trim();
+  const confirm = document.getElementById('signupConfirm').value.trim();
+  const address = document.getElementById('signupAddress').value.trim();
+
+  if (!name || !email || !phone || !password || !confirm) {
+    alert('Please fill in all required fields.');
+    return;
+  }
+  if (password !== confirm) {
+    alert('Passwords do not match.');
+    return;
+  }
+  // Check if email or phone already exists
+  if (customers.some(c => c.email === email || c.phone === phone)) {
+    alert('A customer with this email or phone already exists. Please login instead.');
+    return;
+  }
+  // Create new customer
+  const newCustomer = {
+    email: email,
+    name: name,
     phone: phone,
     password: password,
-    options: { data: { full_name: name, email, address } }
-  });
-  if (error) { alert('Registration failed: ' + error.message); return; }
-  await sb.from('profiles').insert([{ id: data.user.id, name, phone, email, address, role: 'customer' }]);
-  alert('Registration successful! Please verify your phone if required, then login.');
-}
-
-async function login() {
-  const phone = document.getElementById('loginPhone').value;
-  const password = document.getElementById('loginPassword').value;
-  if (!phone || !password) return alert('Enter phone number and password');
-  const { data, error } = await sb.auth.signInWithPassword({ phone, password });
-  if (error) { alert('Login failed: ' + error.message); return; }
-  session = data.session;
-  currentUser = data.user;
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
-  currentUser.role = profile?.role || 'customer';
-  document.getElementById('loginBox').style.display = 'none';
-  document.getElementById('dashboard').style.display = 'block';
-  document.getElementById('userName').innerText = profile?.name || currentUser.phone;
-}
-
-async function logout() {
-  await sb.auth.signOut();
-  currentUser = null; session = null;
-  localStorage.removeItem('cart');
-  location.reload();
-}
-
-// ---------- Customer Dashboard ----------
-async function showMyOrders() {
-  const { data: orders, error } = await sb.from('orders').select('*').eq('user_id', currentUser.id);
-  if (error) { document.getElementById('customerData').innerHTML = '<p>Error loading orders.</p>'; return; }
-  document.getElementById('customerData').innerHTML = `<h4>My Orders</h4>${orders.map(o=>`<div style="border:1px solid #ddd; padding:8px; margin:8px 0; border-radius:12px;"><strong>${o.tracking_code}</strong> - ${o.status} - $${o.total} <button onclick="trackOrderCode('${o.tracking_code}')">Track</button></div>`).join('')}`;
-}
-function trackOrderCode(code) { document.getElementById('trackCode').value = code; switchPage('tracking'); setTimeout(trackOrder, 100); }
-async function showMyQuotations() { document.getElementById('customerData').innerHTML = '<p>Quotations coming soon.</p>'; }
-async function showMyReturns() { document.getElementById('customerData').innerHTML = '<p>Returns coming soon.</p>'; }
-function showProfile() {
-  document.getElementById('customerData').innerHTML = `<h4>Edit Profile</h4><input id="editName" value="${currentUser.user_metadata?.full_name || ''}"><br><input id="editPhone" value="${currentUser.phone || ''}"><br><input id="editAddress" value="${currentUser.user_metadata?.address || ''}"><br><button onclick="updateProfile()">Save Changes</button>`;
-}
-async function updateProfile() {
-  const name = document.getElementById('editName').value;
-  const address = document.getElementById('editAddress').value;
-  const { error } = await sb.auth.updateUser({ data: { full_name: name, address } });
-  if (error) alert('Update failed: ' + error.message);
-  else alert('Profile updated');
-  showProfile();
-}
-function openShipmentTracking() { document.getElementById('shipmentTrackingModal').style.display = 'flex'; }
-function closeShipmentModal() { document.getElementById('shipmentTrackingModal').style.display = 'none'; }
-async function fetchShipmentStatus() {
-  const code = document.getElementById('shipmentCode').value.trim();
-  if (!code) return alert('Enter tracking code');
-  const { data: shipment, error } = await sb.from('shipments').select('*').eq('tracking_code', code).single();
-  if (error) { document.getElementById('shipmentStatus').innerHTML = '<p style="color:red;">Shipment not found.</p>'; return; }
-  document.getElementById('shipmentStatus').innerHTML = `<strong>Status:</strong> ${shipment.status}<br><strong>Client:</strong> ${shipment.client_name}<br><strong>Receiver:</strong> ${shipment.receiver_name}`;
-}
-
-// ---------- Admin Functions ----------
-async function adminLogin() {
-  const email = document.getElementById('adminEmail').value;
-  const password = document.getElementById('adminPassword').value;
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) { alert('Admin login failed: ' + error.message); return; }
-  const { data: profile } = await sb.from('profiles').select('role').eq('id', data.user.id).single();
-  if (profile?.role !== 'admin') { alert('Not an admin'); await sb.auth.signOut(); return; }
-  currentUser = data.user;
-  currentUser.role = 'admin';
-  document.getElementById('adminLoginDiv').style.display = 'none';
-  document.getElementById('adminPanel').style.display = 'block';
-  initAdminCards();
-}
-
-function initAdminCards() {
-  document.querySelectorAll('.admin-card').forEach(card => {
-    card.onclick = () => {
-      const modalId = card.getAttribute('data-modal');
-      if (modalId) openAdminModal(modalId);
-    };
-  });
-}
-
-function openAdminModal(modalId) {
-  const modal = document.getElementById(`modal${modalId.charAt(0).toUpperCase() + modalId.slice(1)}`);
-  if (!modal) return;
-  const body = modal.querySelector('.modal-body');
-  switch(modalId) {
-    case 'dashboardStats': loadDashboardStats(body); break;
-    case 'manageProducts': loadProductsModal(body); break;
-    case 'addProduct': showAddProductForm(body); break;
-    case 'manageOrders': loadOrdersModal(body); break;
-    case 'discounts': loadDiscountsModal(body); break;
-    case 'returns': loadReturnsModal(body); break;
-    case 'inventory': loadInventoryModal(body); break;
-    case 'managePolicies': loadPoliciesModal(body); break;
-    case 'manageShipments': loadShipmentsModal(body); break;
-    case 'broadcast': loadBroadcastModal(body); break;
-    case 'createQuotation': showCreateQuotationForm(body); break;
-    case 'bulkImport': break;
-    default: return;
-  }
-  modal.style.display = 'flex';
-}
-
-async function loadDashboardStats(container) {
-  const { count: products } = await sb.from('products').select('*', { count: 'exact', head: true });
-  const { count: orders } = await sb.from('orders').select('*', { count: 'exact', head: true });
-  container.innerHTML = `<h3>Dashboard</h3><div class="stats-grid"><div class="stats-card">📦 Orders<br>${orders}</div><div class="stats-card">🛍️ Products<br>${products}</div></div><button onclick="closeModal('modalDashboardStats')">Close</button>`;
-}
-
-async function loadProductsModal(container) {
-  const { data: products } = await sb.from('products').select('*');
-  container.innerHTML = `<h3>Manage Products</h3><input type="text" id="productSearch" placeholder="Search..." onkeyup="filterProductList()" style="width:100%; margin-bottom:10px;"><div id="productListContainer">${products.map(p=>`<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:8px;"><img src="${p.main_image}" width="50" style="border-radius:8px;" onerror="this.src='https://picsum.photos/50/50?grayscale'"> ${escapeHtml(p.name)} - $${p.price} <div><button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div></div>`).join('')}</div><button onclick="closeModal('modalManageProducts')">Close</button>`;
-  window.filterProductList = () => {
-    const term = document.getElementById('productSearch').value.toLowerCase();
-    const filtered = products.filter(p => p.name.toLowerCase().includes(term));
-    document.getElementById('productListContainer').innerHTML = filtered.map(p=>`<div><img src="${p.main_image}" width="50" onerror="this.src='https://picsum.photos/50/50?grayscale'"> ${escapeHtml(p.name)} - $${p.price} <button onclick="editProductModal(${p.id})">Edit</button> <button onclick="deleteProduct(${p.id})">Delete</button></div>`).join('');
+    address: address,
+    shipments: []
   };
+  customers.push(newCustomer);
+  saveAllData();
+  currentCustomer = newCustomer;
+  renderCustomerPortal();
+  // After signup, go to dashboard
+  showPortalPage('dashboard');
+  // Clear pending if any
+  pendingPortalPage = null;
 }
+// ========== UPDATED RENDER CUSTOMER PORTAL (shows portal content only when logged in) ==========
+function renderCustomerPortal() {
+  const loginSection = document.getElementById('customer-login-section');
+  const welcomeSection = document.getElementById('customer-welcome-section');
+  const portalContent = document.getElementById('portalContent');
+  const userDisplay = document.getElementById('portal-user-display');
 
-async function editProductModal(id) {
-  const { data: p } = await sb.from('products').select('*').eq('id', id).single();
-  const body = document.getElementById('modalManageProducts').querySelector('.modal-body');
-  body.innerHTML = `<h3>Edit Product</h3><img src="${p.main_image}" width="80" onerror="this.src='https://picsum.photos/80/80?grayscale'"><br>
-    <input id="editName" value="${escapeHtml(p.name)}" placeholder="Name"><br>
-    <input id="editPrice" value="${p.price}" placeholder="Price"><br>
-    <textarea id="editDesc" placeholder="Description">${escapeHtml(p.description||'')}</textarea><br>
-    <input id="editCat" value="${escapeHtml(p.cat||'')}" placeholder="Category"><br>
-    <input id="editSubcat" value="${escapeHtml(p.subcat||'')}" placeholder="Subcategory"><br>
-    <button onclick="updateProduct(${id})">Update</button>
-    <button onclick="closeModal('modalManageProducts')">Cancel</button>`;
-}
+  if (currentCustomer) {
+    // Logged in: hide login forms, show welcome message and portal content
+    loginSection.style.display = 'none';
+    welcomeSection.style.display = 'flex';
+    portalContent.style.display = 'block';
+    document.getElementById('welcome-message').innerText = `Welcome, ${currentCustomer.name}`;
+    userDisplay.innerText = `👤 ${currentCustomer.name}`;
 
-async function updateProduct(id) {
-  const name = document.getElementById('editName').value;
-  const price = parseFloat(document.getElementById('editPrice').value);
-  const description = document.getElementById('editDesc').value;
-  const cat = document.getElementById('editCat').value;
-  const subcat = document.getElementById('editSubcat').value;
-  const { error } = await sb.from('products').update({ name, price, description, cat, subcat }).eq('id', id);
-  if (error) alert('Update failed: ' + error.message);
-  else alert('Updated');
-  closeModal('modalManageProducts');
-  openAdminModal('manageProducts');
-  loadProducts();
-}
-
-async function deleteProduct(id) {
-  if(confirm('Delete product?')) {
-    await sb.from('products').delete().eq('id', id);
-    openAdminModal('manageProducts');
-    loadProducts();
-  }
-}
-
-function showAddProductForm(container) {
-  container.innerHTML = `<h3>Add Product</h3>
-    <input id="newName" placeholder="Name"><br>
-    <input id="newPrice" placeholder="Price"><br>
-    <textarea id="newDesc" placeholder="Description"></textarea><br>
-    <input id="newCat" placeholder="Category"><br>
-    <input id="newSubcat" placeholder="Subcategory"><br>
-    <input id="newImage" placeholder="Image URL"><br>
-    <button onclick="addProduct()">Save</button>
-    <button onclick="closeModal('modalAddProduct')">Cancel</button>`;
-}
-
-async function addProduct() {
-  const name = document.getElementById('newName').value;
-  const price = parseFloat(document.getElementById('newPrice').value);
-  const description = document.getElementById('newDesc').value;
-  const cat = document.getElementById('newCat').value;
-  const subcat = document.getElementById('newSubcat').value;
-  const main_image = document.getElementById('newImage').value;
-  if (!name || isNaN(price)) return alert('Name and price required');
-  const { error } = await sb.from('products').insert([{ name, price, description, cat, subcat, main_image }]);
-  if (error) alert('Add failed: ' + error.message);
-  else alert('Product added');
-  closeModal('modalAddProduct');
-  loadProducts();
-}
-
-async function loadOrdersModal(container) {
-  const { data: orders } = await sb.from('orders').select('*');
-  container.innerHTML = `<h3>Orders</h3>${orders.map(o=>`<div style="border:1px solid #ddd; padding:8px; margin:8px 0;"><strong>${o.tracking_code}</strong> - ${o.status} - $${o.total}</div>`).join('')}<button onclick="closeModal('modalManageOrders')">Close</button>`;
-}
-
-async function loadDiscountsModal(container) { container.innerHTML = `<h3>Discounts</h3><p>Coming soon</p><button onclick="closeModal('modalDiscounts')">Close</button>`; }
-async function loadReturnsModal(container) { container.innerHTML = `<h3>Returns</h3><p>Coming soon</p><button onclick="closeModal('modalReturns')">Close</button>`; }
-async function loadInventoryModal(container) { container.innerHTML = `<h3>Inventory</h3><p>Coming soon</p><button onclick="closeModal('modalInventory')">Close</button>`; }
-async function loadPoliciesModal(container) { container.innerHTML = `<h3>Policies</h3><p>Coming soon</p><button onclick="closeModal('modalManagePolicies')">Close</button>`; }
-async function loadShipmentsModal(container) { container.innerHTML = `<h3>Shipments</h3><p>Coming soon</p><button onclick="closeModal('modalManageShipments')">Close</button>`; }
-function loadBroadcastModal(container) { container.innerHTML = `<h3>Broadcast</h3><textarea id="broadcastMsg" rows="3"></textarea><button onclick="sendBroadcast()">Generate WhatsApp Link</button><div id="broadcastResult"></div><button onclick="closeModal('modalBroadcast')">Close</button>`; }
-async function sendBroadcast() {
-  let message = document.getElementById('broadcastMsg').value;
-  if (!message) return alert('Enter message');
-  const waLink = `https://wa.me/?text=${encodeURIComponent(message + '\n\nCheck our website: ' + window.location.origin)}`;
-  document.getElementById('broadcastResult').innerHTML = `<a href="${waLink}" target="_blank">Click to send broadcast</a>`;
-}
-function showCreateQuotationForm(container) { container.innerHTML = `<h3>Create Quotation</h3><p>Coming soon</p><button onclick="closeModal('modalCreateQuotation')">Close</button>`; }
-
-// ---------- Bulk Import (Excel/CSV) ----------
-async function importBulkProducts() {
-  const fileInput = document.getElementById('bulkFileInput');
-  const statusDiv = document.getElementById('bulkStatus');
-  if (!fileInput.files.length) { statusDiv.innerHTML = '<span style="color:red;">Select a file first</span>'; return; }
-  const clearMode = document.querySelector('input[name="clearMode"]:checked').value;
-  const file = fileInput.files[0];
-  const reader = new FileReader();
-  reader.onload = async function(e) {
-    try {
-      statusDiv.innerHTML = '<span style="color:blue;">Processing file...</span>';
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet);
-      if (!rows.length) throw new Error('File is empty');
-
-      if (clearMode === 'all') {
-        statusDiv.innerHTML = '<span>Clearing all existing products...</span>';
-        await sb.from('products').delete().neq('id', 0);
-      }
-
-      const productsToUpsert = [];
-      for (const row of rows) {
-        let name = row['product_name'] || row['name'] || row['Product Name'] || 'Unnamed';
-        let description = row['description'] || row['Description'] || '';
-        let price = parseFloat(row['price_usd'] || row['price'] || row['Price'] || 0);
-        let cat = row['category'] || row['cat'] || 'Uncategorized';
-        let subcat = row['subcategory'] || row['subcat'] || '';
-        let main_image = row['main_image'] || row['image_url'] || row['Image'] || 'https://picsum.photos/300/200';
-        let colors = [];
-        if (row['colors']) colors = row['colors'].split(',').map(c=>c.trim());
-        let size_options = [];
-        if (row['size_options']) {
-          try { size_options = JSON.parse(row['size_options']); } catch(e) { /* ignore */ }
-        }
-        const knownKeys = ['product_name','name','Product Name','description','Description','price_usd','price','Price','category','cat','subcategory','subcat','main_image','image_url','Image','colors','size_options'];
-        let metadata = {};
-        for (let key in row) {
-          if (!knownKeys.includes(key) && !key.startsWith('_')) {
-            metadata[key] = row[key];
-          }
-        }
-        if (Object.keys(metadata).length === 0) metadata = null;
-        productsToUpsert.push({
-          name: String(name).slice(0,255),
-          description: String(description),
-          price: isNaN(price) ? 0 : price,
-          cat: String(cat),
-          subcat: String(subcat),
-          main_image: String(main_image),
-          sub_images: [],
-          colors: colors,
-          size_options: size_options,
-          metadata: metadata
-        });
-      }
-
-      statusDiv.innerHTML = `<span>Importing ${productsToUpsert.length} products...</span>`;
-      const chunkSize = 500;
-      let success = 0, errors = 0;
-      for (let i = 0; i < productsToUpsert.length; i += chunkSize) {
-        const chunk = productsToUpsert.slice(i, i+chunkSize);
-        const { error } = await sb.from('products').upsert(chunk, { onConflict: 'name' });
-        if (error) {
-          errors += chunk.length;
-          console.error(error);
-        } else {
-          success += chunk.length;
-        }
-        statusDiv.innerHTML = `<span>Imported ${success} / ${productsToUpsert.length} ...</span>`;
-        await new Promise(r => setTimeout(r, 50));
-      }
-      statusDiv.innerHTML = `<span style="color:green;">✅ Import complete! Inserted/Updated: ${success}, Errors: ${errors}</span>`;
-      await loadProducts();
-      if (document.getElementById('home').classList.contains('active')) {
-        allShuffled = getShuffledWithPhoneBias(allProducts);
-        displayProducts(allShuffled.slice(0, currentDisplayLimit));
-      }
-    } catch (err) {
-      statusDiv.innerHTML = `<span style="color:red;">Import failed: ${err.message}</span>`;
+    // Load dashboard stats
+    const dashboardStats = document.getElementById('dashboard-stats');
+    if (dashboardStats) {
+      dashboardStats.innerHTML = `<div class="stat-card">Shipments: ${currentCustomer.shipments.length}</div><div class="stat-card">Quotes: ${quotations.filter(q => q.email === currentCustomer.email).length}</div>`;
     }
-  };
-  reader.readAsArrayBuffer(file);
-}
 
-// ---------- UI Helpers ----------
-function switchPage(pageId) {
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById(pageId).classList.add('active');
-  if (pageId === 'cart') renderCart();
-  if (pageId === 'tracking') { if (map) map.remove(); initDefaultMap(); }
-  if (pageId === 'adminDashboard' && currentUser?.role !== 'admin') {
-    alert('Admin access only');
-    switchPage('home');
+    // Load recent shipments for dashboard
+    const shipmentsList = document.getElementById('dashboard-shipments-list');
+    if (shipmentsList) {
+      shipmentsList.innerHTML = '';
+      currentCustomer.shipments.forEach(sid => {
+        const s = shipments[sid];
+        if (s) shipmentsList.innerHTML += `<tr><td>${s.id}</td><td>${s.status}</td><td>${s.estimatedDelivery}</td></tr>`;
+      });
+    }
+
+    // Populate packing list select
+    const packingSelect = document.getElementById('packing-shipment-select');
+    if (packingSelect) {
+      packingSelect.innerHTML = '';
+      currentCustomer.shipments.forEach(sid => packingSelect.innerHTML += `<option value="${sid}">${sid}</option>`);
+    }
+
+    // Fill settings form
+    document.getElementById('settings-firstname').value = currentCustomer.name.split(' ')[0] || '';
+    document.getElementById('settings-lastname').value = currentCustomer.name.split(' ')[1] || '';
+    document.getElementById('settings-email').value = currentCustomer.email;
+    document.getElementById('settings-phone').value = currentCustomer.phone || '';
+    if (currentCustomer.address) document.getElementById('settings-address').value = currentCustomer.address;
+
+  } else {
+    // Not logged in: show login forms, hide welcome message and portal content
+    loginSection.style.display = 'block';
+    welcomeSection.style.display = 'none';
+    portalContent.style.display = 'none';
+    userDisplay.innerText = '👤 Welcome, Guest';
   }
 }
 
-function resetHome() {
-  currentDisplayLimit = 150;
-  allShuffled = getShuffledWithPhoneBias(allProducts);
-  displayProducts(allShuffled.slice(0, currentDisplayLimit));
-  document.getElementById('subMenu').innerHTML = '';
-  switchPage('home');
+// ========== CUSTOMER LOGIN (email/phone + password) ==========
+function customerLogin() {
+  const identifier = document.getElementById('loginIdentifier').value.trim();
+  const password = document.getElementById('loginPassword').value.trim();
+  if (!identifier || !password) {
+    alert('Please enter both email/phone and password.');
+    return;
+  }
+  const customer = customers.find(c =>
+    (c.email && c.email.toLowerCase() === identifier.toLowerCase()) ||
+    (c.phone && c.phone === identifier)
+  );
+  if (!customer || customer.password !== password) {
+    alert('Invalid credentials. Please try again.');
+    return;
+  }
+  currentCustomer = customer;
+  renderCustomerPortal();
+
+  // If there was a pending portal page after login, open it
+  if (pendingPortalPage) {
+    setTimeout(() => {
+      const page = pendingPortalPage;
+      pendingPortalPage = null;
+      const navItem = Array.from(document.querySelectorAll('.portal-nav-item')).find(
+        item => item.innerText.toLowerCase().includes(page.replace('-', ' '))
+      );
+      if (navItem) navItem.click();
+      else showPortalPage(page);
+    }, 100);
+  } else {
+    showPortalPage('dashboard');
+  }
 }
 
-function goBackHome() { resetHome(); }
+// ========== CUSTOMER SIGNUP ==========
+function customerSignup() {
+  const name = document.getElementById('signupName').value.trim();
+  const email = document.getElementById('signupEmail').value.trim();
+  const phone = document.getElementById('signupPhone').value.trim();
+  const password = document.getElementById('signupPassword').value.trim();
+  const confirm = document.getElementById('signupConfirm').value.trim();
+  const address = document.getElementById('signupAddress').value.trim();
 
-async function showRandomPromo() {
-  const popup = document.getElementById('popupPromo');
-  document.getElementById('popupContent').innerHTML = `<img src="https://picsum.photos/300/150" loading="lazy"><div><strong>Special Offer!</strong><br>Free shipping on orders over $500</div>`;
-  popup.style.display = 'block';
-  setTimeout(() => popup.style.display = 'none', 8000);
+  if (!name || !email || !phone || !password || !confirm) {
+    alert('Please fill in all required fields.');
+    return;
+  }
+  if (password !== confirm) {
+    alert('Passwords do not match.');
+    return;
+  }
+  if (customers.some(c => c.email === email || c.phone === phone)) {
+    alert('A customer with this email or phone already exists. Please login instead.');
+    return;
+  }
+  const newCustomer = {
+    email, name, phone, password, address,
+    shipments: []
+  };
+  customers.push(newCustomer);
+  saveAllData();
+  currentCustomer = newCustomer;
+  renderCustomerPortal();
+  showPortalPage('dashboard');
+  pendingPortalPage = null;
 }
-function closePopup() { document.getElementById('popupPromo').style.display = 'none'; }
 
-async function subscribe() {
-  const email = document.getElementById('subEmail').value;
-  const phone = document.getElementById('subPhone').value;
-  if (!email && !phone) return alert('Enter email or phone');
-  alert('Subscribed successfully!');
-}
+// ========== FORM TOGGLE (login/signup) ==========
+document.addEventListener('DOMContentLoaded', function() {
+  const showSignupLink = document.getElementById('showSignupLink');
+  const showLoginLink = document.getElementById('showLoginLink');
+  const loginForm = document.getElementById('loginForm');
+  const signupForm = document.getElementById('signupForm');
 
-function searchProducts() {
-  const term = document.getElementById('searchInput').value.toLowerCase();
-  if (!term) { displayProducts(allShuffled.slice(0, currentDisplayLimit)); return; }
-  const filtered = allProducts.filter(p => p.name.toLowerCase().includes(term) || (p.description && p.description.toLowerCase().includes(term)));
-  displayProducts(getShuffledWithPhoneBias(filtered).slice(0, currentDisplayLimit));
-}
-
-function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
-
-// ---------- Event Listeners ----------
-window.addEventListener('hashchange', () => {
-  const hash = window.location.hash;
-  if (hash.startsWith('#/product/')) {
-    const id = hash.split('/').pop();
-    if (id && !isNaN(id)) openProduct(id);
-  } else { resetHome(); }
+  if (showSignupLink) {
+    showSignupLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      loginForm.style.display = 'none';
+      signupForm.style.display = 'block';
+    });
+  }
+  if (showLoginLink) {
+    showLoginLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      signupForm.style.display = 'none';
+      loginForm.style.display = 'block';
+    });
+  }
 });
+// ========== PORTAL MODAL FUNCTIONS ==========
+function openOrderModal() {
+  const modal = document.getElementById('orderModal');
+  if (modal) modal.classList.add('active');
+  // Optionally pre-fill with current customer data
+}
+function closeOrderModal() {
+  const modal = document.getElementById('orderModal');
+  if (modal) modal.classList.remove('active');
+}
+function submitOrderModal() {
+  // Gather values from modal inputs
+  const service = document.getElementById('order-service-modal').value;
+  const packageType = document.getElementById('order-package-type-modal').value;
+  const origin = document.getElementById('order-origin-modal').value;
+  const destination = document.getElementById('order-destination-modal').value;
+  const weight = document.getElementById('order-weight-modal').value;
+  const volume = document.getElementById('order-volume-modal').value;
+  const description = document.getElementById('order-description-modal').value;
+  // Use the same submitOrder logic (or update)
+  alert(`Order submitted: ${service} from ${origin} to ${destination}\nWeight: ${weight}kg, Volume: ${volume}m³\nWe'll contact you with a quotation.`);
+  closeOrderModal();
+  // Clear fields
+}
 
-document.getElementById('searchInput').addEventListener('input', function() {
-  clearTimeout(searchDebounceTimer);
-  const term = this.value.toLowerCase();
-  const list = document.getElementById('autocompleteList');
-  if (!term) { list.innerHTML = ''; return; }
-  searchDebounceTimer = setTimeout(() => {
-    const matches = allProducts.filter(p => p.name.toLowerCase().includes(term)).slice(0,8);
-    list.innerHTML = matches.map(p => `<div onclick="openProduct(${p.id})">${escapeHtml(p.name)}</div>`).join('');
-  }, 200);
-});
+function openPickupModal() { document.getElementById('pickupModal').classList.add('active'); }
+function closePickupModal() { document.getElementById('pickupModal').classList.remove('active'); }
+function submitPickupModal() {
+  const pickupDate = document.getElementById('pickup-date-modal').value;
+  const pickupTime = document.getElementById('pickup-time-modal').value;
+  const address = document.getElementById('pickup-address-modal').value;
+  const recipient = document.getElementById('recipient-name-modal').value;
+  const phone = document.getElementById('recipient-phone-modal').value;
+  const recAddress = document.getElementById('recipient-address-modal').value;
+  const packages = document.getElementById('package-count-modal').value;
+  const weight = document.getElementById('total-weight-modal').value;
+  alert(`Pickup requested for ${pickupDate} at ${pickupTime}\nAddress: ${address}\nRecipient: ${recipient} (${phone})\nPackages: ${packages}, Weight: ${weight}kg`);
+  closePickupModal();
+}
 
-document.querySelectorAll('.close-modal').forEach(btn => {
-  btn.addEventListener('click', function() { this.closest('.modal').style.display = 'none'; });
-});
-window.addEventListener('click', (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; });
-document.querySelector('.close-popup')?.addEventListener('click', closePopup);
-document.getElementById('logoArea')?.addEventListener('dblclick', () => switchPage('adminDashboard'));
-
-// ---------- Start ----------
-initAuth();
-loadProducts();
-updateCartCount();
-initDefaultMap();
+function openSettingsModal() {
+  // Pre-fill with current customer data
+  if (currentCustomer) {
+    document.getElementById('settings-firstname-modal').value = currentCustomer.name.split(' ')[0] || '';
+    document.getElementById('settings-lastname-modal').value = currentCustomer.name.split(' ')[1] || '';
+    document.getElementById('settings-email-modal').value = currentCustomer.email;
+    document.getElementById('settings-phone-modal').value = currentCustomer.phone || '';
+    document.getElementById('settings-address-modal').value = currentCustomer.address || '';
+  }
+  document.getElementById('settingsModal').classList.add('active');
+}
+function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('active'); }
+function saveSettingsModal() {
+  const firstName = document.getElementById('settings-firstname-modal').value;
+  const lastName = document.getElementById('settings-lastname-modal').value;
+  const email = document.getElementById('settings-email-modal').value;
+  const phone = document.getElementById('settings-phone-modal').value;
+  const address = document.getElementById('settings-address-modal').value;
+  if (currentCustomer) {
+    currentCustomer.name = `${firstName} ${lastName}`.trim();
+    currentCustomer.email = email;
+    currentCustomer.phone = phone;
+    currentCustomer.address = address;
+    const idx = customers.findIndex(c => c.email === currentCustomer.email);
+    if (idx !== -1) customers[idx] = currentCustomer;
+    saveAllData();
+    alert('Settings saved');
+    renderCustomerPortal();
+  }
+  closeSettingsModal();
+}
+function openAddServiceModal() { document.getElementById('adminServiceModal').classList.add('active'); }
+function closeAdminServiceModal() { document.getElementById('adminServiceModal').classList.remove('active'); }
+function saveAdminService() {
+  const title = document.getElementById('admin-service-title').value;
+  const desc = document.getElementById('admin-service-description').value;
+  const icon = document.getElementById('admin-service-icon').value || '📦';
+  if (title && desc) {
+    services.push({ icon, title, description: desc });
+    saveAllData();
+    renderAdminServices();
+    closeAdminServiceModal();
+    // Clear fields
+    document.getElementById('admin-service-title').value = '';
+    document.getElementById('admin-service-description').value = '';
+    document.getElementById('admin-service-icon').value = '';
+  } else {
+    alert('Please fill title and description');
+  }
+}
