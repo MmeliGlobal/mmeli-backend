@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mmeli Global</title>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- SheetJS (XLSX) -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Our styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ========== POPUP PROMO ========== -->
+  <div id="popupPromo" class="popup">
+    <div class="popup-content" id="popupContent">
+      <span class="close-popup" onclick="closePopup()">&times;</span>
+      <!-- filled by JS -->
+    </div>
+  </div>
+
+  <!-- ========== HEADER ========== -->
+  <header>
+    <div class="header-container">
+      <div class="logo-area" id="logoArea">
+        <img src="https://via.placeholder.com/40x40?text=MM" alt="Mmeli Global" />
+        <span>Mmeli Global</span>
+      </div>
+      <div class="search-area">
+        <input type="text" id="searchInput" placeholder="Search products..." />
+        <button onclick="searchProducts()"><i class="fas fa-search"></i></button>
+        <div id="autocompleteList" class="autocomplete-list"></div>
+      </div>
+      <div class="header-actions">
+        <a href="#" onclick="switchPage('home')"><i class="fas fa-home"></i></a>
+        <a href="#" onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i> <span id="cartCount">0</span></a>
+        <a href="#" onclick="switchPage('account')"><i class="fas fa-user"></i></a>
+        <a href="#" onclick="switchPage('tracking')"><i class="fas fa-truck"></i></a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========== MAIN MENU ========== -->
+  <nav class="main-nav">
+    <div id="mainMenu" class="main-menu"></div>
+    <div id="subMenu" class="sub-menu"></div>
+  </nav>
+
+  <!-- ========== PAGES ========== -->
+  <main>
+    <!-- HOME PAGE -->
+    <section id="home" class="page active">
+      <div id="productsContainer" class="products-grid"></div>
+      <button id="loadMoreBtn" onclick="loadMoreProducts()">Load More</button>
+    </section>
+
+    <!-- PRODUCT DETAIL PAGE -->
+    <section id="productPage" class="page">
+      <div id="productDetailContainer"></div>
+    </section>
+
+    <!-- CART PAGE -->
+    <section id="cart" class="page">
+      <h2>Your Cart</h2>
+      <div id="cartList"></div>
+      <div id="cartRecommendations"></div>
+      <button onclick="goToCheckout()">Proceed to Checkout</button>
+    </section>
+
+    <!-- CHECKOUT PAGE -->
+    <section id="checkoutPage" class="page">
+      <h2>Checkout</h2>
+      <div class="checkout-steps">
+        <div id="stepShipping" class="checkout-step active">
+          <h3>Shipping Address</h3>
+          <textarea id="checkoutAddress" placeholder="Enter your full address"></textarea>
+          <button onclick="nextStep()">Next</button>
+        </div>
+        <div id="stepDelivery" class="checkout-step">
+          <h3>Delivery Method</h3>
+          <label><input type="radio" name="delivery" value="standard" checked /> Standard ($5)</label>
+          <label><input type="radio" name="delivery" value="express" /> Express ($15)</label>
+          <button onclick="nextStep()">Next</button>
+        </div>
+        <div id="stepPayment" class="checkout-step">
+          <h3>Payment & Confirm</h3>
+          <div>Total: $<span id="checkoutTotal">0.00</span></div>
+          <input id="promoCodeInput" placeholder="Promo code" />
+          <button onclick="applyDiscount()">Apply</button>
+          <span id="discountDisplay"></span>
+          <button onclick="completeCheckout()">Place Order</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TRACKING PAGE -->
+    <section id="tracking" class="page">
+      <h2>Track Your Order</h2>
+      <input id="trackCode" placeholder="Enter tracking code" />
+      <button onclick="trackOrder()">Track</button>
+      <div id="trackInfo"></div>
+      <div id="trackTimeline"></div>
+      <div id="map" style="height:300px; width:100%; margin-top:20px;"></div>
+      <hr />
+      <h3>Shipment Tracking (Courier)</h3>
+      <input id="shipmentCode" placeholder="Shipment tracking code" />
+      <button onclick="fetchShipmentStatus()">Check</button>
+      <div id="shipmentStatus"></div>
+      <div id="shipmentTimeline"></div>
+    </section>
+
+    <!-- ACCOUNT / AUTH PAGE -->
+    <section id="account" class="page">
+      <div id="loginBox">
+        <h3>Login</h3>
+        <input id="loginEmail" placeholder="Phone number" />
+        <input id="loginPassword" type="password" placeholder="Password" />
+        <button onclick="login()">Login</button>
+        <hr />
+        <h3>Register</h3>
+        <input id="regName" placeholder="Full Name" />
+        <input id="regPhone" placeholder="Phone number" />
+        <input id="regEmail" placeholder="Email (optional)" />
+        <input id="regAddress" placeholder="Address" />
+        <input id="regPassword" type="password" placeholder="Password" />
+        <button onclick="register()">Register</button>
+      </div>
+      <div id="dashboard" style="display:none;">
+        <h3>Welcome, <span id="userName"></span></h3>
+        <div class="dashboard-links">
+          <button onclick="showProfile()">Profile</button>
+          <button onclick="showMyOrders()">My Orders</button>
+          <button onclick="showMyQuotations()">Quotations</button>
+          <button onclick="showMyReturns()">Returns</button>
+          <button onclick="openShipmentTracking()">Track Shipment</button>
+          <button onclick="logout()">Logout</button>
+        </div>
+        <div id="customerData"></div>
+      </div>
+    </section>
+
+    <!-- ADMIN DASHBOARD PAGE (hidden by default) -->
+    <section id="adminDashboard" class="page">
+      <div id="adminLoginDiv">
+        <h3>Admin Login</h3>
+        <input id="adminEmail" placeholder="Email" />
+        <input id="adminPassword" type="password" placeholder="Password" />
+        <button onclick="adminLogin()">Login</button>
+      </div>
+      <div id="adminPanel" style="display:none;">
+        <h3>Admin Panel</h3>
+        <div class="admin-grid">
+          <div class="admin-card" data-modal="dashboardStats">📊 Dashboard</div>
+          <div class="admin-card" data-modal="manageProducts">📦 Products</div>
+          <div class="admin-card" data-modal="addProduct">➕ Add Product</div>
+          <div class="admin-card" data-modal="bulkUpload">📤 Bulk Upload</div>
+          <div class="admin-card" data-modal="manageOrders">📋 Orders</div>
+          <div class="admin-card" data-modal="discounts">🏷️ Discounts</div>
+          <div class="admin-card" data-modal="returns">🔄 Returns</div>
+          <div class="admin-card" data-modal="inventory">📊 Inventory</div>
+          <div class="admin-card" data-modal="managePolicies">📜 Policies</div>
+          <div class="admin-card" data-modal="manageShipments">🚚 Shipments</div>
+          <div class="admin-card" data-modal="broadcast">📢 Broadcast</div>
+          <div class="admin-card" data-modal="createQuotation">📄 Quotation</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ========== MODALS ========== -->
+  <!-- Generic Modal Container (used for all admin modals) -->
+  <div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalManageProducts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalAddProduct" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalBulkUpload" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body">
+    <h3>Bulk Upload Products</h3>
+    <p>Upload an Excel file (.xlsx or .xls) with columns for product data.</p>
+    <input type="file" id="bulkFileInput" accept=".xlsx,.xls" />
+    <div id="bulkMappingArea" style="display:none;"></div>
+    <div id="bulkProgressArea" style="display:none;">
+      <div style="background:#eee; height:20px; border-radius:10px; overflow:hidden;">
+        <div id="bulkProgressFill" style="height:100%; width:0%; background:#4caf50;"></div>
+      </div>
+      <div id="bulkProgressText"></div>
+      <div id="bulkStatusLog" style="max-height:200px; overflow-y:auto; background:#f9f9f9; padding:8px; border-radius:4px;"></div>
+    </div>
+    <button id="bulkStartBtn" style="display:none;">Start Upload</button>
+  </div></div></div>
+  <div id="modalManageOrders" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalDiscounts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalReturns" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalInventory" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalManagePolicies" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalManageShipments" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalBroadcast" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+  <div id="modalCreateQuotation" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
+
+  <!-- Shipment Tracking Modal (non-admin) -->
+  <div id="shipmentTrackingModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeShipmentModal()">&times;</span>
+    <h3>Track Shipment</h3>
+    <input id="shipmentTrackCode" placeholder="Shipment code" />
+    <button onclick="fetchShipmentStatusFromModal()">Track</button>
+    <div id="shipmentTrackResult"></div>
+  </div></div>
+
+  <!-- Quote Preview Modal -->
+  <div id="quoteModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeQuoteModal()">&times;</span>
+    <h3>Quotation Preview</h3>
+    <pre id="quotePreview"></pre>
+  </div></div>
+
+  <!-- ========== SCRIPTS ========== -->
+  <script src="script.js"></script>
+</body>
+</html>
