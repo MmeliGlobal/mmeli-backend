@@ -143,16 +143,20 @@ function displayProducts(products) {
         const card = document.createElement('div');
         card.className = 'product-card';
         
-        // Validate image URL – if invalid or empty, use fallback
         let imgSrc = p.main_image;
         if (!imgSrc || !imgSrc.startsWith('http')) {
-            imgSrc = 'https://picsum.photos/300/200';
+            imgSrc = `https://picsum.photos/400/400?random=${p.id}`;
         }
-        // Optional: log to check what's coming from backend
-        // console.log(`Product: ${p.name}, Image: ${imgSrc}`);
         
-        card.innerHTML = `<img src="${imgSrc}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='https://picsum.photos/300/200?grayscale';">`;
-        card.innerHTML += `<div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div><div class="product-price">$${p.price}</div></div>`;
+        card.innerHTML = `
+            <div class="image-wrapper">
+                <img src="${imgSrc}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.onerror=null; this.src='https://picsum.photos/400/400?random=${p.id}'">
+            </div>
+            <div class="product-info">
+                <div class="product-name">${escapeHtml(p.name)}</div>
+                <div class="product-price">$${p.price || '0.00'}</div>
+            </div>
+        `;
         card.onclick = (e) => { e.stopPropagation(); openProduct(p.id); };
         container.appendChild(card);
     });
