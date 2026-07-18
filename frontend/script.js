@@ -22,12 +22,12 @@ async function uploadImageToSupabase(file) {
 // ========== BRAND LOGOS (Replace these URLs with your actual images) ==========
 const brandLogos = {
     'Apple': 'https://i.imgur.com/K2XuSPe.png',
-    'Samsung': 'https://your-supabase-url/storage/v1/object/public/brands/samsung.png',
-    'Huawei': 'https://your-supabase-url/storage/v1/object/public/brands/huawei.png',
-    'Vivo': 'https://your-supabase-url/storage/v1/object/public/brands/vivo.png',
-    'Oppo': 'https://your-supabase-url/storage/v1/object/public/brands/oppo.png',
-    'Xiaomi': 'https://your-supabase-url/storage/v1/object/public/brands/xiaomi.png',
-    'Redmi': 'https://your-supabase-url/storage/v1/object/public/brands/redmi.png',
+    'Samsung': 'https://i.imgur.com/2N9f6Yz.png',
+    'Huawei': 'https://i.imgur.com/YAMWhAW.png',
+    'Vivo': 'https://i.imgur.com/oz40UjB.png',
+    'Oppo': 'https://i.imgur.com/VRdM5IO.png',
+    'Xiaomi': 'https://i.imgur.com/qYbDrPd.jpeg',
+    'Redmi': 'https://i.imgur.com/tMFLPae.jpeg',
     'Honor': 'https://your-supabase-url/storage/v1/object/public/brands/honor.png',
     'Realme': 'https://your-supabase-url/storage/v1/object/public/brands/realme.png'
 };
