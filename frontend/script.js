@@ -21,7 +21,7 @@ async function uploadImageToSupabase(file) {
 
 // ========== BRAND LOGOS (Replace these URLs with your actual images) ==========
 const brandLogos = {
-    'Apple': 'https://your-supabase-url/storage/v1/object/public/brands/apple.png',
+    'Apple': 'https://i.imgur.com/K2XuSPe.png',
     'Samsung': 'https://your-supabase-url/storage/v1/object/public/brands/samsung.png',
     'Huawei': 'https://your-supabase-url/storage/v1/object/public/brands/huawei.png',
     'Vivo': 'https://your-supabase-url/storage/v1/object/public/brands/vivo.png',
