@@ -28,8 +28,8 @@ const brandLogos = {
     'Oppo': 'https://i.imgur.com/VRdM5IO.png',
     'Xiaomi': 'https://i.imgur.com/qYbDrPd.jpeg',
     'Redmi': 'https://i.imgur.com/tMFLPae.jpeg',
-    'Honor': 'https://your-supabase-url/storage/v1/object/public/brands/honor.png',
-    'Realme': 'https://your-supabase-url/storage/v1/object/public/brands/realme.png'
+    'Honor': 'https://i.imgur.com/6eNq7Xx.png',   // ← new working link
+    'Realme': 'https://i.imgur.com/4QcVh8p.png'    // ← new working link
 };
 
 // ========== GLOBALS ==========
