@@ -27,7 +27,7 @@ header { background: #0d6efd; color: white; padding: 10px 0; }
 .page { display: none; padding: 20px 0; }
 .page.active { display: block; }
 
-/* ===== PRODUCT GRID ===== */
+/* ===== PRODUCT GRID – SQUARE CARDS ===== */
 .product-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -41,6 +41,11 @@ header { background: #0d6efd; color: white; padding: 10px 0; }
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  /* Make the card a square */
+  aspect-ratio: 1 / 1;   /* 👈 forces square shape */
+  /* If you prefer a fixed height instead, replace with: height: 250px; */
 }
 
 .product-card:hover {
@@ -48,20 +53,24 @@ header { background: #0d6efd; color: white; padding: 10px 0; }
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
+/* The image container fills the top part of the square */
 .product-card img {
   width: 100%;
-  height: 200px;                /* fixed height for uniform thumbnails */
-  object-fit: cover;            /* crop to fit without distortion */
+  flex: 1;                /* takes remaining space */
+  object-fit: contain;    /* 👈 shows entire image, may leave white space */
+  /* If you prefer to fill the square and crop, change to: object-fit: cover; */
+  background: #f1f3f5;    /* fallback background while loading */
   display: block;
 }
 
 .product-info {
-  padding: 12px;
+  padding: 10px 12px;
+  flex-shrink: 0;         /* prevents info from being squashed */
 }
 
 .product-name {
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -70,7 +79,7 @@ header { background: #0d6efd; color: white; padding: 10px 0; }
 .product-price {
   color: #0d6efd;
   font-weight: bold;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 /* ===== PRODUCT DETAIL ===== */
@@ -90,8 +99,8 @@ header { background: #0d6efd; color: white; padding: 10px 0; }
 
 .product-detail-left img {
   width: 100%;
-  max-height: 500px;           /* big picture, but not too tall */
-  object-fit: contain;         /* show full image without cropping */
+  max-height: 500px;
+  object-fit: contain;    /* shows full image without cropping */
   border-radius: 16px;
   background: #f1f3f5;
 }
@@ -182,8 +191,9 @@ header { background: #0d6efd; color: white; padding: 10px 0; }
 @media (max-width: 600px) {
   .header-flex { flex-direction: column; align-items: stretch; }
   .search-wrap { order: 3; }
-  .product-grid { grid-template-columns: 1fr 1fr; }
+  .product-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .product-card { aspect-ratio: 1 / 1; }
   .product-detail-layout { flex-direction: column; }
-  .product-card img { height: 140px; }
   .product-detail-left img { max-height: 300px; }
+  .product-name { font-size: 0.8rem; }
 }
