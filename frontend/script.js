@@ -183,7 +183,7 @@ function buildMainMenu() {
     // Brand buttons with logos
     brandList.forEach(brand => {
         const brandDiv = document.createElement('div');
-        const imgUrl = brandLogos[brand] || 'https://cdn-icons-png.flaticon.com/512/1055/1055685.png';
+        const imgUrl = brandLogos[brand] || 'https://i.imgur.com/K2XuSPe.png';
         brandDiv.innerHTML = `<img src="${imgUrl}" style="width:24px;height:24px;vertical-align:middle;margin-right:4px;" loading="lazy" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/1055/1055685.png';"> ${brand}`;
         brandDiv.onclick = () => selectBrand(brand);
         mainMenu.appendChild(brandDiv);
