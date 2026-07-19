@@ -404,6 +404,32 @@ body {
 }
 .checkout-btn:hover { background: #2563eb; }
 
+/* Tracking */
+.tracking-body .track-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 30px;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+}
+.tracking-body .track-btn {
+  background: #1e3a8a;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 40px;
+  font-weight: 700;
+  width: 100%;
+  cursor: pointer;
+}
+.tracking-body .track-btn:hover { background: #2563eb; }
+#trackResult {
+  font-size: 0.85rem;
+  padding: 8px 0;
+  color: #0f172a;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 400px) {
   .filter-bar select, .filter-bar input { min-width: 50px; font-size:0.6rem; }
