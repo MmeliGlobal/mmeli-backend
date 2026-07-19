@@ -46,7 +46,7 @@ function shareProduct(productId) {
   window.open(waUrl, '_blank');
 }
 
-// ===== CART (with quantity support) =====
+// ===== CART =====
 function updateCartBadges() {
   const total = cart.reduce((s, i) => s + (i.quantity || 1), 0);
   const badge = document.getElementById('cartCountBadge');
@@ -85,7 +85,6 @@ function renderCartModal() {
     });
   });
 }
-// Updated addToCart with quantity parameter
 function addToCart(id, name, price, size, color, qty = 1) {
   const itemName = `${name} (${size}, ${color})`;
   const existing = cart.find(i => i.id == id && i.size === size && i.color === color);
@@ -95,7 +94,7 @@ function addToCart(id, name, price, size, color, qty = 1) {
   showToast(`${qty} × ${itemName} added`);
 }
 
-// ===== CHECKOUT (WhatsApp) =====
+// ===== CHECKOUT =====
 function checkoutToWhatsApp() {
   if (!cart.length) { alert('Cart is empty'); return; }
   let total = 0;
@@ -158,7 +157,7 @@ function generateDemoProducts() {
     name,
     description: 'Premium quality product',
     price: 199 + i * 150,
-    main_image: '',
+    main_image: `https://picsum.photos/400/400?random=${i + 100}`,
     images: [],
     cat: cats[i] || 'Phones',
     subcat: brands[i] || 'General',
@@ -169,7 +168,7 @@ function generateDemoProducts() {
       { size: '256GB', price: 199 + i * 150 + 200 }
     ],
     badge: i % 2 === 0 ? 'Best Seller' : '',
-    min_order: i % 2 === 0 ? 5 : 1 // demo: some wholesale, some retail
+    min_order: i % 2 === 0 ? 5 : 1
   }));
 }
 
@@ -198,7 +197,6 @@ function createProductCard(p) {
       <div style="display:none; align-items:center; justify-content:center; width:100%; height:100%; background:#f0f0f0; color:#999; font-size:0.8rem; position:absolute; top:0; left:0;">
         No Image
       </div>
-      <!-- Share button on image -->
       <button class="share-btn-img" data-id="${p.id}" style="position:absolute; bottom:10px; right:10px; background:rgba(255,255,255,0.9); border:none; border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#25D366; font-size:1.2rem; box-shadow:0 2px 8px rgba(0,0,0,0.15); transition:0.2s; z-index:5;"><i class="fas fa-share-alt"></i></button>
     </div>
     <div class="product-info">
@@ -215,7 +213,6 @@ function createProductCard(p) {
     </div>
   `;
 
-  // Price update on size change
   const priceSpan = card.querySelector('.price');
   const sizeSelect = card.querySelector('.size-select');
   const addBtn = card.querySelector('.add-btn');
@@ -226,12 +223,10 @@ function createProductCard(p) {
     addBtn.dataset.price = newPrice;
   });
 
-  // Card click -> open modal
   card.addEventListener('click', (e) => {
     if (e.target.tagName !== 'BUTTON' && !e.target.closest('select')) openProductModal(p.id);
   });
 
-  // Add to Cart – uses min order quantity
   addBtn.addEventListener('click', function(e) {
     e.stopPropagation();
     const size = sizeSelect.value;
@@ -241,14 +236,12 @@ function createProductCard(p) {
     addToCart(p.id, p.name, price, size, color, minQty);
   });
 
-  // Share button on image
   const shareImgBtn = card.querySelector('.share-btn-img');
   shareImgBtn.addEventListener('click', function(e) {
     e.stopPropagation();
     shareProduct(p.id);
   });
 
-  // Lazy load image
   const img = card.querySelector('.lazy');
   if (img && img.dataset.src) {
     if ('IntersectionObserver' in window) {
@@ -271,7 +264,6 @@ function createProductCard(p) {
   return card;
 }
 
-// ===== RENDER PRODUCTS (with shuffle & pagination) =====
 function renderProducts(append = false) {
   const container = document.getElementById('productsContainer');
   if (!container) return;
@@ -281,7 +273,6 @@ function renderProducts(append = false) {
   if (minPrice) filtered = filtered.filter(p => p.price >= parseFloat(minPrice));
   if (maxPrice) filtered = filtered.filter(p => p.price <= parseFloat(maxPrice));
 
-  // Shuffle
   filtered = shuffleArray(filtered);
 
   if (!filtered.length) {
@@ -358,7 +349,6 @@ function openProductModal(id) {
   mainImg.src = product.main_image || '';
   mainImg.onerror = function() { this.style.display = 'none'; };
 
-  // Thumbnails
   const thumbContainer = document.getElementById('modalProductThumbnails');
   thumbContainer.innerHTML = '';
   const allImages = [];
@@ -401,7 +391,6 @@ function openProductModal(id) {
     modal.classList.remove('active');
   });
 
-  // Share button in modal
   const shareContainer = document.querySelector('.modal-share-container');
   if (shareContainer) {
     shareContainer.innerHTML = '';
@@ -412,7 +401,6 @@ function openProductModal(id) {
     shareContainer.appendChild(shareBtn);
   }
 
-  // Related products
   const relatedGrid = document.getElementById('relatedProductsGrid');
   relatedGrid.innerHTML = '';
   const related = allProducts.filter(p => p.cat === product.cat && p.id !== product.id).slice(0, 4);
@@ -567,7 +555,7 @@ function switchPage(pageId) {
   }
 }
 
-// ===== ADMIN ADD PRODUCT =====
+// ===== ADMIN ADD PRODUCT (with min_order) =====
 function showAddProductForm(container) {
   container.innerHTML = `
     <h3>Add Product</h3>
@@ -672,7 +660,7 @@ async function addProduct() {
   }
 }
 
-// ===== EDIT PRODUCT =====
+// ===== EDIT PRODUCT (with min_order) =====
 async function editProductModal(id) {
   const p = await apiCall(`/products/${id}`);
   const body = document.getElementById('modalManageProducts').querySelector('.modal-body');
@@ -769,10 +757,6 @@ async function updateProductWithImage(id) {
     alert('Update failed: ' + err.message);
   }
 }
-
-// ===== KEEP YOUR EXISTING ADMIN FUNCTIONS (loadOrdersModal, etc.) =====
-// They are not changed; they remain as they were in your original script.
-// I'll include them below as placeholders – you already have them.
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', function() {
@@ -980,7 +964,3 @@ document.addEventListener('DOMContentLoaded', function() {
 
   populateSubcategories('');
 });
-
-// ===== (Keep your existing admin modal functions – loadOrdersModal, etc.) =====
-// They are unchanged; I'm not repeating them here for brevity.
-// Your original file contains them.
