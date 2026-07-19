@@ -131,6 +131,7 @@ function generateDemoProducts() {
   }));
 }
 
+// ===== IMPROVED RENDER PRODUCTS (real images first) =====
 function renderProducts() {
   const container = document.getElementById('productsContainer');
   if (!container) return;
@@ -148,7 +149,15 @@ function renderProducts() {
   filtered.forEach(p => {
     const card = document.createElement('div');
     card.className = 'product-card';
-    const img = p.main_image || `https://picsum.photos/400/400?random=${p.id}`;
+    
+    // ===== IMPROVED IMAGE HANDLING =====
+    let imgSrc = p.main_image;
+    // If main_image exists and is a valid HTTP URL, use it; otherwise fallback to picsum
+    if (!imgSrc || !imgSrc.startsWith('http')) {
+      imgSrc = `https://picsum.photos/400/400?random=${p.id}`;
+    }
+    // ===== END IMPROVED IMAGE HANDLING =====
+
     const badge = p.badge ? `<span class="badge">${escapeHtml(p.badge)}</span>` : '';
     const sizes = p.size_options && p.size_options.length ? p.size_options : [{ size: 'Standard', price: p.price }];
     const colors = p.colors && p.colors.length ? p.colors : ['Default'];
@@ -157,7 +166,7 @@ function renderProducts() {
     const basePrice = sizes[0].price;
 
     card.innerHTML = `
-      <img src="${img}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.src='https://picsum.photos/400/400?random=${p.id}'">
+      <img src="${imgSrc}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.onerror=null; this.src='https://picsum.photos/400/400?random=${p.id}'">
       <div class="product-info">
         ${badge}
         <h3>${escapeHtml(p.name)}</h3>
@@ -382,7 +391,7 @@ function showMyReturns() {
   document.getElementById('customerData').innerHTML = '<div style="padding:12px; background:#f8fafc; border-radius:12px;">Your returns will appear here</div>';
 }
 
-// ===== ADMIN FUNCTIONS =====
+// ===== ADMIN =====
 async function adminLogin() {
   const email = document.getElementById('adminEmail').value.trim();
   const password = document.getElementById('adminPassword').value;
@@ -424,11 +433,8 @@ function switchPage(pageId) {
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', function() {
-  // Load cart
   loadCart();
   renderCartModal();
-
-  // Load products
   loadProducts();
 
   // Restore user session
@@ -537,7 +543,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // --- DOUBLE-CLICK LOGO FOR ADMIN ---
+  // Double-click logo for admin
   const logoArea = document.getElementById('logoArea');
   if (logoArea) {
     logoArea.addEventListener('dblclick', function(e) {
