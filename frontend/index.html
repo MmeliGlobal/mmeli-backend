@@ -64,7 +64,7 @@
     <div class="footer-icons">
       <a href="#" class="footer-link active" id="footerHome"><i class="fas fa-home"></i><span>Home</span></a>
       <a href="#" class="footer-link" id="footerTracking"><i class="fas fa-truck"></i><span>Tracking</span></a>
-      <a href="#" class="footer-link" id="footerCart"><i class="fas fa-shopping-cart"></i><span>Cart</span><span class="footer-badge" id="footerCartBadge">0</span></a>
+      <a href="#" class="footer-link" id="footerPromo"><i class="fas fa-tag"></i><span>Promo</span></a>
       <a href="#" class="footer-link" id="footerAccount"><i class="fas fa-user"></i><span>Account</span></a>
       <a href="#" class="footer-link" id="footerMore"><i class="fas fa-ellipsis-h"></i><span>More</span></a>
     </div>
@@ -80,7 +80,7 @@
     </div>
   </div>
 
-  <!-- ===== TRACKING MODAL (Full page) ===== -->
+  <!-- ===== TRACKING MODAL ===== -->
   <div id="trackingModal" class="modal-overlay full-page">
     <div class="modal-container full-container">
       <div class="modal-header"><h3><i class="fas fa-truck"></i> Track Order</h3><button class="modal-close" id="closeTrackingBtn">&times;</button></div>
@@ -93,7 +93,21 @@
     </div>
   </div>
 
-  <!-- ===== ACCOUNT MODAL (Login/Signup) ===== -->
+  <!-- ===== PROMO MODAL ===== -->
+  <div id="promoModal" class="modal-overlay">
+    <div class="modal-container" style="max-width:380px; text-align:center;">
+      <div class="modal-header"><h3><i class="fas fa-tag"></i> Today's Promo</h3><button class="modal-close" id="closePromoBtn">&times;</button></div>
+      <div style="padding:16px 0;">
+        <i class="fas fa-gift" style="font-size:3rem; color:#1e3a8a;"></i>
+        <h4 style="margin:12px 0;">🔥 Flash Sale!</h4>
+        <p style="color:#475569;">Get <strong>20% off</strong> on all phones & laptops.</p>
+        <p style="color:#475569;">Use code: <strong style="background:#fef9c3; padding:2px 10px; border-radius:20px;">MMELI20</strong></p>
+        <p style="font-size:0.8rem; color:#94a3b8; margin-top:12px;">Valid until end of month</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ACCOUNT MODAL ===== -->
   <div id="accountModal" class="modal-overlay">
     <div class="modal-container">
       <div class="modal-header"><h3><i class="fas fa-user"></i> Account</h3><button class="modal-close" id="closeAccountBtn">&times;</button></div>
