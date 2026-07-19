@@ -239,3 +239,27 @@ body {
   .category-bar { padding:8px 12px; }
   .filter-bar { padding:8px 12px; }
 }
+/* Logo image */
+.logo-img {
+  max-height: 40px;
+  width: auto;
+}
+
+/* Fix category bar – ensure it clears the header */
+.category-bar {
+  position: fixed;
+  top: 110px;        /* Increase if still overlapping */
+  left: 0;
+  right: 0;
+  max-width: 1400px;
+  margin: 0 auto;
+  background: white;
+  padding: 8px 24px;
+  z-index: 99;
+  border-bottom: 1px solid #eef2ff;
+}
+
+/* Increase body padding to push content below both header & category bar */
+body {
+  padding-top: 190px;   /* Adjust if needed */
+}
