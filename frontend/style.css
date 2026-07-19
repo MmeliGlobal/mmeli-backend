@@ -76,7 +76,7 @@ body {
   display:grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap:20px;
-  padding:20px 24px 24px;
+  padding:20px 24px 0;
 }
 @media (min-width: 768px) {
   .products-grid { grid-template-columns: repeat(3,1fr); }
@@ -92,8 +92,11 @@ body {
   overflow:hidden; display:flex; flex-direction:column; transition:box-shadow 0.2s; cursor:pointer;
 }
 .product-card:hover { box-shadow:0 4px 16px rgba(0,0,0,0.06); }
-.product-card img {
-  width:100%; aspect-ratio:1/1; object-fit:cover; background:#f8fafc;
+.product-card .image-wrapper {
+  aspect-ratio:1/1; overflow:hidden; background:#f0f0f0;
+}
+.product-card .image-wrapper img {
+  width:100%; height:100%; object-fit:cover; transition:opacity 0.3s;
 }
 .product-card .product-info { padding:10px 12px 14px; flex:1; display:flex; flex-direction:column; }
 .product-card .product-info h3 { font-size:0.85rem; font-weight:600; margin-bottom:2px; }
@@ -116,6 +119,14 @@ body {
 }
 .product-card .share-btn:hover { background:#1da851; }
 .badge { font-size:0.55rem; background:#fef9c3; padding:2px 10px; border-radius:20px; display:inline-block; margin-bottom:4px; }
+
+/* ===== LOAD MORE BUTTON ===== */
+.load-more-btn {
+  background:#f1f5f9; border:1px solid #e2e8f0; border-radius:40px;
+  padding:8px 24px; font-size:0.8rem; font-weight:500; cursor:pointer;
+  transition:0.2s; color:#1e3a8a;
+}
+.load-more-btn:hover { background:#e2e8f0; }
 
 /* ===== STICKY FOOTER ===== */
 .sticky-footer {
@@ -161,6 +172,11 @@ body {
   font-weight:700; width:100%; cursor:pointer; font-size:0.9rem;
 }
 .add-to-cart:hover, .checkout-btn:hover, .account-btn:hover, .track-btn:hover { background:#2563eb; }
+.share-btn-modal {
+  background:#25D366; color:white; border:none; padding:10px; border-radius:40px;
+  font-weight:700; width:100%; cursor:pointer; margin-top:8px;
+}
+.share-btn-modal:hover { background:#1da851; }
 .related-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:8px; }
 .related-card { background:#f8fafc; border-radius:12px; padding:8px; text-align:center; cursor:pointer; }
 .related-card img { width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:8px; }
@@ -219,7 +235,7 @@ body {
 /* ===== RESPONSIVE ===== */
 @media (max-width:640px) {
   .filter-bar select, .filter-bar input { min-width:50px; font-size:0.6rem; }
-  .products-grid { gap:12px; padding:12px 12px 16px; grid-template-columns: 1fr 1fr; }
+  .products-grid { gap:12px; padding:12px 12px 0; grid-template-columns: 1fr 1fr; }
   .category-bar { padding:8px 12px; }
   .filter-bar { padding:8px 12px; }
 }
