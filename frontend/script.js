@@ -186,31 +186,26 @@ function createProductCard(p) {
   const minOrder = p.min_order || 1;
 
   card.innerHTML = `
-    <div class="image-wrapper" style="position:relative;">
-      <img 
-        class="lazy" 
-        data-src="${imgSrc}" 
-        alt="${escapeHtml(p.name)}" 
-        style="opacity:0; width:100%; height:100%; object-fit:cover;"
-        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-      >
-      <div style="display:none; align-items:center; justify-content:center; width:100%; height:100%; background:#f0f0f0; color:#999; font-size:0.8rem; position:absolute; top:0; left:0;">
-        No Image
-      </div>
-      <button class="share-btn-img" data-id="${p.id}" style="position:absolute; bottom:10px; right:10px; background:rgba(255,255,255,0.9); border:none; border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#25D366; font-size:1.2rem; box-shadow:0 2px 8px rgba(0,0,0,0.15); transition:0.2s; z-index:5;"><i class="fas fa-share-alt"></i></button>
-    </div>
-    <div class="product-info">
-      ${badge}
-      <h3>${escapeHtml(p.name)}</h3>
-      <div class="desc">${escapeHtml(p.description || '')}</div>
+  <div class="image-wrapper" style="position:relative;">
+    <img ...>
+    <div style="display:none; ...">No Image</div>
+    <button class="share-btn-img" data-id="${p.id}"><i class="fas fa-share-alt"></i></button>
+  </div>
+  <div class="product-info">
+    ${badge}
+    <h3>${escapeHtml(p.name)}</h3>
+    <div class="desc">${escapeHtml(p.description || '')}</div>
+    <div class="price-min-row">
       <div class="price">$${basePrice.toFixed(2)}</div>
-      <div class="min-order">Min Order: ${minOrder}</div>
-      <div class="size-color-row">
-        <select class="size-select">${sizeOpts}</select>
-        <select class="color-select">${colorOpts}</select>
-      </div>
-      <button class="add-btn" data-id="${p.id}" data-name="${escapeHtml(p.name)}" data-price="${basePrice}" data-min="${minOrder}">Add to Cart</button>
+      <div class="min-order">Min: ${minOrder}</div>
     </div>
+    <div class="size-color-row">
+      <select class="size-select">${sizeOpts}</select>
+      <select class="color-select">${colorOpts}</select>
+    </div>
+    <button class="add-btn" data-id="${p.id}" data-name="${escapeHtml(p.name)}" data-price="${basePrice}" data-min="${minOrder}">Add to Cart</button>
+  </div>
+`;
   `;
 
   const priceSpan = card.querySelector('.price');
