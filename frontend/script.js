@@ -7,7 +7,7 @@ let currentSubcategory = '';
 let minPrice = '';
 let maxPrice = '';
 
-// ===== CART FUNCTIONS =====
+// ===== CART =====
 function updateCartBadges() {
   const total = cart.reduce((s, i) => s + (i.quantity || 1), 0);
   document.getElementById('cartCountBadge').innerText = total;
@@ -99,21 +99,13 @@ function generateDemoProducts() {
   }));
 }
 
-// ===== RENDER PRODUCTS =====
+// ===== RENDER =====
 function renderProducts() {
   const container = document.getElementById('productsContainer');
   if (!container) return;
   let filtered = [...allProducts];
-
-  // Category filter
-  if (currentCategory !== 'All') {
-    filtered = filtered.filter(p => p.cat === currentCategory);
-  }
-  // Subcategory filter
-  if (currentSubcategory) {
-    filtered = filtered.filter(p => p.subcat === currentSubcategory);
-  }
-  // Price filter
+  if (currentCategory !== 'All') filtered = filtered.filter(p => p.cat === currentCategory);
+  if (currentSubcategory) filtered = filtered.filter(p => p.subcat === currentSubcategory);
   if (minPrice) filtered = filtered.filter(p => p.price >= parseFloat(minPrice));
   if (maxPrice) filtered = filtered.filter(p => p.price <= parseFloat(maxPrice));
 
@@ -121,7 +113,6 @@ function renderProducts() {
     container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;">No products found</div>';
     return;
   }
-
   container.innerHTML = '';
   filtered.forEach(p => {
     const card = document.createElement('div');
@@ -138,16 +129,12 @@ function renderProducts() {
         <button class="add-btn" data-id="${p.id}" data-name="${escapeHtml(p.name)}" data-price="${p.price}">Add to Cart</button>
       </div>
     `;
-    // Click card to open detail
     card.addEventListener('click', (e) => {
       if (e.target.tagName !== 'BUTTON') openProductModal(p.id);
     });
-    // Add to cart button
     card.querySelector('.add-btn').addEventListener('click', function(e) {
       e.stopPropagation();
-      const size = 'Standard';
-      const color = 'Default';
-      addToCart(p.id, p.name, p.price, size, color);
+      addToCart(p.id, p.name, p.price, 'Standard', 'Default');
     });
     container.appendChild(card);
   });
@@ -164,7 +151,6 @@ function openProductModal(id) {
   const mainImg = document.getElementById('modalProductImage');
   mainImg.src = product.main_image || `https://picsum.photos/600/600?random=${product.id}`;
 
-  // Thumbnails
   const thumbContainer = document.getElementById('modalProductThumbnails');
   thumbContainer.innerHTML = '';
   const thumbs = [product.main_image];
@@ -177,7 +163,6 @@ function openProductModal(id) {
     thumbContainer.appendChild(div);
   });
 
-  // Modal add to cart
   const modalAddBtn = document.getElementById('modalAddToCartBtn');
   const newBtn = modalAddBtn.cloneNode(true);
   modalAddBtn.parentNode.replaceChild(newBtn, modalAddBtn);
@@ -189,7 +174,6 @@ function openProductModal(id) {
     document.getElementById('productModal').classList.remove('active');
   });
 
-  // Related products
   const relatedGrid = document.getElementById('relatedProductsGrid');
   relatedGrid.innerHTML = '';
   const related = allProducts.filter(p => p.cat === product.cat && p.id !== product.id).slice(0, 4);
@@ -204,12 +188,11 @@ function openProductModal(id) {
     card.addEventListener('click', () => { openProductModal(p.id); });
     relatedGrid.appendChild(card);
   });
-
   modal.classList.add('active');
 }
 function closeProductModal() { document.getElementById('productModal').classList.remove('active'); }
 
-// ===== FILTER FUNCTIONS =====
+// ===== FILTERS =====
 function applyFilters() {
   currentCategory = document.getElementById('categoryFilter').value || 'All';
   currentSubcategory = document.getElementById('subcategoryFilter').value || '';
@@ -217,18 +200,13 @@ function applyFilters() {
   maxPrice = document.getElementById('maxPrice').value || '';
   renderProducts();
 }
-
 function resetFilters() {
   document.getElementById('categoryFilter').value = '';
   document.getElementById('subcategoryFilter').value = '';
   document.getElementById('minPrice').value = '';
   document.getElementById('maxPrice').value = '';
-  currentCategory = 'All';
-  currentSubcategory = '';
-  minPrice = '';
-  maxPrice = '';
+  currentCategory = 'All'; currentSubcategory = ''; minPrice = ''; maxPrice = '';
   renderProducts();
-  // Reset active chip
   document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
   document.querySelector('.chip[data-category="All"]')?.classList.add('active');
 }
@@ -239,37 +217,31 @@ document.addEventListener('DOMContentLoaded', function() {
   renderCartModal();
   loadProducts();
 
-  // Category chips
   document.querySelectorAll('.chip').forEach(chip => {
     chip.addEventListener('click', function() {
       document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
       this.classList.add('active');
-      const cat = this.dataset.category;
-      document.getElementById('categoryFilter').value = cat === 'All' ? '' : cat;
+      document.getElementById('categoryFilter').value = this.dataset.category === 'All' ? '' : this.dataset.category;
       applyFilters();
     });
   });
 
-  // Filter inputs
   document.getElementById('categoryFilter').addEventListener('change', applyFilters);
   document.getElementById('subcategoryFilter').addEventListener('change', applyFilters);
   document.getElementById('minPrice').addEventListener('input', applyFilters);
   document.getElementById('maxPrice').addEventListener('input', applyFilters);
   document.getElementById('resetFilters').addEventListener('click', resetFilters);
 
-  // Search
   document.getElementById('searchInput').addEventListener('input', function() {
     const term = this.value.toLowerCase().trim();
     const cards = document.querySelectorAll('.product-card');
     cards.forEach(card => {
       const name = card.querySelector('h3')?.innerText.toLowerCase() || '';
       const desc = card.querySelector('.desc')?.innerText.toLowerCase() || '';
-      const show = term === '' || name.includes(term) || desc.includes(term);
-      card.style.display = show ? '' : 'none';
+      card.style.display = term === '' || name.includes(term) || desc.includes(term) ? '' : 'none';
     });
   });
 
-  // Cart modal
   document.getElementById('cartIconBtn').addEventListener('click', () => {
     renderCartModal();
     document.getElementById('cartModal').classList.add('active');
@@ -281,13 +253,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (e.target === document.getElementById('cartModal')) document.getElementById('cartModal').classList.remove('active');
   });
 
-  // Product modal
   document.getElementById('closeModalBtn').addEventListener('click', closeProductModal);
   document.getElementById('productModal').addEventListener('click', (e) => {
     if (e.target === document.getElementById('productModal')) closeProductModal();
   });
 
-  // Footer navigation
   document.getElementById('footerHome').addEventListener('click', (e) => {
     e.preventDefault();
     document.querySelectorAll('.footer-link').forEach(l => l.classList.remove('active'));
@@ -302,7 +272,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('cartModal').classList.add('active');
   });
 
-  // Checkout
   document.getElementById('checkoutBtn').addEventListener('click', function() {
     if (!cart.length) { alert('Cart is empty'); return; }
     const total = cart.reduce((s,i) => s + i.price * i.quantity, 0);
