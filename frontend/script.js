@@ -46,7 +46,7 @@ function shareProduct(productId) {
   window.open(waUrl, '_blank');
 }
 
-// ===== CART =====
+// ===== CART (with quantity support) =====
 function updateCartBadges() {
   const total = cart.reduce((s, i) => s + (i.quantity || 1), 0);
   const badge = document.getElementById('cartCountBadge');
@@ -85,12 +85,14 @@ function renderCartModal() {
     });
   });
 }
-function addToCart(id, name, price, size, color) {
+// Updated addToCart with quantity parameter
+function addToCart(id, name, price, size, color, qty = 1) {
   const itemName = `${name} (${size}, ${color})`;
   const existing = cart.find(i => i.id == id && i.size === size && i.color === color);
-  if (existing) existing.quantity = (existing.quantity || 1) + 1;
-  else cart.push({ id, name: itemName, price, size, color, quantity: 1 });
-  saveCart(); updateCartBadges(); renderCartModal(); showToast(`${itemName} added`);
+  if (existing) existing.quantity += qty;
+  else cart.push({ id, name: itemName, price, size, color, quantity: qty });
+  saveCart(); updateCartBadges(); renderCartModal();
+  showToast(`${qty} × ${itemName} added`);
 }
 
 // ===== CHECKOUT (WhatsApp) =====
@@ -148,7 +150,6 @@ function trackOrder() {
 
 // ===== PRODUCTS =====
 function generateDemoProducts() {
-  // Only used if backend fails AND no cache – these have NO images (will show "No Image")
   const names = ['iPhone 15 Pro Max', 'Samsung Galaxy S24', 'MacBook Pro 14"', 'Dell XPS 16', 'iPad Pro', 'Sony Headphones', 'Apple Watch', 'Lenovo ThinkPad'];
   const cats = ['Phones', 'Phones', 'Laptops', 'Laptops', 'Tablets', 'Accessories', 'Accessories', 'Laptops'];
   const brands = ['Apple', 'Samsung', 'Apple', 'Dell', 'Apple', 'Sony', 'Apple', 'Lenovo'];
@@ -167,11 +168,12 @@ function generateDemoProducts() {
       { size: '128GB', price: 199 + i * 150 + 100 },
       { size: '256GB', price: 199 + i * 150 + 200 }
     ],
-    badge: i % 2 === 0 ? 'Best Seller' : ''
+    badge: i % 2 === 0 ? 'Best Seller' : '',
+    min_order: i % 2 === 0 ? 5 : 1 // demo: some wholesale, some retail
   }));
 }
 
-// ===== PRODUCT CARD CREATION =====
+// ===== CREATE PRODUCT CARD =====
 function createProductCard(p) {
   const card = document.createElement('div');
   card.className = 'product-card';
@@ -182,9 +184,10 @@ function createProductCard(p) {
   let sizeOpts = sizes.map(s => `<option value="${escapeHtml(s.size)}" data-price="${s.price}">${escapeHtml(s.size)}</option>`).join('');
   let colorOpts = colors.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
   const basePrice = sizes[0].price;
+  const minOrder = p.min_order || 1;
 
   card.innerHTML = `
-    <div class="image-wrapper">
+    <div class="image-wrapper" style="position:relative;">
       <img 
         class="lazy" 
         data-src="${imgSrc}" 
@@ -195,22 +198,24 @@ function createProductCard(p) {
       <div style="display:none; align-items:center; justify-content:center; width:100%; height:100%; background:#f0f0f0; color:#999; font-size:0.8rem; position:absolute; top:0; left:0;">
         No Image
       </div>
+      <!-- Share button on image -->
+      <button class="share-btn-img" data-id="${p.id}" style="position:absolute; bottom:10px; right:10px; background:rgba(255,255,255,0.9); border:none; border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#25D366; font-size:1.2rem; box-shadow:0 2px 8px rgba(0,0,0,0.15); transition:0.2s; z-index:5;"><i class="fas fa-share-alt"></i></button>
     </div>
     <div class="product-info">
       ${badge}
       <h3>${escapeHtml(p.name)}</h3>
       <div class="desc">${escapeHtml(p.description || '')}</div>
-      <div class="price" data-base-price="${basePrice}">$${basePrice.toFixed(2)}</div>
+      <div class="price">$${basePrice.toFixed(2)}</div>
+      <div class="min-order">Min Order: ${minOrder}</div>
       <div class="size-color-row">
         <select class="size-select">${sizeOpts}</select>
         <select class="color-select">${colorOpts}</select>
       </div>
-      <button class="add-btn" data-id="${p.id}" data-name="${escapeHtml(p.name)}" data-price="${basePrice}">Add to Cart</button>
-      <button class="share-btn" data-id="${p.id}"><i class="fas fa-share-alt"></i> Share</button>
+      <button class="add-btn" data-id="${p.id}" data-name="${escapeHtml(p.name)}" data-price="${basePrice}" data-min="${minOrder}">Add to Cart</button>
     </div>
   `;
 
-  // Price update
+  // Price update on size change
   const priceSpan = card.querySelector('.price');
   const sizeSelect = card.querySelector('.size-select');
   const addBtn = card.querySelector('.add-btn');
@@ -220,18 +225,25 @@ function createProductCard(p) {
     priceSpan.innerText = `$${newPrice.toFixed(2)}`;
     addBtn.dataset.price = newPrice;
   });
+
+  // Card click -> open modal
   card.addEventListener('click', (e) => {
     if (e.target.tagName !== 'BUTTON' && !e.target.closest('select')) openProductModal(p.id);
   });
+
+  // Add to Cart – uses min order quantity
   addBtn.addEventListener('click', function(e) {
     e.stopPropagation();
     const size = sizeSelect.value;
     const color = card.querySelector('.color-select').value;
     const price = parseFloat(this.dataset.price);
-    addToCart(p.id, p.name, price, size, color);
+    const minQty = parseInt(this.dataset.min) || 1;
+    addToCart(p.id, p.name, price, size, color, minQty);
   });
-  const shareBtn = card.querySelector('.share-btn');
-  shareBtn.addEventListener('click', function(e) {
+
+  // Share button on image
+  const shareImgBtn = card.querySelector('.share-btn-img');
+  shareImgBtn.addEventListener('click', function(e) {
     e.stopPropagation();
     shareProduct(p.id);
   });
@@ -255,10 +267,11 @@ function createProductCard(p) {
       img.style.opacity = '1';
     }
   }
+
   return card;
 }
 
-// ===== RENDER PRODUCTS (with pagination and shuffle) =====
+// ===== RENDER PRODUCTS (with shuffle & pagination) =====
 function renderProducts(append = false) {
   const container = document.getElementById('productsContainer');
   if (!container) return;
@@ -268,7 +281,7 @@ function renderProducts(append = false) {
   if (minPrice) filtered = filtered.filter(p => p.price >= parseFloat(minPrice));
   if (maxPrice) filtered = filtered.filter(p => p.price <= parseFloat(maxPrice));
 
-  // Shuffle filtered products on every render
+  // Shuffle
   filtered = shuffleArray(filtered);
 
   if (!filtered.length) {
@@ -333,7 +346,7 @@ async function loadProducts() {
   }
 }
 
-// ===== PRODUCT MODAL (with multiple images) =====
+// ===== PRODUCT MODAL =====
 function openProductModal(id) {
   const product = allProducts.find(p => p.id == id);
   if (!product) { alert('Product not found'); return; }
@@ -345,13 +358,12 @@ function openProductModal(id) {
   mainImg.src = product.main_image || '';
   mainImg.onerror = function() { this.style.display = 'none'; };
 
-  // Thumbnails: combine main image + images array
+  // Thumbnails
   const thumbContainer = document.getElementById('modalProductThumbnails');
   thumbContainer.innerHTML = '';
   const allImages = [];
   if (product.main_image) allImages.push(product.main_image);
   if (product.images && product.images.length) allImages.push(...product.images);
-  // Remove duplicates
   const uniqueImages = [...new Set(allImages)];
   uniqueImages.slice(0, 6).forEach(img => {
     const div = document.createElement('div');
@@ -384,10 +396,12 @@ function openProductModal(id) {
     const size = sizeSelect.value;
     const color = colorSelect.value;
     const price = parseFloat(sizeSelect.options[sizeSelect.selectedIndex].dataset.price);
-    addToCart(product.id, product.name, price, size, color);
+    const minQty = product.min_order || 1;
+    addToCart(product.id, product.name, price, size, color, minQty);
     modal.classList.remove('active');
   });
 
+  // Share button in modal
   const shareContainer = document.querySelector('.modal-share-container');
   if (shareContainer) {
     shareContainer.innerHTML = '';
@@ -398,6 +412,7 @@ function openProductModal(id) {
     shareContainer.appendChild(shareBtn);
   }
 
+  // Related products
   const relatedGrid = document.getElementById('relatedProductsGrid');
   relatedGrid.innerHTML = '';
   const related = allProducts.filter(p => p.cat === product.cat && p.id !== product.id).slice(0, 4);
@@ -413,6 +428,7 @@ function openProductModal(id) {
     card.addEventListener('click', () => openProductModal(p.id));
     relatedGrid.appendChild(card);
   });
+
   modal.classList.add('active');
 }
 function closeProductModal() {
@@ -551,12 +567,13 @@ function switchPage(pageId) {
   }
 }
 
-// ===== ADMIN ADD PRODUCT (with multi‑image support) =====
+// ===== ADMIN ADD PRODUCT =====
 function showAddProductForm(container) {
   container.innerHTML = `
     <h3>Add Product</h3>
     <input id="prodName" placeholder="Name"><br>
     <input id="prodPrice" placeholder="Price"><br>
+    <input id="prodMinOrder" placeholder="Min Order (e.g., 1 for retail, 5 for wholesale)" value="1"><br>
     <textarea id="prodDesc" placeholder="Description"></textarea><br>
     <input id="prodCat" placeholder="Category"><br>
     <input id="prodSubcat" placeholder="Subcategory"><br>
@@ -582,6 +599,7 @@ function showAddProductForm(container) {
 async function addProduct() {
   const name = document.getElementById('prodName').value;
   const price = parseFloat(document.getElementById('prodPrice').value);
+  const min_order = parseInt(document.getElementById('prodMinOrder').value) || 1;
   const description = document.getElementById('prodDesc').value;
   const cat = document.getElementById('prodCat').value;
   const subcat = document.getElementById('prodSubcat').value;
@@ -638,7 +656,7 @@ async function addProduct() {
   if (size_options.length === 0) size_options = [{ size: 'Standard', price: price }];
 
   const productData = {
-    name, description, cat, subcat, price, colors, size_options,
+    name, description, cat, subcat, price, colors, size_options, min_order,
     main_image,
     images: additionalImages
   };
@@ -654,7 +672,7 @@ async function addProduct() {
   }
 }
 
-// ===== EDIT PRODUCT (multi‑image support) =====
+// ===== EDIT PRODUCT =====
 async function editProductModal(id) {
   const p = await apiCall(`/products/${id}`);
   const body = document.getElementById('modalManageProducts').querySelector('.modal-body');
@@ -665,6 +683,7 @@ async function editProductModal(id) {
     <input type="file" id="editImageFile" accept="image/*"><br>
     <input id="editName" value="${p.name}"><br>
     <input id="editPrice" value="${p.price}"><br>
+    <input id="editMinOrder" value="${p.min_order || 1}"><br>
     <textarea id="editDesc">${p.description||''}</textarea><br>
     <input id="editCat" value="${p.cat}"><br>
     <input id="editSubcat" value="${p.subcat}"><br>
@@ -684,6 +703,7 @@ async function editProductModal(id) {
 async function updateProductWithImage(id) {
   const name = document.getElementById('editName').value;
   const price = parseFloat(document.getElementById('editPrice').value);
+  const min_order = parseInt(document.getElementById('editMinOrder').value) || 1;
   const description = document.getElementById('editDesc').value;
   const cat = document.getElementById('editCat').value;
   const subcat = document.getElementById('editSubcat').value;
@@ -717,7 +737,6 @@ async function updateProductWithImage(id) {
   }
   if (size_options.length === 0) size_options = [{ size: 'Standard', price: price }];
 
-  // Collect additional images
   const additionalImages = [];
   if (additionalFiles.length) {
     for (const file of additionalFiles) {
@@ -735,7 +754,7 @@ async function updateProductWithImage(id) {
   }
 
   const productData = {
-    name, description, cat, subcat, price, colors, size_options,
+    name, description, cat, subcat, price, colors, size_options, min_order,
     main_image,
     images: additionalImages
   };
@@ -751,8 +770,9 @@ async function updateProductWithImage(id) {
   }
 }
 
-// ===== (Keep your existing admin functions – loadOrdersModal, etc.) =====
-// ... (they remain unchanged; I'm not pasting them again to save space, but they are still in your script)
+// ===== KEEP YOUR EXISTING ADMIN FUNCTIONS (loadOrdersModal, etc.) =====
+// They are not changed; they remain as they were in your original script.
+// I'll include them below as placeholders – you already have them.
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', function() {
@@ -960,3 +980,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   populateSubcategories('');
 });
+
+// ===== (Keep your existing admin modal functions – loadOrdersModal, etc.) =====
+// They are unchanged; I'm not repeating them here for brevity.
+// Your original file contains them.
