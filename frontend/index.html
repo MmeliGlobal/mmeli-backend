@@ -2,219 +2,146 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mmeli Global – Simple</title>
-  <!-- Font Awesome -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Mmeli Global</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-  <!-- Leaflet (for tracking) -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- SheetJS (bulk upload still available) -->
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <!-- ===== HEADER ===== -->
-  <header>
-    <div class="container header-flex">
-      <div class="logo" id="logoArea">
-        <i class="fas fa-store"></i>
-        <span>Mmeli</span>
+<div class="app-container">
+  
+  <!-- ===== STICKY HEADER ===== -->
+  <header class="sticky-header">
+    <div class="header-top">
+      <div class="logo">
+        <i class="fas fa-store" style="color:#1e3a8a; font-size:1.6rem;"></i>
+        <span class="logo-text">Mmeli Global</span>
       </div>
-      <div class="search-wrap">
-        <input type="text" id="searchInput" placeholder="Search..." />
-        <button onclick="searchProducts()"><i class="fas fa-search"></i></button>
-        <div id="autocompleteList" class="autocomplete"></div>
+      <div class="header-actions">
+        <button class="cart-btn" id="cartIconBtn">
+          <i class="fas fa-shopping-cart"></i>
+          <span class="cart-badge" id="cartCountBadge">0</span>
+        </button>
       </div>
-      <nav class="nav-icons">
-        <a href="#" onclick="switchPage('home')"><i class="fas fa-home"></i></a>
-        <a href="#" onclick="switchPage('cart')"><i class="fas fa-shopping-cart"></i> <span id="cartCount">0</span></a>
-        <a href="#" onclick="switchPage('account')"><i class="fas fa-user"></i></a>
-        <a href="#" onclick="switchPage('tracking')"><i class="fas fa-truck"></i></a>
-      </nav>
+    </div>
+    <div class="search-row">
+      <i class="fas fa-search search-icon"></i>
+      <input type="text" id="searchInput" placeholder="Search products..." />
     </div>
   </header>
 
-  <!-- ===== CATEGORY BAR ===== -->
+  <!-- ===== CATEGORY CHIPS (Horizontal Scroll) ===== -->
   <nav class="category-bar">
-    <div id="mainMenu" class="main-menu"></div>
-    <div id="subMenu" class="sub-menu"></div>
+    <div class="category-chips" id="categoryChips">
+      <span class="chip active" data-category="All">All</span>
+      <span class="chip" data-category="Phones">Phones</span>
+      <span class="chip" data-category="Cameras">Cameras</span>
+      <span class="chip" data-category="Farming">Farming</span>
+      <span class="chip" data-category="Construction">Constr.</span>
+      <span class="chip" data-category="Electronics">Electronics</span>
+      <span class="chip" data-category="Hardware">Hardware</span>
+      <span class="chip" data-category="Beauty">Beauty</span>
+      <span class="chip" data-category="Fashion">Fashion</span>
+    </div>
   </nav>
 
-  <!-- ===== PAGES ===== -->
-  <main>
-    <!-- HOME -->
-    <section id="home" class="page active">
-      <div id="productsContainer" class="product-grid"></div>
-      <button id="loadMoreBtn" onclick="loadMoreProducts()" style="display:block; margin:20px auto;">Load More</button>
-    </section>
+  <!-- ===== FILTER BAR ===== -->
+  <div class="filter-bar">
+    <select id="categoryFilter">
+      <option value="">All Categories</option>
+      <option value="Phones">Phones</option>
+      <option value="Cameras">Cameras</option>
+      <option value="Farming">Farming</option>
+      <option value="Construction">Construction</option>
+      <option value="Electronics">Electronics</option>
+      <option value="Hardware">Hardware</option>
+      <option value="Beauty">Beauty</option>
+      <option value="Fashion">Fashion</option>
+    </select>
+    <select id="subcategoryFilter">
+      <option value="">All Subcategories</option>
+    </select>
+    <input type="number" id="minPrice" placeholder="Min Price" />
+    <input type="number" id="maxPrice" placeholder="Max Price" />
+    <button class="reset-btn" id="resetFilters">Reset</button>
+  </div>
 
-    <!-- PRODUCT DETAIL -->
-    <section id="productPage" class="page">
-      <div id="productDetailContainer"></div>
-    </section>
-
-    <!-- CART -->
-    <section id="cart" class="page">
-      <h2>Your Cart</h2>
-      <div id="cartList"></div>
-      <div id="cartRecommendations"></div>
-      <button onclick="goToCheckout()" class="btn-primary">Checkout</button>
-    </section>
-
-    <!-- CHECKOUT -->
-    <section id="checkoutPage" class="page">
-      <h2>Checkout</h2>
-      <div class="checkout-steps">
-        <div id="stepShipping" class="step active">
-          <label>Shipping Address</label>
-          <textarea id="checkoutAddress" rows="3"></textarea>
-          <button onclick="nextStep()">Next</button>
-        </div>
-        <div id="stepDelivery" class="step">
-          <label>Delivery</label>
-          <div><input type="radio" name="delivery" value="standard" checked /> Standard ($5)</div>
-          <div><input type="radio" name="delivery" value="express" /> Express ($15)</div>
-          <button onclick="nextStep()">Next</button>
-        </div>
-        <div id="stepPayment" class="step">
-          <h3>Payment</h3>
-          <p>Total: $<span id="checkoutTotal">0.00</span></p>
-          <input id="promoCodeInput" placeholder="Promo code" />
-          <button onclick="applyDiscount()">Apply</button>
-          <span id="discountDisplay"></span>
-          <button onclick="completeCheckout()" class="btn-primary">Place Order</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- TRACKING -->
-    <section id="tracking" class="page">
-      <h2>Track Order</h2>
-      <input id="trackCode" placeholder="Tracking code" />
-      <button onclick="trackOrder()">Track</button>
-      <div id="trackInfo"></div>
-      <div id="trackTimeline"></div>
-      <div id="map" style="height:250px; width:100%; margin-top:15px;"></div>
-      <hr />
-      <h3>Shipment Tracking</h3>
-      <input id="shipmentCode" placeholder="Shipment code" />
-      <button onclick="fetchShipmentStatus()">Check</button>
-      <div id="shipmentStatus"></div>
-      <div id="shipmentTimeline"></div>
-    </section>
-
-    <!-- ACCOUNT -->
-    <section id="account" class="page">
-      <div id="loginBox">
-        <h3>Login</h3>
-        <input id="loginEmail" placeholder="Phone" />
-        <input id="loginPassword" type="password" placeholder="Password" />
-        <button onclick="login()" class="btn-primary">Login</button>
-        <hr />
-        <h3>Register</h3>
-        <input id="regName" placeholder="Full Name" />
-        <input id="regPhone" placeholder="Phone" />
-        <input id="regEmail" placeholder="Email" />
-        <input id="regAddress" placeholder="Address" />
-        <input id="regPassword" type="password" placeholder="Password" />
-        <button onclick="register()" class="btn-primary">Register</button>
-      </div>
-      <div id="dashboard" style="display:none;">
-        <h3>Welcome, <span id="userName"></span></h3>
-        <div class="dashboard-links">
-          <button onclick="showProfile()">Profile</button>
-          <button onclick="showMyOrders()">Orders</button>
-          <button onclick="showMyQuotations()">Quotations</button>
-          <button onclick="showMyReturns()">Returns</button>
-          <button onclick="openShipmentTracking()">Shipment</button>
-          <button onclick="logout()">Logout</button>
-        </div>
-        <div id="customerData"></div>
-      </div>
-    </section>
-
-    <!-- ADMIN DASHBOARD (double‑click logo) -->
-    <section id="adminDashboard" class="page">
-      <div id="adminLoginDiv">
-        <h3>Admin Login</h3>
-        <input id="adminEmail" placeholder="Email" />
-        <input id="adminPassword" type="password" placeholder="Password" />
-        <button onclick="adminLogin()" class="btn-primary">Login</button>
-      </div>
-      <div id="adminPanel" style="display:none;">
-        <h3>Admin</h3>
-        <div class="admin-grid">
-          <div class="admin-card" data-modal="dashboardStats">📊 Stats</div>
-          <div class="admin-card" data-modal="manageProducts">📦 Products</div>
-          <div class="admin-card" data-modal="addProduct">➕ Add</div>
-          <div class="admin-card" data-modal="bulkUpload">📤 Bulk</div>
-          <div class="admin-card" data-modal="manageOrders">📋 Orders</div>
-          <div class="admin-card" data-modal="discounts">🏷️ Discounts</div>
-          <div class="admin-card" data-modal="returns">🔄 Returns</div>
-          <div class="admin-card" data-modal="inventory">📊 Inventory</div>
-          <div class="admin-card" data-modal="managePolicies">📜 Policies</div>
-          <div class="admin-card" data-modal="manageShipments">🚚 Shipments</div>
-          <div class="admin-card" data-modal="broadcast">📢 Broadcast</div>
-          <div class="admin-card" data-modal="createQuotation">📄 Quotation</div>
-        </div>
-      </div>
-    </section>
+  <!-- ===== PRODUCT GRID ===== -->
+  <main class="products-grid" id="productsContainer">
+    <!-- Products rendered by JS -->
   </main>
 
-  <!-- ===== MODALS (reduced set) ===== -->
-  <div id="modalDashboardStats" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-  <div id="modalManageProducts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-  <div id="modalAddProduct" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-  <div id="modalBulkUpload" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body">
-    <h3>Bulk Upload</h3>
-    <input type="file" id="bulkFileInput" accept=".xlsx,.xls" />
-    <div id="bulkMappingArea" style="display:none;"></div>
-    <div id="bulkProgressArea" style="display:none;">
-      <div style="background:#eee; height:20px; border-radius:10px;"><div id="bulkProgressFill" style="height:100%; width:0%; background:#4caf50;"></div></div>
-      <div id="bulkProgressText"></div>
-      <div id="bulkStatusLog" style="max-height:150px; overflow-y:auto;"></div>
+  <!-- ===== STICKY FOOTER ===== -->
+  <footer class="sticky-footer">
+    <div class="footer-icons">
+      <a href="#" class="footer-link active" id="footerHome">
+        <i class="fas fa-home"></i>
+        <span>Home</span>
+      </a>
+      <a href="#" class="footer-link" id="footerCategories">
+        <i class="fas fa-th-large"></i>
+        <span>Categories</span>
+      </a>
+      <a href="#" class="footer-link" id="footerCart">
+        <i class="fas fa-shopping-cart"></i>
+        <span>Cart</span>
+        <span class="footer-badge" id="footerCartBadge">0</span>
+      </a>
+      <a href="#" class="footer-link" id="footerAccount">
+        <i class="fas fa-user"></i>
+        <span>Account</span>
+      </a>
+      <a href="#" class="footer-link" id="footerMore">
+        <i class="fas fa-ellipsis-h"></i>
+        <span>More</span>
+      </a>
     </div>
-    <button id="bulkStartBtn" style="display:none;">Start</button>
-  </div></div></div>
-  <div id="modalManageOrders" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-  <div id="modalDiscounts" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-  <div id="modalReturns" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-  <div id="modalInventory" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-  <div id="modalManagePolicies" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-  <div id="modalManageShipments" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-  <div id="modalBroadcast" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-  <div id="modalCreateQuotation" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="modal-body"></div></div></div>
-  <!-- shipment tracking modal (non‑admin) -->
-  <div id="shipmentTrackingModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeShipmentModal()">&times;</span>
-    <h3>Track Shipment</h3>
-    <input id="shipmentTrackCode" placeholder="Shipment code" />
-    <button onclick="fetchShipmentStatusFromModal()">Track</button>
-    <div id="shipmentTrackResult"></div>
-  </div></div>
-  <!-- quote modal -->
-  <div id="quoteModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeQuoteModal()">&times;</span>
-    <h3>Quotation</h3>
-    <pre id="quotePreview"></pre>
-  </div></div>
+  </footer>
 
-  <!-- promo popup -->
-  <div id="popupPromo" class="popup"><div class="popup-content" id="popupContent"><span class="close-popup" onclick="closePopup()">&times;</span></div></div>
+  <!-- ===== CART MODAL ===== -->
+  <div id="cartModal" class="modal-overlay">
+    <div class="modal-container cart-container">
+      <div class="modal-header">
+        <h3><i class="fas fa-shopping-bag"></i> Your Cart</h3>
+        <button class="modal-close" id="closeCartBtn">&times;</button>
+      </div>
+      <div id="cartItemsContainer"><div class="empty-cart">Cart is empty</div></div>
+      <div class="cart-total" id="cartTotalContainer">Total: $0.00</div>
+      <button class="checkout-btn" id="checkoutBtn">Proceed to Checkout</button>
+    </div>
+  </div>
 
-  <!-- ===== STICKY FOOTER NAVIGATION ===== -->
-<nav class="footer-nav">
-  <a href="#" onclick="switchPage('home')" class="active" id="footerHome">
-    <i class="fas fa-home"></i> Home
-  </a>
-  <a href="#" onclick="switchPage('account')" id="footerProfile">
-    <i class="fas fa-user"></i> Profile
-  </a>
-  <a href="#" onclick="switchPage('tracking')" id="footerTracking">
-    <i class="fas fa-truck"></i> Tracking
-  </a>
-</nav>
-  
-  <script src="script.js"></script>
+  <!-- ===== PRODUCT MODAL ===== -->
+  <div id="productModal" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 id="modalProductTitle">Product</h3>
+        <button class="modal-close" id="closeModalBtn">&times;</button>
+      </div>
+      <div class="product-modal-body">
+        <div class="modal-product-image">
+          <img id="modalProductImage" src="" alt="Product" />
+        </div>
+        <div id="modalProductThumbnails" class="thumbnail-row"></div>
+        <p id="modalProductDesc"></p>
+        <div class="modal-product-price" id="modalProductPrice">$0.00</div>
+        <div class="modal-select-row">
+          <select id="modalSizeSelect"><option>Size</option></select>
+          <select id="modalColorSelect"><option>Color</option></select>
+        </div>
+        <button class="add-to-cart" id="modalAddToCartBtn">Add to Cart</button>
+        <div class="related-products-section">
+          <h4>You may also like</h4>
+          <div id="relatedProductsGrid" class="related-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>
