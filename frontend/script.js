@@ -9,6 +9,7 @@ let maxPrice = '';
 let currentUser = null;
 let token = localStorage.getItem('token');
 let user = JSON.parse(localStorage.getItem('user') || 'null');
+let mapInstance = null;  // for tracking map
 
 // ===== SUBCATEGORY MAPPING =====
 const subcategoryMap = {
@@ -83,7 +84,38 @@ function addToCart(id, name, price, size, color) {
   showToast(`${itemName} added`);
 }
 
-// ===== TRACKING =====
+// ===== CHECKOUT (WhatsApp) =====
+function checkoutToWhatsApp() {
+  if (!cart.length) { alert('Cart is empty'); return; }
+  let total = 0;
+  let itemsText = cart.map(item => {
+    const qty = item.quantity || 1;
+    total += item.price * qty;
+    return `${item.name} x ${qty} = $${(item.price * qty).toFixed(2)}`;
+  }).join('%0A');
+  const message = `🛒 *New Order Summary*%0A%0A${itemsText}%0A%0A💰 *Total: $${total.toFixed(2)}*%0A%0A📦 Please confirm payment and shipping address.`;
+  const phone = '263776871711';
+  const url = `https://wa.me/${phone}?text=${message}`;
+  window.open(url, '_blank');
+}
+
+// ===== TRACKING (with map) =====
+function initTrackingMap() {
+  if (mapInstance) {
+    mapInstance.remove();
+    mapInstance = null;
+  }
+  const mapContainer = document.getElementById('trackMap');
+  if (!mapContainer) return;
+  mapInstance = L.map(mapContainer).setView([-17.825, 31.033], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(mapInstance);
+  // Add a sample marker (you can replace with actual order location)
+  L.marker([-17.825, 31.033]).addTo(mapInstance)
+    .bindPopup('Mmeli Global HQ')
+    .openPopup();
+}
 function trackOrder() {
   const code = document.getElementById('trackCodeInput').value.trim();
   const resultDiv = document.getElementById('trackResult');
@@ -93,6 +125,7 @@ function trackOrder() {
     return;
   }
   resultDiv.innerHTML = '<span style="color:#1e3a8a;">Searching...</span>';
+  // Simulate API call
   setTimeout(() => {
     const statuses = ['Ordered', 'Shipped', 'In Transit', 'Delivered'];
     const completed = Math.floor(Math.random() * statuses.length) + 1;
@@ -105,6 +138,15 @@ function trackOrder() {
       </div>
     `;
     timelineDiv.innerHTML = steps;
+    // Update map to a random location (simulate tracking)
+    if (mapInstance) {
+      const lat = -17.825 + (Math.random() - 0.5) * 0.5;
+      const lng = 31.033 + (Math.random() - 0.5) * 0.5;
+      mapInstance.setView([lat, lng], 10);
+      L.marker([lat, lng]).addTo(mapInstance)
+        .bindPopup('Current location of your order')
+        .openPopup();
+    }
   }, 800);
 }
 
@@ -131,7 +173,6 @@ function generateDemoProducts() {
   }));
 }
 
-// ===== IMPROVED RENDER PRODUCTS (real images first) =====
 function renderProducts() {
   const container = document.getElementById('productsContainer');
   if (!container) return;
@@ -150,14 +191,11 @@ function renderProducts() {
     const card = document.createElement('div');
     card.className = 'product-card';
     
-    // ===== IMPROVED IMAGE HANDLING =====
+    // Use real image if available
     let imgSrc = p.main_image;
-    // If main_image exists and is a valid HTTP URL, use it; otherwise fallback to picsum
     if (!imgSrc || !imgSrc.startsWith('http')) {
       imgSrc = `https://picsum.photos/400/400?random=${p.id}`;
     }
-    // ===== END IMPROVED IMAGE HANDLING =====
-
     const badge = p.badge ? `<span class="badge">${escapeHtml(p.badge)}</span>` : '';
     const sizes = p.size_options && p.size_options.length ? p.size_options : [{ size: 'Standard', price: p.price }];
     const colors = p.colors && p.colors.length ? p.colors : ['Default'];
@@ -448,24 +486,21 @@ document.addEventListener('DOMContentLoaded', function() {
     } catch (e) {}
   }
 
-  // --- FOOTER NAVIGATION ---
-  const homeLink = document.getElementById('footerHome');
-  if (homeLink) {
-    homeLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      document.querySelectorAll('.footer-link').forEach(l => l.classList.remove('active'));
-      this.classList.add('active');
-      resetFilters();
-      showToast('Refreshed');
-    });
+  // --- CHECKOUT (WhatsApp) ---
+  const checkoutBtn = document.getElementById('checkoutBtn');
+  if (checkoutBtn) {
+    checkoutBtn.addEventListener('click', checkoutToWhatsApp);
   }
 
+  // --- TRACKING modal open → init map ---
   const trackingLink = document.getElementById('footerTracking');
   const trackingModal = document.getElementById('trackingModal');
   if (trackingLink && trackingModal) {
     trackingLink.addEventListener('click', function(e) {
       e.preventDefault();
       trackingModal.classList.add('active');
+      // init map after modal opens (slight delay to render)
+      setTimeout(initTrackingMap, 300);
     });
   }
   const closeTrackingBtn = document.getElementById('closeTrackingBtn');
@@ -479,6 +514,18 @@ document.addEventListener('DOMContentLoaded', function() {
   if (trackBtn) trackBtn.addEventListener('click', trackOrder);
   const trackInput = document.getElementById('trackCodeInput');
   if (trackInput) trackInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') trackOrder(); });
+
+  // --- FOOTER NAVIGATION (home, promo, account, more) ---
+  const homeLink = document.getElementById('footerHome');
+  if (homeLink) {
+    homeLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      document.querySelectorAll('.footer-link').forEach(l => l.classList.remove('active'));
+      this.classList.add('active');
+      resetFilters();
+      showToast('Refreshed');
+    });
+  }
 
   const promoLink = document.getElementById('footerPromo');
   const promoModal = document.getElementById('promoModal');
@@ -622,16 +669,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const desc = card.querySelector('.desc')?.innerText.toLowerCase() || '';
         card.style.display = term === '' || name.includes(term) || desc.includes(term) ? '' : 'none';
       });
-    });
-  }
-
-  // --- CHECKOUT ---
-  const checkoutBtn = document.getElementById('checkoutBtn');
-  if (checkoutBtn) {
-    checkoutBtn.addEventListener('click', function() {
-      if (!cart.length) { alert('Cart is empty'); return; }
-      const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-      alert(`Proceed to checkout. Total: $${total.toFixed(2)}`);
     });
   }
 
