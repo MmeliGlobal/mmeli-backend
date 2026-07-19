@@ -23,7 +23,7 @@ body {
 .sticky-header {
   position: fixed;
   top:0; left:0; right:0; max-width:1400px; margin:0 auto;
-  background: #0a192f;
+  background: linear-gradient(180deg, #facc15 0%, #0a192f 100%);
   padding:8px 24px;
   z-index:100;
   box-shadow:0 2px 8px rgba(0,0,0,0.2);
