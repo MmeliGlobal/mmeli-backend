@@ -4,13 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Mmeli Global – Phones & Laptops</title>
-  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <!-- Leaflet CSS (for tracking map) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <!-- Google Font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Main CSS -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -67,6 +63,11 @@
   <!-- ===== PRODUCT GRID ===== -->
   <main class="products-grid" id="productsContainer"></main>
 
+  <!-- ===== LOAD MORE BUTTON ===== -->
+  <div id="loadMoreContainer" style="text-align:center; padding:16px 0 24px;">
+    <button id="loadMoreBtn" class="load-more-btn" style="display:none;">Load More Products</button>
+  </div>
+
   <!-- ===== STICKY FOOTER ===== -->
   <footer class="sticky-footer">
     <div class="footer-icons">
@@ -97,7 +98,6 @@
         <button id="trackOrderBtn" class="track-btn">Track</button>
         <div id="trackResult" style="margin-top:16px;"></div>
         <div id="trackTimeline" style="margin-top:12px;"></div>
-        <!-- Leaflet Map -->
         <div id="trackMap" style="height:250px; width:100%; margin-top:16px; border-radius:12px; overflow:hidden;"></div>
       </div>
     </div>
@@ -222,6 +222,7 @@
           <select id="modalColorSelect"><option>Color</option></select>
         </div>
         <button class="add-to-cart" id="modalAddToCartBtn">Add to Cart</button>
+        <div class="modal-share-container" style="margin-top:8px;"></div>
         <div class="related-products-section"><h4>You may also like</h4><div id="relatedProductsGrid" class="related-grid"></div></div>
       </div>
     </div>
