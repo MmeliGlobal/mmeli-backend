@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Mmeli Global</title>
+  <title>Mmeli Global – Phones & Laptops</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
@@ -28,22 +28,18 @@
     </div>
     <div class="search-row">
       <i class="fas fa-search search-icon"></i>
-      <input type="text" id="searchInput" placeholder="Search products..." />
+      <input type="text" id="searchInput" placeholder="Search phones, laptops..." />
     </div>
   </header>
 
-  <!-- ===== CATEGORY CHIPS ===== -->
+  <!-- ===== CATEGORY CHIPS (Phones & Laptops only) ===== -->
   <nav class="category-bar">
     <div class="category-chips" id="categoryChips">
       <span class="chip active" data-category="All">All</span>
       <span class="chip" data-category="Phones">Phones</span>
-      <span class="chip" data-category="Cameras">Cameras</span>
-      <span class="chip" data-category="Farming">Farming</span>
-      <span class="chip" data-category="Construction">Constr.</span>
-      <span class="chip" data-category="Electronics">Electronics</span>
-      <span class="chip" data-category="Hardware">Hardware</span>
-      <span class="chip" data-category="Beauty">Beauty</span>
-      <span class="chip" data-category="Fashion">Fashion</span>
+      <span class="chip" data-category="Laptops">Laptops</span>
+      <span class="chip" data-category="Accessories">Accessories</span>
+      <span class="chip" data-category="Tablets">Tablets</span>
     </div>
   </nav>
 
@@ -52,19 +48,20 @@
     <select id="categoryFilter">
       <option value="">All Categories</option>
       <option value="Phones">Phones</option>
-      <option value="Cameras">Cameras</option>
-      <option value="Farming">Farming</option>
-      <option value="Construction">Construction</option>
-      <option value="Electronics">Electronics</option>
-      <option value="Hardware">Hardware</option>
-      <option value="Beauty">Beauty</option>
-      <option value="Fashion">Fashion</option>
+      <option value="Laptops">Laptops</option>
+      <option value="Accessories">Accessories</option>
+      <option value="Tablets">Tablets</option>
     </select>
     <select id="subcategoryFilter">
       <option value="">All Subcategories</option>
+      <option value="Apple">Apple</option>
+      <option value="Samsung">Samsung</option>
+      <option value="Dell">Dell</option>
+      <option value="HP">HP</option>
+      <option value="Lenovo">Lenovo</option>
     </select>
-    <input type="number" id="minPrice" placeholder="Min Price" />
-    <input type="number" id="maxPrice" placeholder="Max Price" />
+    <input type="number" id="minPrice" placeholder="Min $" />
+    <input type="number" id="maxPrice" placeholder="Max $" />
     <button class="reset-btn" id="resetFilters">Reset</button>
   </div>
 
@@ -80,9 +77,9 @@
         <i class="fas fa-home"></i>
         <span>Home</span>
       </a>
-      <a href="#" class="footer-link" id="footerCategories">
-        <i class="fas fa-th-large"></i>
-        <span>Categories</span>
+      <a href="#" class="footer-link" id="footerTracking">
+        <i class="fas fa-truck"></i>
+        <span>Tracking</span>
       </a>
       <a href="#" class="footer-link" id="footerCart">
         <i class="fas fa-shopping-cart"></i>
@@ -110,6 +107,21 @@
       <div id="cartItemsContainer"><div class="empty-cart">Cart is empty</div></div>
       <div class="cart-total" id="cartTotalContainer">Total: $0.00</div>
       <button class="checkout-btn" id="checkoutBtn">Proceed to Checkout</button>
+    </div>
+  </div>
+
+  <!-- ===== TRACKING MODAL ===== -->
+  <div id="trackingModal" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3><i class="fas fa-truck"></i> Track Your Order</h3>
+        <button class="modal-close" id="closeTrackingBtn">&times;</button>
+      </div>
+      <div class="tracking-body">
+        <input type="text" id="trackCodeInput" placeholder="Enter tracking code" class="track-input" />
+        <button id="trackOrderBtn" class="track-btn">Track</button>
+        <div id="trackResult" style="margin-top:16px;"></div>
+      </div>
     </div>
   </div>
 
