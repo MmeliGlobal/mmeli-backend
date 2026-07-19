@@ -32,11 +32,8 @@ body {
 .logo { display:flex; align-items:center; gap:10px; cursor:pointer; }
 .logo-img { max-height:40px; width:auto; }
 .logo-text {
-  background: linear-gradient(to right, #ff0000, #ffffff);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  font-weight:800;
+  color: white !important;
+  font-weight:700;
   font-size:1.6rem;
 }
 .header-actions { display:flex; align-items:center; gap:12px; }
