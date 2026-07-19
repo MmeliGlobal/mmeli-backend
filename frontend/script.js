@@ -9,7 +9,7 @@ let maxPrice = '';
 let currentUser = null;
 let token = localStorage.getItem('token');
 let user = JSON.parse(localStorage.getItem('user') || 'null');
-let mapInstance = null;  // for tracking map
+let mapInstance = null;
 
 // ===== SUBCATEGORY MAPPING =====
 const subcategoryMap = {
@@ -24,6 +24,7 @@ function escapeHtml(str) {
   if (!str) return '';
   return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[m]);
 }
+
 function showToast(msg) {
   const t = document.createElement('div');
   t.innerText = msg;
@@ -32,18 +33,39 @@ function showToast(msg) {
   setTimeout(() => t.remove(), 1500);
 }
 
+// ===== SHARE PRODUCT (WhatsApp) =====
+function shareProduct(productId) {
+  const product = allProducts.find(p => p.id == productId);
+  if (!product) { alert('Product not found'); return; }
+
+  // Build the product URL (your actual website URL)
+  const baseUrl = window.location.origin + window.location.pathname;
+  const productUrl = `${baseUrl}?product=${product.id}`;
+
+  // Build the share message (includes product name, price, description, and URL)
+  const message = `📱 *${product.name}*%0A💰 Price: $${product.price.toFixed(2)}%0A%0A${product.description || 'Check out this product'}%0A%0A👉 View product: ${productUrl}%0A%0A🛒 Shop more at Mmeli Global`;
+
+  // WhatsApp share
+  const phone = '263776871711';
+  const waUrl = `https://wa.me/${phone}?text=${message}`;
+  window.open(waUrl, '_blank');
+}
+
 // ===== CART =====
 function updateCartBadges() {
   const total = cart.reduce((s, i) => s + (i.quantity || 1), 0);
   const badge = document.getElementById('cartCountBadge');
   if (badge) badge.innerText = total;
 }
+
 function saveCart() { localStorage.setItem('cart', JSON.stringify(cart)); }
+
 function loadCart() {
   const saved = localStorage.getItem('cart');
   if (saved) try { cart = JSON.parse(saved); } catch (e) {}
   updateCartBadges();
 }
+
 function renderCartModal() {
   const container = document.getElementById('cartItemsContainer');
   const totalContainer = document.getElementById('cartTotalContainer');
@@ -73,6 +95,7 @@ function renderCartModal() {
     });
   });
 }
+
 function addToCart(id, name, price, size, color) {
   const itemName = `${name} (${size}, ${color})`;
   const existing = cart.find(i => i.id == id && i.size === size && i.color === color);
@@ -111,11 +134,11 @@ function initTrackingMap() {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(mapInstance);
-  // Add a sample marker (you can replace with actual order location)
   L.marker([-17.825, 31.033]).addTo(mapInstance)
     .bindPopup('Mmeli Global HQ')
     .openPopup();
 }
+
 function trackOrder() {
   const code = document.getElementById('trackCodeInput').value.trim();
   const resultDiv = document.getElementById('trackResult');
@@ -125,7 +148,6 @@ function trackOrder() {
     return;
   }
   resultDiv.innerHTML = '<span style="color:#1e3a8a;">Searching...</span>';
-  // Simulate API call
   setTimeout(() => {
     const statuses = ['Ordered', 'Shipped', 'In Transit', 'Delivered'];
     const completed = Math.floor(Math.random() * statuses.length) + 1;
@@ -138,7 +160,6 @@ function trackOrder() {
       </div>
     `;
     timelineDiv.innerHTML = steps;
-    // Update map to a random location (simulate tracking)
     if (mapInstance) {
       const lat = -17.825 + (Math.random() - 0.5) * 0.5;
       const lng = 31.033 + (Math.random() - 0.5) * 0.5;
@@ -158,7 +179,7 @@ function generateDemoProducts() {
   return names.map((name, i) => ({
     id: i + 1,
     name,
-    description: 'Premium quality',
+    description: 'Premium quality product',
     price: 199 + i * 150,
     main_image: `https://picsum.photos/400/400?random=${i + 10}`,
     cat: cats[i] || 'Phones',
@@ -190,8 +211,7 @@ function renderProducts() {
   filtered.forEach(p => {
     const card = document.createElement('div');
     card.className = 'product-card';
-    
-    // Use real image if available
+
     let imgSrc = p.main_image;
     if (!imgSrc || !imgSrc.startsWith('http')) {
       imgSrc = `https://picsum.photos/400/400?random=${p.id}`;
@@ -215,6 +235,7 @@ function renderProducts() {
           <select class="color-select">${colorOpts}</select>
         </div>
         <button class="add-btn" data-id="${p.id}" data-name="${escapeHtml(p.name)}" data-price="${basePrice}">Add to Cart</button>
+        <button class="share-btn" data-id="${p.id}"><i class="fas fa-share-alt"></i> Share</button>
       </div>
     `;
 
@@ -228,16 +249,25 @@ function renderProducts() {
       addBtn.dataset.price = newPrice;
     });
 
+    // Card click opens product modal
     card.addEventListener('click', (e) => {
       if (e.target.tagName !== 'BUTTON' && !e.target.closest('select')) openProductModal(p.id);
     });
 
+    // Add to Cart
     addBtn.addEventListener('click', function(e) {
       e.stopPropagation();
       const size = sizeSelect.value;
       const color = card.querySelector('.color-select').value;
       const price = parseFloat(this.dataset.price);
       addToCart(p.id, p.name, price, size, color);
+    });
+
+    // Share button
+    const shareBtn = card.querySelector('.share-btn');
+    shareBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      shareProduct(p.id);
     });
 
     container.appendChild(card);
@@ -270,11 +300,13 @@ function openProductModal(id) {
   if (!product) { alert('Product not found'); return; }
   const modal = document.getElementById('productModal');
   if (!modal) return;
+
   document.getElementById('modalProductTitle').innerText = product.name;
   document.getElementById('modalProductDesc').innerText = product.description || '';
   const mainImg = document.getElementById('modalProductImage');
   mainImg.src = product.main_image || `https://picsum.photos/600/600?random=${product.id}`;
 
+  // Thumbnails
   const thumbContainer = document.getElementById('modalProductThumbnails');
   thumbContainer.innerHTML = '';
   const thumbs = [product.main_image];
@@ -287,6 +319,7 @@ function openProductModal(id) {
     thumbContainer.appendChild(div);
   });
 
+  // Sizes & Colors
   const sizeSelect = document.getElementById('modalSizeSelect');
   const colorSelect = document.getElementById('modalColorSelect');
   const sizes = product.size_options && product.size_options.length ? product.size_options : [{ size: 'Standard', price: product.price }];
@@ -303,10 +336,11 @@ function openProductModal(id) {
   sizeSelect.addEventListener('change', updateModalPrice);
   updateModalPrice();
 
+  // Modal Add to Cart
   const modalAddBtn = document.getElementById('modalAddToCartBtn');
-  const newBtn = modalAddBtn.cloneNode(true);
-  modalAddBtn.parentNode.replaceChild(newBtn, modalAddBtn);
-  newBtn.addEventListener('click', function() {
+  const newAddBtn = modalAddBtn.cloneNode(true);
+  modalAddBtn.parentNode.replaceChild(newAddBtn, modalAddBtn);
+  newAddBtn.addEventListener('click', function() {
     const size = sizeSelect.value;
     const color = colorSelect.value;
     const price = parseFloat(sizeSelect.options[sizeSelect.selectedIndex].dataset.price);
@@ -314,6 +348,21 @@ function openProductModal(id) {
     modal.classList.remove('active');
   });
 
+  // Modal Share button
+  const shareBtnContainer = document.querySelector('.modal-share-container');
+  if (shareBtnContainer) {
+    const newShareBtn = document.createElement('button');
+    newShareBtn.className = 'share-btn';
+    newShareBtn.innerHTML = '<i class="fas fa-share-alt"></i> Share on WhatsApp';
+    newShareBtn.style.cssText = 'background:#25D366; color:white; border:none; padding:10px; border-radius:40px; font-weight:700; width:100%; cursor:pointer; margin-top:8px;';
+    newShareBtn.addEventListener('click', function() {
+      shareProduct(product.id);
+    });
+    shareBtnContainer.innerHTML = '';
+    shareBtnContainer.appendChild(newShareBtn);
+  }
+
+  // Related products
   const relatedGrid = document.getElementById('relatedProductsGrid');
   relatedGrid.innerHTML = '';
   const related = allProducts.filter(p => p.cat === product.cat && p.id !== product.id).slice(0, 4);
@@ -323,7 +372,7 @@ function openProductModal(id) {
     card.innerHTML = `
       <img src="${p.main_image || 'https://picsum.photos/200/200?random=' + p.id}" alt="${p.name}">
       <div class="name">${escapeHtml(p.name)}</div>
-      <div class="price">$${p.price}</div>
+      <div class="price">$${p.price.toFixed(2)}</div>
     `;
     card.addEventListener('click', () => openProductModal(p.id));
     relatedGrid.appendChild(card);
@@ -331,6 +380,7 @@ function openProductModal(id) {
 
   modal.classList.add('active');
 }
+
 function closeProductModal() {
   const modal = document.getElementById('productModal');
   if (modal) modal.classList.remove('active');
@@ -396,6 +446,7 @@ function login() {
   localStorage.setItem('mmeliUser', JSON.stringify(currentUser));
   showToast('Logged in');
 }
+
 function register() {
   const name = document.getElementById('regName');
   const phone = document.getElementById('regPhone');
@@ -411,6 +462,7 @@ function register() {
   localStorage.setItem('mmeliUser', JSON.stringify(currentUser));
   showToast('Registered successfully');
 }
+
 function logout() {
   currentUser = null;
   localStorage.removeItem('mmeliUser');
@@ -419,6 +471,7 @@ function logout() {
   document.getElementById('customerData').innerHTML = '';
   showToast('Logged out');
 }
+
 function showMyOrders() {
   document.getElementById('customerData').innerHTML = '<div style="padding:12px; background:#f8fafc; border-radius:12px;">Your orders will appear here</div>';
 }
@@ -450,6 +503,7 @@ async function adminLogin() {
     alert('Admin login successful');
   } catch (err) { alert('Admin login failed: ' + err.message); }
 }
+
 function switchPage(pageId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const page = document.getElementById(pageId);
@@ -492,14 +546,13 @@ document.addEventListener('DOMContentLoaded', function() {
     checkoutBtn.addEventListener('click', checkoutToWhatsApp);
   }
 
-  // --- TRACKING modal open → init map ---
+  // --- TRACKING modal → init map ---
   const trackingLink = document.getElementById('footerTracking');
   const trackingModal = document.getElementById('trackingModal');
   if (trackingLink && trackingModal) {
     trackingLink.addEventListener('click', function(e) {
       e.preventDefault();
       trackingModal.classList.add('active');
-      // init map after modal opens (slight delay to render)
       setTimeout(initTrackingMap, 300);
     });
   }
@@ -515,7 +568,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const trackInput = document.getElementById('trackCodeInput');
   if (trackInput) trackInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') trackOrder(); });
 
-  // --- FOOTER NAVIGATION (home, promo, account, more) ---
+  // --- FOOTER NAVIGATION ---
   const homeLink = document.getElementById('footerHome');
   if (homeLink) {
     homeLink.addEventListener('click', function(e) {
