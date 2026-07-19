@@ -67,6 +67,29 @@ function showToast(msg) {
 }
 function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]); }
 
+// ===== TRACKING =====
+function trackOrder() {
+  const code = document.getElementById('trackCodeInput').value.trim();
+  const resultDiv = document.getElementById('trackResult');
+  if (!code) { resultDiv.innerHTML = '<span style="color:#dc2626;">Please enter a tracking code</span>'; return; }
+  resultDiv.innerHTML = '<span style="color:#1e3a8a;">Searching for order...</span>';
+  // Simulate tracking (replace with actual API call)
+  setTimeout(() => {
+    resultDiv.innerHTML = `
+      <div style="background:#f0f9ff; padding:12px; border-radius:12px;">
+        <strong>Order #${code}</strong><br>
+        Status: <span style="color:#16a34a; font-weight:700;">In Transit</span><br>
+        Estimated Delivery: 2-3 days<br>
+        <div style="margin-top:8px; display:flex; gap:4px;">
+          <span style="background:#22c55e; color:white; padding:2px 8px; border-radius:20px; font-size:0.7rem;">Ordered</span>
+          <span style="background:#22c55e; color:white; padding:2px 8px; border-radius:20px; font-size:0.7rem;">Shipped</span>
+          <span style="background:#e2e8f0; color:#475569; padding:2px 8px; border-radius:20px; font-size:0.7rem;">Delivered</span>
+        </div>
+      </div>
+    `;
+  }, 800);
+}
+
 // ===== LOAD PRODUCTS =====
 async function loadProducts() {
   try {
@@ -84,17 +107,17 @@ async function loadProducts() {
 }
 
 function generateDemoProducts() {
-  const names = ['iPhone 15', 'Galaxy S24', 'Sony Headphones', 'Dyson Vacuum', 'Nike Air Max', 'Canon Camera', 'John Deere Tractor', 'Makita Drill', 'Lace Wig', 'Electric Scooter', 'Samsung TV', 'MacBook Pro'];
+  const names = ['iPhone 15 Pro Max', 'Samsung Galaxy S24', 'MacBook Pro 14"', 'Dell XPS 16', 'iPad Pro', 'Sony Headphones', 'Apple Watch', 'Lenovo ThinkPad'];
   return names.map((name, i) => ({
     id: i+1,
     name,
-    description: 'High quality product',
-    price: 99 + i * 25,
+    description: 'Premium quality',
+    price: 199 + i * 150,
     main_image: `https://picsum.photos/400/400?random=${i+10}`,
-    cat: ['Phones','Cameras','Farming','Electronics','Hardware','Fashion','Phones','Electronics','Beauty','Electronics','Electronics','Electronics'][i] || 'Electronics',
-    subcat: 'General',
-    colors: ['Black', 'White'],
-    size_options: [{ size: 'Standard', price: 99 + i * 25 }],
+    cat: ['Phones','Phones','Laptops','Laptops','Tablets','Accessories','Accessories','Laptops'][i] || 'Phones',
+    subcat: ['Apple','Samsung','Apple','Dell','Apple','Sony','Apple','Lenovo'][i] || 'General',
+    colors: ['Black', 'White', 'Gray'],
+    size_options: [{ size: 'Standard', price: 199 + i * 150 }],
     badge: i%2===0 ? 'Best Seller' : ''
   }));
 }
@@ -217,6 +240,7 @@ document.addEventListener('DOMContentLoaded', function() {
   renderCartModal();
   loadProducts();
 
+  // Chips
   document.querySelectorAll('.chip').forEach(chip => {
     chip.addEventListener('click', function() {
       document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
@@ -226,12 +250,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // Filter events
   document.getElementById('categoryFilter').addEventListener('change', applyFilters);
   document.getElementById('subcategoryFilter').addEventListener('change', applyFilters);
   document.getElementById('minPrice').addEventListener('input', applyFilters);
   document.getElementById('maxPrice').addEventListener('input', applyFilters);
   document.getElementById('resetFilters').addEventListener('click', resetFilters);
 
+  // Search
   document.getElementById('searchInput').addEventListener('input', function() {
     const term = this.value.toLowerCase().trim();
     const cards = document.querySelectorAll('.product-card');
@@ -242,6 +268,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // Cart modal
   document.getElementById('cartIconBtn').addEventListener('click', () => {
     renderCartModal();
     document.getElementById('cartModal').classList.add('active');
@@ -253,11 +280,29 @@ document.addEventListener('DOMContentLoaded', function() {
     if (e.target === document.getElementById('cartModal')) document.getElementById('cartModal').classList.remove('active');
   });
 
+  // Tracking modal
+  document.getElementById('footerTracking').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('trackingModal').classList.add('active');
+  });
+  document.getElementById('closeTrackingBtn').addEventListener('click', () => {
+    document.getElementById('trackingModal').classList.remove('active');
+  });
+  document.getElementById('trackingModal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('trackingModal')) document.getElementById('trackingModal').classList.remove('active');
+  });
+  document.getElementById('trackOrderBtn').addEventListener('click', trackOrder);
+  document.getElementById('trackCodeInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') trackOrder();
+  });
+
+  // Product modal
   document.getElementById('closeModalBtn').addEventListener('click', closeProductModal);
   document.getElementById('productModal').addEventListener('click', (e) => {
     if (e.target === document.getElementById('productModal')) closeProductModal();
   });
 
+  // Footer navigation
   document.getElementById('footerHome').addEventListener('click', (e) => {
     e.preventDefault();
     document.querySelectorAll('.footer-link').forEach(l => l.classList.remove('active'));
@@ -271,7 +316,16 @@ document.addEventListener('DOMContentLoaded', function() {
     renderCartModal();
     document.getElementById('cartModal').classList.add('active');
   });
+  document.getElementById('footerAccount').addEventListener('click', (e) => {
+    e.preventDefault();
+    alert('Account page – login/signup functionality');
+  });
+  document.getElementById('footerMore').addEventListener('click', (e) => {
+    e.preventDefault();
+    alert('More options – settings, help, etc.');
+  });
 
+  // Checkout
   document.getElementById('checkoutBtn').addEventListener('click', function() {
     if (!cart.length) { alert('Cart is empty'); return; }
     const total = cart.reduce((s,i) => s + i.price * i.quantity, 0);
