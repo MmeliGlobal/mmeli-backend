@@ -32,7 +32,7 @@ body {
 .logo { display:flex; align-items:center; gap:10px; cursor:pointer; }
 .logo-img { max-height:40px; width:auto; }
 .logo-text {
-  color: #ffffff !important;
+  color: #ffffff;
   font-family: 'Playfair Display', 'Times New Roman', serif;
   font-weight: 700;
   font-size: 1.6rem;
