@@ -32,9 +32,12 @@ body {
 .logo { display:flex; align-items:center; gap:10px; cursor:pointer; }
 .logo-img { max-height:40px; width:auto; }
 .logo-text {
-  color: white !important;
-  font-weight:700;
-  font-size:1.6rem;
+  color: #ffffff !important;
+  font-family: 'Playfair Display', 'Times New Roman', serif;
+  font-weight: 700;
+  font-size: 1.6rem;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 .header-actions { display:flex; align-items:center; gap:12px; }
 .cart-btn {
