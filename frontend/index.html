@@ -11,9 +11,7 @@
 </head>
 <body>
 
-<div class="app-container">
-
-  <!-- ===== STICKY HEADER (Logo + Cart only) ===== -->
+  <!-- ===== STICKY HEADER (fixed at top) ===== -->
   <header class="sticky-header">
     <div class="header-top">
       <div class="logo" id="logoArea">
@@ -29,7 +27,7 @@
     </div>
   </header>
 
-  <!-- ===== FULL-WIDTH SEARCH BAR (below header) ===== -->
+  <!-- ===== SEARCH BAR (fixed under header, OUTSIDE .app-container) ===== -->
   <div class="search-bar-wrapper">
     <div class="search-row-full">
       <i class="fas fa-search search-icon"></i>
@@ -37,42 +35,47 @@
     </div>
   </div>
 
-  <!-- ===== CATEGORY CHIPS ===== -->
-  <nav class="category-bar">
-    <div class="category-chips" id="categoryChips">
-      <span class="chip active" data-category="All">All</span>
-      <span class="chip" data-category="Phones">Phones</span>
-      <span class="chip" data-category="Laptops">Laptops</span>
-      <span class="chip" data-category="Accessories">Accessories</span>
-      <span class="chip" data-category="Tablets">Tablets</span>
+  <!-- ===== MAIN APP CONTAINER (everything else scrolls) ===== -->
+  <div class="app-container">
+
+    <!-- Category Bar -->
+    <nav class="category-bar">
+      <div class="category-chips" id="categoryChips">
+        <span class="chip active" data-category="All">All</span>
+        <span class="chip" data-category="Phones">Phones</span>
+        <span class="chip" data-category="Laptops">Laptops</span>
+        <span class="chip" data-category="Accessories">Accessories</span>
+        <span class="chip" data-category="Tablets">Tablets</span>
+      </div>
+    </nav>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+      <select id="categoryFilter">
+        <option value="">All Categories</option>
+        <option value="Phones">Phones</option>
+        <option value="Laptops">Laptops</option>
+        <option value="Accessories">Accessories</option>
+        <option value="Tablets">Tablets</option>
+      </select>
+      <select id="subcategoryFilter">
+        <option value="">All Subcategories</option>
+      </select>
+      <input type="number" id="minPrice" placeholder="Min $">
+      <input type="number" id="maxPrice" placeholder="Max $">
     </div>
-  </nav>
 
-  <!-- ===== FILTER BAR ===== -->
-  <div class="filter-bar">
-    <select id="categoryFilter">
-      <option value="">All Categories</option>
-      <option value="Phones">Phones</option>
-      <option value="Laptops">Laptops</option>
-      <option value="Accessories">Accessories</option>
-      <option value="Tablets">Tablets</option>
-    </select>
-    <select id="subcategoryFilter">
-      <option value="">All Subcategories</option>
-    </select>
-    <input type="number" id="minPrice" placeholder="Min $">
-    <input type="number" id="maxPrice" placeholder="Max $">
-  </div>
+    <!-- Product Grid -->
+    <main class="products-grid" id="productsContainer"></main>
 
-  <!-- ===== PRODUCT GRID ===== -->
-  <main class="products-grid" id="productsContainer"></main>
+    <!-- Load More -->
+    <div id="loadMoreContainer" style="text-align:center; padding:16px 0 24px;">
+      <button id="loadMoreBtn" class="load-more-btn" style="display:none;">Load More Products</button>
+    </div>
 
-  <!-- ===== LOAD MORE ===== -->
-  <div id="loadMoreContainer" style="text-align:center; padding:16px 0 24px;">
-    <button id="loadMoreBtn" class="load-more-btn" style="display:none;">Load More Products</button>
-  </div>
+  </div> <!-- end .app-container -->
 
-  <!-- ===== STICKY FOOTER ===== -->
+  <!-- ===== STICKY FOOTER (fixed at bottom) ===== -->
   <footer class="sticky-footer">
     <div class="footer-icons">
       <a href="#" class="footer-link active" id="footerHome"><i class="fas fa-home"></i><span>Home</span></a>
@@ -84,7 +87,7 @@
   </footer>
 
   <!-- ===== MODALS ===== -->
-  <!-- Cart -->
+  <!-- Cart Modal -->
   <div id="cartModal" class="modal-overlay">
     <div class="modal-container cart-container">
       <div class="modal-header"><h3><i class="fas fa-shopping-bag"></i> Your Cart</h3><button class="modal-close" id="closeCartBtn">&times;</button></div>
@@ -94,7 +97,7 @@
     </div>
   </div>
 
-  <!-- Tracking -->
+  <!-- Tracking Modal -->
   <div id="trackingModal" class="modal-overlay full-page">
     <div class="modal-container full-container">
       <div class="modal-header"><h3><i class="fas fa-truck"></i> Track Order</h3><button class="modal-close" id="closeTrackingBtn">&times;</button></div>
@@ -108,7 +111,7 @@
     </div>
   </div>
 
-  <!-- Promo -->
+  <!-- Promo Modal -->
   <div id="promoModal" class="modal-overlay">
     <div class="modal-container" style="max-width:380px; text-align:center;">
       <div class="modal-header"><h3><i class="fas fa-tag"></i> Today's Promo</h3><button class="modal-close" id="closePromoBtn">&times;</button></div>
@@ -122,7 +125,7 @@
     </div>
   </div>
 
-  <!-- Account -->
+  <!-- Account Modal -->
   <div id="accountModal" class="modal-overlay">
     <div class="modal-container">
       <div class="modal-header"><h3><i class="fas fa-user"></i> Account</h3><button class="modal-close" id="closeAccountBtn">&times;</button></div>
@@ -153,7 +156,7 @@
     </div>
   </div>
 
-  <!-- More -->
+  <!-- More Modal -->
   <div id="moreModal" class="modal-overlay">
     <div class="modal-container" style="max-width:420px;">
       <div class="modal-header"><h3><i class="fas fa-ellipsis-h"></i> More</h3><button class="modal-close" id="closeMoreBtn">&times;</button></div>
@@ -186,7 +189,7 @@
     </div>
   </div>
 
-  <!-- ===== ADMIN DASHBOARD ===== -->
+  <!-- Admin Dashboard (hidden) -->
   <section id="adminDashboard" class="page" style="display:none;">
     <div id="adminLoginDiv">
       <h3>Admin Login</h3>
@@ -213,7 +216,7 @@
     </div>
   </section>
 
-  <!-- ===== PRODUCT MODAL ===== -->
+  <!-- Product Modal -->
   <div id="productModal" class="modal-overlay">
     <div class="modal-container">
       <div class="modal-header"><h3 id="modalProductTitle">Product</h3><button class="modal-close" id="closeModalBtn">&times;</button></div>
@@ -238,10 +241,8 @@
     </div>
   </div>
 
-</div>
-
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="script.js"></script>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
