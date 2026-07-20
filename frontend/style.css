@@ -23,12 +23,15 @@ body {
 .sticky-header {
   position: fixed;
   top:0; left:0; right:0; max-width:1400px; margin:0 auto;
-  background: linear-gradient(145deg, #b8860b, #daa520);
-  padding:12px 24px;
+  background: #0a192f; /* navy blue */
+  border-top:2px solid #ffd700;
+  padding:8px 20px;
   z-index:100;
   box-shadow:0 2px 8px rgba(0,0,0,0.2);
 }
-.header-top { display:flex; justify-content:space-between; align-items:center; }
+.header-top { display:flex; justify-content:space-between; align-items:center; 
+            gap: 12px;
+            }
 
 /* ===== LOGO ===== */
 .logo {
@@ -36,6 +39,7 @@ body {
   align-items: center;
   gap: 10px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 .logo-img {
   max-height: 40px;
@@ -51,27 +55,27 @@ body {
 }
 
 /* ===== CART BUTTON ===== */
-.header-actions { display:flex; align-items:center; gap:12px; }
+.header-actions { display:flex; align-items:center; flex-shrink: 0; }
 .cart-btn {
-  position:relative; background:transparent; border:2px solid white; width:40px; height:40px; border-radius:50%;
-  cursor:pointer; font-size:1.2rem; color:#1e3a8a;
+  position:relative; background:transparent; border:2px solid white; width:34px; height:34px; border-radius:50%;
+  cursor:pointer; font-size:1rem; color:#1e3a8a;
   display:flex; align-items:center; justify-content:center;
   transition:0.2s;
 }
-.cart-btn i { color:#1e3a8a; }
+.cart-btn i { color:#1e3a8a; font-size: 1rem }
 .cart-btn:hover { background:white; color:#1e3a8a; }
 .cart-badge {
   position:absolute; top:-6px; right:-6px;
-  background:#dc2626; color:white; font-size:0.6rem; font-weight:700;
-  border-radius:50%; min-width:20px; height:20px;
+  background:#dc2626; color:white; font-size:0.55rem; font-weight:700;
+  border-radius:50%; min-width:18px; height:18px;
   display:flex; align-items:center; justify-content:center;
 }
 .search-row {
   display:flex; align-items:center; background:white; border-radius:30px;
-  padding:6px 16px; margin-top:10px; border:1px solid #bfdbfe;
+  padding:4px 12px; border:1px solid #bfdbfe; max-width: 400px; min-width: 120px; height: 34px;
 }
-.search-row .search-icon { color:#94a3b8; font-size:0.9rem; }
-.search-row input { border:none; background:transparent; outline:none; width:100%; padding:6px 10px; font-size:0.9rem; }
+.search-row .search-icon { color:#94a3b8; font-size:0.8rem; }
+.search-row input { border:none; background:transparent; outline:none; width:100%; padding:4px 8px; font-size:0.8rem; }
 
 /* ===== CATEGORY BAR ===== */
 .category-bar {
