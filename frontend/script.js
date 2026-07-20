@@ -1,5 +1,5 @@
 // ===== CONFIG =====
-const API = '/api'; // change to your full backend URL if needed
+const API = '/api';
 const DISPLAY_LIMIT = 20;
 let allProducts = [];
 let cart = JSON.parse(localStorage.getItem('cart') || '[]');
@@ -54,13 +54,13 @@ function updateMetaTags(product) {
   const metaTags = [
     { property: 'og:title', content: product.name },
     { property: 'og:description', content: product.description || 'Shop premium phones & laptops at Mmeli Global' },
-    { property: 'og:image', content: product.main_image || 'https://mmeliglobal.com/logo.png' },
+    { property: 'og:image', content: product.main_image || '' },
     { property: 'og:url', content: window.location.href },
     { property: 'og:type', content: 'product' },
     { name: 'twitter:card', content: 'summary_large_image' },
     { name: 'twitter:title', content: product.name },
     { name: 'twitter:description', content: product.description || 'Check out this product on Mmeli Global' },
-    { name: 'twitter:image', content: product.main_image || 'https://mmeliglobal.com/logo.png' }
+    { name: 'twitter:image', content: product.main_image || '' }
   ];
 
   metaTags.forEach(tag => {
@@ -82,7 +82,7 @@ function updateMetaTags(product) {
   });
 }
 
-// ===== CART (with quantity support) =====
+// ===== CART =====
 function updateCartBadges() {
   const total = cart.reduce((s, i) => s + (i.quantity || 1), 0);
   const badge = document.getElementById('cartCountBadge');
@@ -130,7 +130,7 @@ function addToCart(id, name, price, size, color, qty = 1) {
   showToast(`${qty} × ${itemName} added`);
 }
 
-// ===== CHECKOUT (WhatsApp) =====
+// ===== CHECKOUT =====
 function checkoutToWhatsApp() {
   if (!cart.length) { alert('Cart is empty'); return; }
   let total = 0;
@@ -183,7 +183,7 @@ function trackOrder() {
   }, 800);
 }
 
-// ===== PRODUCTS =====
+// ===== FALLBACK PRODUCTS – NO IMAGES =====
 function generateDemoProducts() {
   const names = ['iPhone 15 Pro Max', 'Samsung Galaxy S24', 'MacBook Pro 14"', 'Dell XPS 16', 'iPad Pro', 'Sony Headphones', 'Apple Watch', 'Lenovo ThinkPad'];
   const cats = ['Phones', 'Phones', 'Laptops', 'Laptops', 'Tablets', 'Accessories', 'Accessories', 'Laptops'];
@@ -193,7 +193,7 @@ function generateDemoProducts() {
     name,
     description: 'Premium quality product',
     price: 199 + i * 150,
-    main_image: `https://picsum.photos/400/400?random=${i + 100}`,
+    main_image: '', // EMPTY – "No Image" will be shown
     images: [],
     cat: cats[i] || 'Phones',
     subcat: brands[i] || 'General',
@@ -208,11 +208,11 @@ function generateDemoProducts() {
   }));
 }
 
-// ===== CREATE PRODUCT CARD =====
+// ===== CREATE PRODUCT CARD (No placeholder images) =====
 function createProductCard(p) {
   const card = document.createElement('div');
   card.className = 'product-card';
-  const imgSrc = p.main_image || '';
+  const hasImage = p.main_image && p.main_image.startsWith('http');
   const badge = p.badge ? `<span class="badge">${escapeHtml(p.badge)}</span>` : '';
   const sizes = p.size_options && p.size_options.length ? p.size_options : [{ size: 'Standard', price: p.price }];
   const colors = p.colors && p.colors.length ? p.colors : ['Default'];
@@ -222,19 +222,12 @@ function createProductCard(p) {
   const minOrder = p.min_order || 1;
 
   card.innerHTML = `
-    <div class="image-wrapper" style="position:relative;">
-      <img 
-        class="lazy" 
-        data-src="${imgSrc}" 
-        alt="${escapeHtml(p.name)}" 
-        style="opacity:0; width:100%; height:100%; object-fit:cover;"
-        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-      >
-      <div style="display:none; align-items:center; justify-content:center; width:100%; height:100%; background:#f0f0f0; color:#999; font-size:0.8rem; position:absolute; top:0; left:0;">
+    <div class="image-wrapper">
+      ${hasImage ? `<img class="lazy" data-src="${p.main_image}" alt="${escapeHtml(p.name)}" style="opacity:0; width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : ''}
+      <div style="display:${hasImage ? 'none' : 'flex'}; align-items:center; justify-content:center; width:100%; height:100%; background:#f0f0f0; color:#999; font-size:0.9rem; font-weight:500; position:absolute; top:0; left:0;">
         No Image
       </div>
-      <!-- Share button on image -->
-      <button class="share-btn-img" data-id="${p.id}" style="position:absolute; bottom:10px; right:10px; background:rgba(255,255,255,0.9); border:none; border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#25D366; font-size:1.2rem; box-shadow:0 2px 8px rgba(0,0,0,0.15); transition:0.2s; z-index:5;"><i class="fas fa-share-alt"></i></button>
+      <button class="share-btn-img" data-id="${p.id}"><i class="fas fa-share-alt"></i></button>
     </div>
     <div class="product-info">
       ${badge}
@@ -252,7 +245,7 @@ function createProductCard(p) {
     </div>
   `;
 
-  // Price update on size change
+  // Price update
   const priceSpan = card.querySelector('.price');
   const sizeSelect = card.querySelector('.size-select');
   const addBtn = card.querySelector('.add-btn');
@@ -263,12 +256,10 @@ function createProductCard(p) {
     addBtn.dataset.price = newPrice;
   });
 
-  // Card click -> open modal
   card.addEventListener('click', (e) => {
     if (e.target.tagName !== 'BUTTON' && !e.target.closest('select')) openProductModal(p.id);
   });
 
-  // Add to Cart – uses min order quantity
   addBtn.addEventListener('click', function(e) {
     e.stopPropagation();
     const size = sizeSelect.value;
@@ -278,17 +269,16 @@ function createProductCard(p) {
     addToCart(p.id, p.name, price, size, color, minQty);
   });
 
-  // Share button on image
   const shareImgBtn = card.querySelector('.share-btn-img');
   shareImgBtn.addEventListener('click', function(e) {
     e.stopPropagation();
     shareProduct(p.id);
   });
 
-  // Lazy load image
-  const img = card.querySelector('.lazy');
-  if (img && img.dataset.src) {
-    if ('IntersectionObserver' in window) {
+  // Lazy load only if image exists
+  if (hasImage) {
+    const img = card.querySelector('.lazy');
+    if (img && 'IntersectionObserver' in window) {
       const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
@@ -299,7 +289,7 @@ function createProductCard(p) {
         });
       });
       observer.observe(img);
-    } else {
+    } else if (img) {
       img.src = img.dataset.src;
       img.style.opacity = '1';
     }
@@ -358,6 +348,7 @@ function loadMoreProducts() {
   }
 }
 
+// ===== LOAD PRODUCTS – CLEAR ERROR HANDLING =====
 async function loadProducts() {
   try {
     const res = await fetch(API + '/products');
@@ -367,44 +358,72 @@ async function loadProducts() {
     renderProducts();
     localStorage.setItem('cachedProducts', JSON.stringify(allProducts));
   } catch (e) {
-    console.warn('API failed – using demo products');
-    allProducts = generateDemoProducts();
-    currentDisplayLimit = DISPLAY_LIMIT;
-    renderProducts();
+    console.error('API failed:', e.message);
+    const container = document.getElementById('productsContainer');
+    if (container) {
+      container.innerHTML = `
+        <div style="grid-column:1/-1; text-align:center; padding:60px 20px;">
+          <i class="fas fa-exclamation-triangle" style="font-size:2rem; color:#dc2626;"></i>
+          <h3 style="margin-top:12px;">Could not load products</h3>
+          <p style="color:#64748b;">Please check your internet connection or try again later.</p>
+          <button onclick="loadProducts()" style="margin-top:16px; padding:8px 24px; background:#1e3a8a; color:white; border:none; border-radius:30px; cursor:pointer;">Retry</button>
+        </div>
+      `;
+    }
+    // Optionally, you can still show fallback (with "No Image") by uncommenting below:
+    // allProducts = generateDemoProducts();
+    // currentDisplayLimit = DISPLAY_LIMIT;
+    // renderProducts();
   }
 }
 
-// ===== PRODUCT MODAL =====
+// ===== PRODUCT MODAL (No placeholders) =====
 function openProductModal(id) {
   const product = allProducts.find(p => p.id == id);
   if (!product) { alert('Product not found'); return; }
-  
-  // Update social media meta tags for this product
   updateMetaTags(product);
 
   const modal = document.getElementById('productModal');
   if (!modal) return;
   document.getElementById('modalProductTitle').innerText = product.name;
   document.getElementById('modalProductDesc').innerText = product.description || '';
-  const mainImg = document.getElementById('modalProductImage');
-  mainImg.src = product.main_image || '';
-  mainImg.onerror = function() { this.style.display = 'none'; };
 
-  // Thumbnails
+  const mainImg = document.getElementById('modalProductImage');
+  const noImgDiv = mainImg.nextElementSibling;
+  const hasImage = product.main_image && product.main_image.startsWith('http');
+  if (hasImage) {
+    mainImg.src = product.main_image;
+    mainImg.style.display = 'block';
+    noImgDiv.style.display = 'none';
+    mainImg.onerror = function() {
+      this.style.display = 'none';
+      noImgDiv.style.display = 'flex';
+    };
+  } else {
+    mainImg.style.display = 'none';
+    noImgDiv.style.display = 'flex';
+  }
+
+  // Thumbnails (only valid images)
   const thumbContainer = document.getElementById('modalProductThumbnails');
   thumbContainer.innerHTML = '';
   const allImages = [];
   if (product.main_image) allImages.push(product.main_image);
   if (product.images && product.images.length) allImages.push(...product.images);
-  const uniqueImages = [...new Set(allImages)];
+  const uniqueImages = allImages.filter(url => url && url.startsWith('http'));
   uniqueImages.slice(0, 6).forEach(img => {
     const div = document.createElement('div');
     div.className = 'thumb';
     div.innerHTML = `<img src="${img}" alt="thumbnail" onerror="this.style.display='none'">`;
-    div.addEventListener('click', () => { mainImg.src = img; mainImg.style.display = 'block'; });
+    div.addEventListener('click', () => {
+      mainImg.src = img;
+      mainImg.style.display = 'block';
+      noImgDiv.style.display = 'none';
+    });
     thumbContainer.appendChild(div);
   });
 
+  // Sizes & Colors
   const sizeSelect = document.getElementById('modalSizeSelect');
   const colorSelect = document.getElementById('modalColorSelect');
   const sizes = product.size_options && product.size_options.length ? product.size_options : [{ size: 'Standard', price: product.price }];
@@ -810,7 +829,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const urlParams = new URLSearchParams(window.location.search);
   const productId = urlParams.get('product');
   if (productId) {
-    // Wait for products to load, then find product and update meta
     const checkProduct = setInterval(() => {
       if (allProducts.length) {
         clearInterval(checkProduct);
@@ -1020,3 +1038,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
   populateSubcategories('');
 });
+
+// ===== (Keep your existing admin modal functions – they remain unchanged) =====
+// They are not pasted here again for brevity, but your original file contains them.
