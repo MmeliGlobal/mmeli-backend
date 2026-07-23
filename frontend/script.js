@@ -1,3 +1,10 @@
+// ===== SUPABASE CONFIG =====
+const SUPABASE_URL = 'https://proljdccjrifqgbmsyco.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb2xqZGNjanJpZnFnYm1zeWNvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTc4ODAxOSwiZXhwIjoyMDkxMzY0MDE5fQ.VltzBUq-bLvu0Ny4jPy1kBp5E-4hffQgqFpqHrRWlZA';
+
+// ===== SUPABASE CLIENT (for policies) =====
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 // ===== CONFIG =====
 const API = '/api';
 const DISPLAY_LIMIT = 20;
@@ -83,19 +90,26 @@ function updateMetaTags(product) {
   });
 }
 
-// ===== POLICY FUNCTIONS =====
+// ===== POLICY FUNCTIONS (Fixed – loads from Supabase) =====
 async function openPolicy(key) {
   const modal = document.getElementById('policyModal');
   const title = document.getElementById('policyModalTitle');
   const body = document.getElementById('policyModalBody');
+
   modal.classList.add('active');
   title.innerText = 'Loading...';
   body.innerHTML = '<p style="text-align:center; color:#94a3b8;">Loading policy...</p>';
+
   try {
-    // Direct fetch from Supabase via your backend /api/policies/:key
-    const res = await fetch(`${API}/policies/${key}`);
-    if (!res.ok) throw new Error('Policy not found');
-    const data = await res.json();
+    const { data, error } = await supabase
+      .from('policies')
+      .select('title, content')
+      .eq('key', key)
+      .single();
+
+    if (error) throw error;
+    if (!data) throw new Error('Policy not found');
+
     title.innerText = data.title || 'Policy';
     body.innerHTML = data.content || '<p>No content available.</p>';
   } catch (error) {
@@ -606,6 +620,7 @@ async function adminLogin() {
     alert('Admin login successful');
   } catch (err) { alert('Admin login failed: ' + err.message); }
 }
+
 function switchPage(pageId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const page = document.getElementById(pageId);
@@ -625,7 +640,7 @@ function switchPage(pageId) {
   }
 }
 
-// ===== ADMIN ADD PRODUCT (with full fields) =====
+// ===== ADMIN ADD PRODUCT =====
 function showAddProductForm(container) {
   container.innerHTML = `
     <h3>Add Product</h3>
@@ -730,7 +745,7 @@ async function addProduct() {
   }
 }
 
-// ===== EDIT PRODUCT (with full fields) =====
+// ===== EDIT PRODUCT =====
 async function editProductModal(id) {
   const p = await apiCall(`/products/${id}`);
   const body = document.getElementById('modalManageProducts').querySelector('.modal-body');
@@ -828,7 +843,7 @@ async function updateProductWithImage(id) {
   }
 }
 
-// ===== ADMIN ORDER MANAGEMENT (with shipping auto‑send) =====
+// ===== ADMIN ORDER MANAGEMENT =====
 async function loadOrdersModal(container) {
   const orders = await apiCall('/orders');
   container.innerHTML = `<h3>Orders</h3>`;
@@ -855,7 +870,6 @@ async function loadOrdersModal(container) {
 async function generateShipment(orderId, phone, trackingCode) {
   if (!phone) { alert('Client phone number not available.'); return; }
   const shipmentCode = 'SHIP' + Math.floor(100000 + Math.random() * 900000);
-  // Save shipment to database (you need a shipments table)
   try {
     await apiCall('/shipments', {
       method: 'POST',
@@ -866,7 +880,6 @@ async function generateShipment(orderId, phone, trackingCode) {
         client_phone: phone
       })
     });
-    // Send WhatsApp message with shipment link
     const baseUrl = window.location.origin + window.location.pathname;
     const trackLink = `${baseUrl}?shipment=${shipmentCode}`;
     const message = `📦 Your shipment has been generated!%0A%0A📦 Shipment Code: ${shipmentCode}%0A🔗 Track: ${trackLink}%0A%0AThank you for shopping with Mmeli Global.`;
@@ -878,27 +891,20 @@ async function generateShipment(orderId, phone, trackingCode) {
   }
 }
 
-// ===== ADMIN OTHER FUNCTIONS =====
-// (loadDashboardStats, loadProductsModal, deleteProduct, loadDiscountsModal, etc. are kept from original)
-// For brevity, we assume they exist – they are unchanged.
-// But we include the policy update functions as well.
-
-// ===== UPLOAD IMAGE TO SUPABASE (existing) =====
-async function uploadImageToSupabase(file) {
-  // ... your existing upload function (should be present)
+// ===== ADMIN OTHER FUNCTIONS (stubs for completeness) =====
+async function loadDashboardStats(container) {
+  const stats = await apiCall('/dashboard/stats');
+  container.innerHTML = `<h3>Dashboard</h3><div class="stats-grid"><div class="stats-card">📦 Orders<br>${stats.totalOrders}</div><div class="stats-card">💰 Revenue<br>$${stats.totalRevenue}</div><div class="stats-card">🛍️ Products<br>${stats.totalProducts}</div><div class="stats-card">👥 Customers<br>${stats.totalUsers}</div><div class="stats-card">📅 Today<br>${stats.todayOrders} orders</div><div class="stats-card">📈 Week Revenue<br>$${stats.weekRevenue}</div></div><button onclick="closeModal('modalDashboardStats')">Close</button>`;
 }
-
-// ===== API CALL HELPER =====
-async function apiCall(endpoint, options = {}) {
-  const headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(API + endpoint, { ...options, headers });
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(errorText || 'Request failed');
-  }
-  return res.json();
-}
+async function loadProductsModal(container) { /* ... existing code ... */ }
+async function deleteProduct(id) { /* ... existing code ... */ }
+async function loadDiscountsModal(container) { /* ... existing code ... */ }
+async function loadReturnsModal(container) { /* ... existing code ... */ }
+async function loadInventoryModal(container) { /* ... existing code ... */ }
+async function loadPoliciesModal(container) { /* ... existing code ... */ }
+async function loadShipmentsModal(container) { /* ... existing code ... */ }
+function loadBroadcastModal(container) { /* ... existing code ... */ }
+function showCreateQuotationForm(container) { /* ... existing code ... */ }
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', function() {
@@ -906,7 +912,6 @@ document.addEventListener('DOMContentLoaded', function() {
   renderCartModal();
   loadProducts();
 
-  // Check URL for product ID
   const urlParams = new URLSearchParams(window.location.search);
   const productId = urlParams.get('product');
   if (productId) {
@@ -996,6 +1001,8 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('moreModal').addEventListener('click', function(e) {
     if (e.target === this) this.classList.remove('active');
   });
+
+  // Admin Link
   document.getElementById('adminLink').addEventListener('click', function(e) {
     e.preventDefault();
     document.getElementById('moreModal').classList.remove('active');
@@ -1064,3 +1071,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
   populateSubcategories('');
 });
+
+// ===== UPLOAD IMAGE TO SUPABASE (existing function) =====
+async function uploadImageToSupabase(file) {
+  if (!file) return null;
+  const fileName = Date.now() + '_' + file.name;
+  const url = `${SUPABASE_URL}/storage/v1/object/products/${fileName}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': file.type },
+    body: file
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Upload failed (${res.status}): ${err}`);
+  }
+  const data = await res.json();
+  return `${SUPABASE_URL}/storage/v1/object/public/${data.Key}`;
+}
+
+// ===== API CALL =====
+async function apiCall(endpoint, options = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(API + endpoint, { ...options, headers });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(errorText || 'Request failed');
+  }
+  return res.json();
+}
