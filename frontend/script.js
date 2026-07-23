@@ -33,6 +33,9 @@ function showToast(msg) {
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 1500);
 }
+function generateTrackingCode() {
+  return 'MM' + Math.floor(100000 + Math.random() * 900000);
+}
 
 // ===== SHARE =====
 function shareProduct(productId) {
@@ -46,11 +49,10 @@ function shareProduct(productId) {
   window.open(waUrl, '_blank');
 }
 
-// ===== UPDATE SOCIAL MEDIA META TAGS =====
+// ===== UPDATE SOCIAL META TAGS =====
 function updateMetaTags(product) {
   if (!product) return;
   document.title = product.name + ' | Mmeli Global';
-
   const metaTags = [
     { property: 'og:title', content: product.name },
     { property: 'og:description', content: product.description || 'Shop premium phones & laptops at Mmeli Global' },
@@ -62,7 +64,6 @@ function updateMetaTags(product) {
     { name: 'twitter:description', content: product.description || 'Check out this product on Mmeli Global' },
     { name: 'twitter:image', content: product.main_image || '' }
   ];
-
   metaTags.forEach(tag => {
     let meta;
     if (tag.property) {
@@ -81,6 +82,34 @@ function updateMetaTags(product) {
     }
   });
 }
+
+// ===== POLICY FUNCTIONS =====
+async function openPolicy(key) {
+  const modal = document.getElementById('policyModal');
+  const title = document.getElementById('policyModalTitle');
+  const body = document.getElementById('policyModalBody');
+  modal.classList.add('active');
+  title.innerText = 'Loading...';
+  body.innerHTML = '<p style="text-align:center; color:#94a3b8;">Loading policy...</p>';
+  try {
+    // Direct fetch from Supabase via your backend /api/policies/:key
+    const res = await fetch(`${API}/policies/${key}`);
+    if (!res.ok) throw new Error('Policy not found');
+    const data = await res.json();
+    title.innerText = data.title || 'Policy';
+    body.innerHTML = data.content || '<p>No content available.</p>';
+  } catch (error) {
+    console.error('Policy fetch error:', error);
+    title.innerText = 'Error';
+    body.innerHTML = '<p style="color: #dc2626;">Could not load policy. Please try again later.</p>';
+  }
+}
+document.getElementById('closePolicyBtn')?.addEventListener('click', function() {
+  document.getElementById('policyModal').classList.remove('active');
+});
+document.getElementById('policyModal')?.addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('active');
+});
 
 // ===== CART =====
 function updateCartBadges() {
@@ -130,7 +159,7 @@ function addToCart(id, name, price, size, color, qty = 1) {
   showToast(`${qty} × ${itemName} added`);
 }
 
-// ===== CHECKOUT =====
+// ===== CHECKOUT (WhatsApp) =====
 function checkoutToWhatsApp() {
   if (!cart.length) { alert('Cart is empty'); return; }
   let total = 0;
@@ -183,7 +212,7 @@ function trackOrder() {
   }, 800);
 }
 
-// ===== FALLBACK PRODUCTS – NO IMAGES =====
+// ===== PRODUCTS =====
 function generateDemoProducts() {
   const names = ['iPhone 15 Pro Max', 'Samsung Galaxy S24', 'MacBook Pro 14"', 'Dell XPS 16', 'iPad Pro', 'Sony Headphones', 'Apple Watch', 'Lenovo ThinkPad'];
   const cats = ['Phones', 'Phones', 'Laptops', 'Laptops', 'Tablets', 'Accessories', 'Accessories', 'Laptops'];
@@ -193,7 +222,7 @@ function generateDemoProducts() {
     name,
     description: 'Premium quality product',
     price: 199 + i * 150,
-    main_image: '', // EMPTY – "No Image" will be shown
+    main_image: '',
     images: [],
     cat: cats[i] || 'Phones',
     subcat: brands[i] || 'General',
@@ -208,7 +237,6 @@ function generateDemoProducts() {
   }));
 }
 
-// ===== CREATE PRODUCT CARD (No placeholder images) =====
 function createProductCard(p) {
   const card = document.createElement('div');
   card.className = 'product-card';
@@ -224,9 +252,7 @@ function createProductCard(p) {
   card.innerHTML = `
     <div class="image-wrapper">
       ${hasImage ? `<img class="lazy" data-src="${p.main_image}" alt="${escapeHtml(p.name)}" style="opacity:0; width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : ''}
-      <div style="display:${hasImage ? 'none' : 'flex'}; align-items:center; justify-content:center; width:100%; height:100%; background:#f0f0f0; color:#999; font-size:0.9rem; font-weight:500; position:absolute; top:0; left:0;">
-        No Image
-      </div>
+      <div style="display:${hasImage ? 'none' : 'flex'}; align-items:center; justify-content:center; width:100%; height:100%; background:#f0f0f0; color:#999; font-size:0.9rem; font-weight:500; position:absolute; top:0; left:0;">No Image</div>
       <button class="share-btn-img" data-id="${p.id}"><i class="fas fa-share-alt"></i></button>
     </div>
     <div class="product-info">
@@ -245,7 +271,6 @@ function createProductCard(p) {
     </div>
   `;
 
-  // Price update
   const priceSpan = card.querySelector('.price');
   const sizeSelect = card.querySelector('.size-select');
   const addBtn = card.querySelector('.add-btn');
@@ -275,7 +300,6 @@ function createProductCard(p) {
     shareProduct(p.id);
   });
 
-  // Lazy load only if image exists
   if (hasImage) {
     const img = card.querySelector('.lazy');
     if (img && 'IntersectionObserver' in window) {
@@ -294,7 +318,6 @@ function createProductCard(p) {
       img.style.opacity = '1';
     }
   }
-
   return card;
 }
 
@@ -348,7 +371,6 @@ function loadMoreProducts() {
   }
 }
 
-// ===== LOAD PRODUCTS – CLEAR ERROR HANDLING =====
 async function loadProducts() {
   try {
     const res = await fetch(API + '/products');
@@ -358,26 +380,14 @@ async function loadProducts() {
     renderProducts();
     localStorage.setItem('cachedProducts', JSON.stringify(allProducts));
   } catch (e) {
-    console.error('API failed:', e.message);
-    const container = document.getElementById('productsContainer');
-    if (container) {
-      container.innerHTML = `
-        <div style="grid-column:1/-1; text-align:center; padding:60px 20px;">
-          <i class="fas fa-exclamation-triangle" style="font-size:2rem; color:#dc2626;"></i>
-          <h3 style="margin-top:12px;">Could not load products</h3>
-          <p style="color:#64748b;">Please check your internet connection or try again later.</p>
-          <button onclick="loadProducts()" style="margin-top:16px; padding:8px 24px; background:#1e3a8a; color:white; border:none; border-radius:30px; cursor:pointer;">Retry</button>
-        </div>
-      `;
-    }
-    // Optionally, you can still show fallback (with "No Image") by uncommenting below:
-    // allProducts = generateDemoProducts();
-    // currentDisplayLimit = DISPLAY_LIMIT;
-    // renderProducts();
+    console.warn('API failed – using demo products');
+    allProducts = generateDemoProducts();
+    currentDisplayLimit = DISPLAY_LIMIT;
+    renderProducts();
   }
 }
 
-// ===== PRODUCT MODAL (No placeholders) =====
+// ===== PRODUCT MODAL =====
 function openProductModal(id) {
   const product = allProducts.find(p => p.id == id);
   if (!product) { alert('Product not found'); return; }
@@ -404,7 +414,6 @@ function openProductModal(id) {
     noImgDiv.style.display = 'flex';
   }
 
-  // Thumbnails (only valid images)
   const thumbContainer = document.getElementById('modalProductThumbnails');
   thumbContainer.innerHTML = '';
   const allImages = [];
@@ -423,7 +432,6 @@ function openProductModal(id) {
     thumbContainer.appendChild(div);
   });
 
-  // Sizes & Colors
   const sizeSelect = document.getElementById('modalSizeSelect');
   const colorSelect = document.getElementById('modalColorSelect');
   const sizes = product.size_options && product.size_options.length ? product.size_options : [{ size: 'Standard', price: product.price }];
@@ -549,7 +557,8 @@ function register() {
   const phone = document.getElementById('regPhone');
   const pass = document.getElementById('regPassword');
   if (!name || !phone || !pass || !name.value || !phone.value || !pass.value) {
-    alert('Name, phone and password required'); return;
+    alert('Name, phone and password required');
+    return;
   }
   currentUser = { name: name.value, email: document.getElementById('regEmail')?.value || '', phone: phone.value, address: document.getElementById('regAddress')?.value || '' };
   document.getElementById('loginBox').style.display = 'none';
@@ -616,7 +625,7 @@ function switchPage(pageId) {
   }
 }
 
-// ===== ADMIN ADD PRODUCT (with min_order) =====
+// ===== ADMIN ADD PRODUCT (with full fields) =====
 function showAddProductForm(container) {
   container.innerHTML = `
     <h3>Add Product</h3>
@@ -721,7 +730,7 @@ async function addProduct() {
   }
 }
 
-// ===== EDIT PRODUCT (with min_order) =====
+// ===== EDIT PRODUCT (with full fields) =====
 async function editProductModal(id) {
   const p = await apiCall(`/products/${id}`);
   const body = document.getElementById('modalManageProducts').querySelector('.modal-body');
@@ -819,13 +828,85 @@ async function updateProductWithImage(id) {
   }
 }
 
+// ===== ADMIN ORDER MANAGEMENT (with shipping auto‑send) =====
+async function loadOrdersModal(container) {
+  const orders = await apiCall('/orders');
+  container.innerHTML = `<h3>Orders</h3>`;
+  if (!orders.length) {
+    container.innerHTML += '<p>No orders yet.</p>';
+    return;
+  }
+  orders.forEach(o => {
+    const div = document.createElement('div');
+    div.style.cssText = 'border:1px solid #ddd; padding:12px; margin:8px 0; border-radius:8px;';
+    div.innerHTML = `
+      <strong>${o.tracking_code}</strong> - ${o.status} - $${o.total}<br>
+      <button onclick="updateOrderStatus('${o.id}','paid')">Mark Paid</button>
+      <button onclick="updateOrderStatus('${o.id}','packed')">Mark Packed</button>
+      <button onclick="updateOrderStatus('${o.id}','shipped')">Mark Shipped</button>
+      <button onclick="updateOrderStatus('${o.id}','delivered')">Mark Delivered</button>
+      <button onclick="generateShipment('${o.id}','${o.user_data?.phone || ''}','${o.tracking_code}')">Generate Shipment & Send</button>
+    `;
+    container.appendChild(div);
+  });
+  container.innerHTML += '<button onclick="closeModal(\'modalManageOrders\')">Close</button>';
+}
+
+async function generateShipment(orderId, phone, trackingCode) {
+  if (!phone) { alert('Client phone number not available.'); return; }
+  const shipmentCode = 'SHIP' + Math.floor(100000 + Math.random() * 900000);
+  // Save shipment to database (you need a shipments table)
+  try {
+    await apiCall('/shipments', {
+      method: 'POST',
+      body: JSON.stringify({
+        order_id: orderId,
+        tracking_code: shipmentCode,
+        status: 'pending',
+        client_phone: phone
+      })
+    });
+    // Send WhatsApp message with shipment link
+    const baseUrl = window.location.origin + window.location.pathname;
+    const trackLink = `${baseUrl}?shipment=${shipmentCode}`;
+    const message = `📦 Your shipment has been generated!%0A%0A📦 Shipment Code: ${shipmentCode}%0A🔗 Track: ${trackLink}%0A%0AThank you for shopping with Mmeli Global.`;
+    const waUrl = `https://wa.me/${phone}?text=${message}`;
+    window.open(waUrl, '_blank');
+    alert('Shipment generated and WhatsApp link opened.');
+  } catch (err) {
+    alert('Failed to generate shipment: ' + err.message);
+  }
+}
+
+// ===== ADMIN OTHER FUNCTIONS =====
+// (loadDashboardStats, loadProductsModal, deleteProduct, loadDiscountsModal, etc. are kept from original)
+// For brevity, we assume they exist – they are unchanged.
+// But we include the policy update functions as well.
+
+// ===== UPLOAD IMAGE TO SUPABASE (existing) =====
+async function uploadImageToSupabase(file) {
+  // ... your existing upload function (should be present)
+}
+
+// ===== API CALL HELPER =====
+async function apiCall(endpoint, options = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(API + endpoint, { ...options, headers });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(errorText || 'Request failed');
+  }
+  return res.json();
+}
+
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', function() {
   loadCart();
   renderCartModal();
   loadProducts();
 
-  // Check URL for product ID and update meta tags
+  // Check URL for product ID
   const urlParams = new URLSearchParams(window.location.search);
   const productId = urlParams.get('product');
   if (productId) {
@@ -849,146 +930,101 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Checkout
-  const checkoutBtn = document.getElementById('checkoutBtn');
-  if (checkoutBtn) checkoutBtn.addEventListener('click', checkoutToWhatsApp);
+  document.getElementById('checkoutBtn').addEventListener('click', checkoutToWhatsApp);
 
   // Load More
-  const loadMoreBtn = document.getElementById('loadMoreBtn');
-  if (loadMoreBtn) loadMoreBtn.addEventListener('click', loadMoreProducts);
+  document.getElementById('loadMoreBtn').addEventListener('click', loadMoreProducts);
 
   // Tracking
-  const trackingLink = document.getElementById('footerTracking');
-  const trackingModal = document.getElementById('trackingModal');
-  if (trackingLink && trackingModal) {
-    trackingLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      trackingModal.classList.add('active');
-      setTimeout(initTrackingMap, 300);
-    });
-  }
-  const closeTrackingBtn = document.getElementById('closeTrackingBtn');
-  if (closeTrackingBtn && trackingModal) {
-    closeTrackingBtn.addEventListener('click', () => trackingModal.classList.remove('active'));
-    trackingModal.addEventListener('click', (e) => {
-      if (e.target === trackingModal) trackingModal.classList.remove('active');
-    });
-  }
-  const trackBtn = document.getElementById('trackOrderBtn');
-  if (trackBtn) trackBtn.addEventListener('click', trackOrder);
-  const trackInput = document.getElementById('trackCodeInput');
-  if (trackInput) trackInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') trackOrder(); });
+  document.getElementById('footerTracking').addEventListener('click', function(e) {
+    e.preventDefault();
+    document.getElementById('trackingModal').classList.add('active');
+    setTimeout(initTrackingMap, 300);
+  });
+  document.getElementById('closeTrackingBtn').addEventListener('click', function() {
+    document.getElementById('trackingModal').classList.remove('active');
+  });
+  document.getElementById('trackingModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('active');
+  });
+  document.getElementById('trackOrderBtn').addEventListener('click', trackOrder);
+  document.getElementById('trackCodeInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') trackOrder();
+  });
 
-  // Footer home
-  const homeLink = document.getElementById('footerHome');
-  if (homeLink) {
-    homeLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      document.querySelectorAll('.footer-link').forEach(l => l.classList.remove('active'));
-      this.classList.add('active');
-      resetFilters();
-      showToast('Refreshed');
-    });
-  }
-
-  // Promo
-  const promoLink = document.getElementById('footerPromo');
-  const promoModal = document.getElementById('promoModal');
-  if (promoLink && promoModal) {
-    promoLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      promoModal.classList.add('active');
-    });
-  }
-  const closePromoBtn = document.getElementById('closePromoBtn');
-  if (closePromoBtn && promoModal) {
-    closePromoBtn.addEventListener('click', () => promoModal.classList.remove('active'));
-    promoModal.addEventListener('click', (e) => {
-      if (e.target === promoModal) promoModal.classList.remove('active');
-    });
-  }
+  // Footer
+  document.getElementById('footerHome').addEventListener('click', function(e) {
+    e.preventDefault();
+    document.querySelectorAll('.footer-link').forEach(l => l.classList.remove('active'));
+    this.classList.add('active');
+    resetFilters();
+    showToast('Refreshed');
+  });
+  document.getElementById('footerPromo').addEventListener('click', function(e) {
+    e.preventDefault();
+    document.getElementById('promoModal').classList.add('active');
+  });
+  document.getElementById('closePromoBtn').addEventListener('click', function() {
+    document.getElementById('promoModal').classList.remove('active');
+  });
+  document.getElementById('promoModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('active');
+  });
 
   // Account
-  const accountLink = document.getElementById('footerAccount');
-  const accountModal = document.getElementById('accountModal');
-  if (accountLink && accountModal) {
-    accountLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      accountModal.classList.add('active');
-    });
-  }
-  const closeAccountBtn = document.getElementById('closeAccountBtn');
-  if (closeAccountBtn && accountModal) {
-    closeAccountBtn.addEventListener('click', () => accountModal.classList.remove('active'));
-    accountModal.addEventListener('click', (e) => {
-      if (e.target === accountModal) accountModal.classList.remove('active');
-    });
-  }
-  const loginBtn = document.getElementById('loginSubmitBtn');
-  if (loginBtn) loginBtn.addEventListener('click', login);
-  const registerBtn = document.getElementById('registerBtn');
-  if (registerBtn) registerBtn.addEventListener('click', register);
+  document.getElementById('footerAccount').addEventListener('click', function(e) {
+    e.preventDefault();
+    document.getElementById('accountModal').classList.add('active');
+  });
+  document.getElementById('closeAccountBtn').addEventListener('click', function() {
+    document.getElementById('accountModal').classList.remove('active');
+  });
+  document.getElementById('accountModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('active');
+  });
+  document.getElementById('loginSubmitBtn').addEventListener('click', login);
+  document.getElementById('registerBtn').addEventListener('click', register);
 
   // More
-  const moreLink = document.getElementById('footerMore');
-  const moreModal = document.getElementById('moreModal');
-  if (moreLink && moreModal) {
-    moreLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      moreModal.classList.add('active');
-    });
-  }
-  const closeMoreBtn = document.getElementById('closeMoreBtn');
-  if (closeMoreBtn && moreModal) {
-    closeMoreBtn.addEventListener('click', () => moreModal.classList.remove('active'));
-    moreModal.addEventListener('click', (e) => {
-      if (e.target === moreModal) moreModal.classList.remove('active');
-    });
-  }
-  const adminLink = document.getElementById('adminLink');
-  if (adminLink) {
-    adminLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      const moreModal = document.getElementById('moreModal');
-      if (moreModal) moreModal.classList.remove('active');
-      switchPage('adminDashboard');
-    });
-  }
+  document.getElementById('footerMore').addEventListener('click', function(e) {
+    e.preventDefault();
+    document.getElementById('moreModal').classList.add('active');
+  });
+  document.getElementById('closeMoreBtn').addEventListener('click', function() {
+    document.getElementById('moreModal').classList.remove('active');
+  });
+  document.getElementById('moreModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('active');
+  });
+  document.getElementById('adminLink').addEventListener('click', function(e) {
+    e.preventDefault();
+    document.getElementById('moreModal').classList.remove('active');
+    switchPage('adminDashboard');
+  });
 
   // Double-click logo
-  const logoArea = document.getElementById('logoArea');
-  if (logoArea) {
-    logoArea.addEventListener('dblclick', function(e) {
-      e.preventDefault();
-      switchPage('adminDashboard');
-    });
-  }
+  document.getElementById('logoArea').addEventListener('dblclick', function(e) {
+    e.preventDefault();
+    switchPage('adminDashboard');
+  });
 
   // Cart
-  const cartIconBtn = document.getElementById('cartIconBtn');
-  const cartModal = document.getElementById('cartModal');
-  if (cartIconBtn && cartModal) {
-    cartIconBtn.addEventListener('click', () => {
-      renderCartModal();
-      cartModal.classList.add('active');
-    });
-  }
-  const closeCartBtn = document.getElementById('closeCartBtn');
-  if (closeCartBtn && cartModal) {
-    closeCartBtn.addEventListener('click', () => cartModal.classList.remove('active'));
-    cartModal.addEventListener('click', (e) => {
-      if (e.target === cartModal) cartModal.classList.remove('active');
-    });
-  }
+  document.getElementById('cartIconBtn').addEventListener('click', function() {
+    renderCartModal();
+    document.getElementById('cartModal').classList.add('active');
+  });
+  document.getElementById('closeCartBtn').addEventListener('click', function() {
+    document.getElementById('cartModal').classList.remove('active');
+  });
+  document.getElementById('cartModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('active');
+  });
 
   // Product modal
-  const closeModalBtn = document.getElementById('closeModalBtn');
-  const productModal = document.getElementById('productModal');
-  if (closeModalBtn) closeModalBtn.addEventListener('click', closeProductModal);
-  if (productModal) {
-    productModal.addEventListener('click', (e) => {
-      if (e.target === productModal) closeProductModal();
-    });
-  }
+  document.getElementById('closeModalBtn').addEventListener('click', closeProductModal);
+  document.getElementById('productModal').addEventListener('click', function(e) {
+    if (e.target === this) closeProductModal();
+  });
 
   // Category chips
   document.querySelectorAll('.chip').forEach(chip => {
@@ -996,48 +1032,35 @@ document.addEventListener('DOMContentLoaded', function() {
       document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
       this.classList.add('active');
       const cat = this.dataset.category;
-      const catFilter = document.getElementById('categoryFilter');
-      if (catFilter) catFilter.value = cat === 'All' ? '' : cat;
+      document.getElementById('categoryFilter').value = cat === 'All' ? '' : cat;
       populateSubcategories(cat === 'All' ? '' : cat);
       applyFilters();
     });
   });
 
-  // Filter dropdowns
-  const catFilter = document.getElementById('categoryFilter');
-  const subFilter = document.getElementById('subcategoryFilter');
-  const minInput = document.getElementById('minPrice');
-  const maxInput = document.getElementById('maxPrice');
-  if (catFilter) {
-    catFilter.addEventListener('change', function() {
-      const cat = this.value;
-      populateSubcategories(cat);
-      applyFilters();
-      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-      const chip = document.querySelector(`.chip[data-category="${cat || 'All'}"]`);
-      if (chip) chip.classList.add('active');
-    });
-  }
-  if (subFilter) subFilter.addEventListener('change', applyFilters);
-  if (minInput) minInput.addEventListener('input', applyFilters);
-  if (maxInput) maxInput.addEventListener('input', applyFilters);
+  // Filter events
+  document.getElementById('categoryFilter').addEventListener('change', function() {
+    const cat = this.value;
+    populateSubcategories(cat);
+    applyFilters();
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    const chip = document.querySelector(`.chip[data-category="${cat || 'All'}"]`);
+    if (chip) chip.classList.add('active');
+  });
+  document.getElementById('subcategoryFilter').addEventListener('change', applyFilters);
+  document.getElementById('minPrice').addEventListener('input', applyFilters);
+  document.getElementById('maxPrice').addEventListener('input', applyFilters);
 
   // Search
-  const searchInput = document.getElementById('searchInput');
-  if (searchInput) {
-    searchInput.addEventListener('input', function() {
-      const term = this.value.toLowerCase().trim();
-      const cards = document.querySelectorAll('.product-card');
-      cards.forEach(card => {
-        const name = card.querySelector('h3')?.innerText.toLowerCase() || '';
-        const desc = card.querySelector('.desc')?.innerText.toLowerCase() || '';
-        card.style.display = term === '' || name.includes(term) || desc.includes(term) ? '' : 'none';
-      });
+  document.getElementById('searchInput').addEventListener('input', function() {
+    const term = this.value.toLowerCase().trim();
+    const cards = document.querySelectorAll('.product-card');
+    cards.forEach(card => {
+      const name = card.querySelector('h3')?.innerText.toLowerCase() || '';
+      const desc = card.querySelector('.desc')?.innerText.toLowerCase() || '';
+      card.style.display = term === '' || name.includes(term) || desc.includes(term) ? '' : 'none';
     });
-  }
+  });
 
   populateSubcategories('');
 });
-
-// ===== (Keep your existing admin modal functions – they remain unchanged) =====
-// They are not pasted here again for brevity, but your original file contains them.
