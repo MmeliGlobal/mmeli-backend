@@ -623,22 +623,47 @@ function showMyReturns() {
 async function adminLogin() {
   const email = document.getElementById('adminEmail').value.trim();
   const password = document.getElementById('adminPassword').value;
-  if (!email || !password) { alert('Please enter email and password'); return; }
+
+  if (!email || !password) {
+    alert('Please enter email and password');
+    return;
+  }
+
   try {
     const response = await fetch(API + '/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Login failed'); }
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Login failed');
+    }
+
     const data = await response.json();
-    if (!data.user || data.user.role !== 'admin') { throw new Error('Not an admin account. Use admin@mmeliglobal.com'); }
-    token = data.token; user = data.user;
-    localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user));
-    document.getElementById('adminLoginDiv').style.display = 'none';
-    document.getElementById('adminPanel').style.display = 'block';
-    alert('Admin login successful');
-  } catch (err) { alert('Admin login failed: ' + err.message); }
+
+    if (!data.user || data.user.role !== 'admin') {
+      throw new Error('Not an admin account. Use admin@mmeliglobal.com');
+    }
+
+    // Save token and user
+    token = data.token;
+    user = data.user;
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+
+    // Show admin panel
+    const loginDiv = document.getElementById('adminLoginDiv');
+    const panelDiv = document.getElementById('adminPanel');
+
+    if (loginDiv) loginDiv.style.display = 'none';
+    if (panelDiv) panelDiv.style.display = 'block';
+
+    alert('Admin login successful!');
+  } catch (err) {
+    alert('Admin login failed: ' + err.message);
+  }
 }
 
 function switchPage(pageId) {
