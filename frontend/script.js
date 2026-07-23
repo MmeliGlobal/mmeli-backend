@@ -2,13 +2,16 @@
 const SUPABASE_URL = 'https://proljdccjrifqgbmsyco.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb2xqZGNjanJpZnFnYm1zeWNvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTc4ODAxOSwiZXhwIjoyMDkxMzY0MDE5fQ.VltzBUq-bLvu0Ny4jPy1kBp5E-4hffQgqFpqHrRWlZA';
 
-// ===== SAFELY CREATE SUPABASE CLIENT =====
-let supabase = null;
+// ===== SAFELY CREATE SUPABASE CLIENT (rename to avoid conflicts) =====
+let supabaseClient = null;
 try {
   if (typeof window !== 'undefined' && window.supabase) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('✅ Supabase client initialized.');
   } else {
-    supabase = {
+    console.warn('⚠️ Supabase library not loaded – policies will not work.');
+    // Dummy client
+    supabaseClient = {
       from: () => ({
         select: () => ({
           eq: () => ({
@@ -18,7 +21,10 @@ try {
       })
     };
   }
-} catch (e) { supabase = null; }
+} catch (e) {
+  console.error('❌ Failed to initialize Supabase:', e);
+  supabaseClient = null;
+}
 
 // ===== CONFIG =====
 const API = '/api';
@@ -105,7 +111,7 @@ function updateMetaTags(product) {
   });
 }
 
-// ===== POLICY FUNCTIONS =====
+// ===== POLICY FUNCTIONS (using supabaseClient) =====
 async function openPolicy(key) {
   const modal = document.getElementById('policyModal');
   const title = document.getElementById('policyModalTitle');
@@ -116,8 +122,8 @@ async function openPolicy(key) {
   body.innerHTML = '<p style="text-align:center; color:#94a3b8;">Loading policy...</p>';
 
   try {
-    if (!supabase) throw new Error('Supabase client not available.');
-    const { data, error } = await supabase
+    if (!supabaseClient) throw new Error('Supabase client not available.');
+    const { data, error } = await supabaseClient
       .from('policies')
       .select('title, content')
       .eq('key', key)
@@ -905,7 +911,7 @@ async function generateShipment(orderId, phone, trackingCode) {
   }
 }
 
-// ===== ALL ADMIN MODAL FUNCTIONS (stubs) =====
+// ===== ALL ADMIN MODAL FUNCTIONS =====
 async function loadDashboardStats(container) {
   try {
     const stats = await apiCall('/dashboard/stats');
