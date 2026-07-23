@@ -7,26 +7,18 @@ let supabase = null;
 try {
   if (typeof window !== 'undefined' && window.supabase) {
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('✅ Supabase client initialized.');
   } else {
-    console.warn('⚠️ Supabase library not loaded – policies will not work.');
-    // Dummy client that logs errors
     supabase = {
       from: () => ({
         select: () => ({
           eq: () => ({
-            single: async () => {
-              throw new Error('Supabase client not available. Please check the CDN script.');
-            }
+            single: async () => { throw new Error('Supabase client not available.'); }
           })
         })
       })
     };
   }
-} catch (e) {
-  console.error('❌ Failed to initialize Supabase:', e);
-  supabase = null;
-}
+} catch (e) { supabase = null; }
 
 // ===== CONFIG =====
 const API = '/api';
@@ -113,7 +105,7 @@ function updateMetaTags(product) {
   });
 }
 
-// ===== POLICY FUNCTIONS (Fixed – loads from Supabase, safe) =====
+// ===== POLICY FUNCTIONS =====
 async function openPolicy(key) {
   const modal = document.getElementById('policyModal');
   const title = document.getElementById('policyModalTitle');
@@ -125,16 +117,13 @@ async function openPolicy(key) {
 
   try {
     if (!supabase) throw new Error('Supabase client not available.');
-
     const { data, error } = await supabase
       .from('policies')
       .select('title, content')
       .eq('key', key)
       .single();
-
     if (error) throw error;
     if (!data) throw new Error('Policy not found');
-
     title.innerText = data.title || 'Policy';
     body.innerHTML = data.content || '<p>No content available.</p>';
   } catch (error) {
@@ -916,7 +905,7 @@ async function generateShipment(orderId, phone, trackingCode) {
   }
 }
 
-// ===== ALL ADMIN MODAL FUNCTIONS (stubs – safe to call) =====
+// ===== ALL ADMIN MODAL FUNCTIONS (stubs) =====
 async function loadDashboardStats(container) {
   try {
     const stats = await apiCall('/dashboard/stats');
@@ -930,9 +919,7 @@ async function loadDashboardStats(container) {
         <div class="stats-card">📈 Week Revenue<br>$${stats.weekRevenue}</div>
       </div>
       <button onclick="closeModal('modalDashboardStats')">Close</button>`;
-  } catch (e) {
-    container.innerHTML = '<p>Could not load stats.</p>';
-  }
+  } catch (e) { container.innerHTML = '<p>Could not load stats.</p>'; }
 }
 async function loadProductsModal(container) {
   try {
@@ -964,9 +951,7 @@ async function loadProductsModal(container) {
         </div>
       `).join('');
     };
-  } catch (e) {
-    container.innerHTML = '<p>Could not load products.</p>';
-  }
+  } catch (e) { container.innerHTML = '<p>Could not load products.</p>'; }
 }
 async function deleteProduct(id) {
   if (confirm('Delete product?')) {
@@ -975,9 +960,7 @@ async function deleteProduct(id) {
       alert('Product deleted');
       openAdminModal('manageProducts');
       loadProducts();
-    } catch (e) {
-      alert('Delete failed: ' + e.message);
-    }
+    } catch (e) { alert('Delete failed: ' + e.message); }
   }
 }
 async function loadDiscountsModal(container) {
@@ -991,9 +974,7 @@ async function loadDiscountsModal(container) {
         </div>
       `).join('')}</div>
       <button onclick="closeModal('modalDiscounts')">Close</button>`;
-  } catch (e) {
-    container.innerHTML = '<p>Could not load discounts.</p>';
-  }
+  } catch (e) { container.innerHTML = '<p>Could not load discounts.</p>'; }
 }
 function showAddDiscountForm() {
   const body = document.getElementById('modalDiscounts').querySelector('.modal-body');
@@ -1016,9 +997,7 @@ async function addDiscount() {
     await apiCall('/marketing/discounts', { method: 'POST', body: JSON.stringify({ code, type, value, min_order, is_active: true }) });
     alert('Discount added');
     openAdminModal('discounts');
-  } catch (e) {
-    alert('Add failed: ' + e.message);
-  }
+  } catch (e) { alert('Add failed: ' + e.message); }
 }
 async function deleteDiscount(id) {
   if (confirm('Delete discount?')) {
@@ -1039,9 +1018,7 @@ async function loadReturnsModal(container) {
         </div>
       `).join('')}
       <button onclick="closeModal('modalReturns')">Close</button>`;
-  } catch (e) {
-    container.innerHTML = '<p>Could not load returns.</p>';
-  }
+  } catch (e) { container.innerHTML = '<p>Could not load returns.</p>'; }
 }
 async function updateReturnStatus(id, status) {
   try {
@@ -1059,9 +1036,7 @@ async function loadInventoryModal(container) {
         </div>
       `).join('')}
       <button onclick="closeModal('modalInventory')">Close</button>`;
-  } catch (e) {
-    container.innerHTML = '<p>Could not load inventory.</p>';
-  }
+  } catch (e) { container.innerHTML = '<p>Could not load inventory.</p>'; }
 }
 async function updateStock(id) {
   const qty = prompt('New quantity');
@@ -1092,9 +1067,7 @@ async function loadPoliciesModal(container) {
         openAdminModal('managePolicies');
       } catch (e) { alert('Update failed: ' + e.message); }
     };
-  } catch (e) {
-    container.innerHTML = '<p>Could not load policies.</p>';
-  }
+  } catch (e) { container.innerHTML = '<p>Could not load policies.</p>'; }
 }
 async function loadShipmentsModal(container) {
   try {
@@ -1110,9 +1083,7 @@ async function loadShipmentsModal(container) {
         </div>
       `).join('')}</div>
       <button onclick="closeModal('modalManageShipments')">Close</button>`;
-  } catch (e) {
-    container.innerHTML = '<p>Could not load shipments.</p>';
-  }
+  } catch (e) { container.innerHTML = '<p>Could not load shipments.</p>'; }
 }
 function showAddShipmentForm() {
   const body = document.getElementById('modalManageShipments').querySelector('.modal-body');
@@ -1280,7 +1251,6 @@ function showBulkUploadModal(container) {
     <button id="bulkStartBtn" style="display:none;">Start Upload</button>
     <button onclick="closeModal('modalBulkUpload')">Cancel</button>
   `;
-  // Attach listeners
   document.getElementById('bulkFileInput').addEventListener('change', handleBulkFile);
   document.getElementById('bulkStartBtn').addEventListener('click', startBulkUpload);
 }
@@ -1305,7 +1275,6 @@ async function handleBulkFile(e) {
     <div class="mapping-row"><span style="width:120px;">Category</span><select id="bulkMapCat"><option value="">-- Ignore (General) --</option>${cols.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div>
     <div class="mapping-row"><span style="width:120px;">Subcategory</span><select id="bulkMapSubcat"><option value="">-- Ignore (General) --</option>${cols.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div>
   `;
-  // Auto-suggest
   const lowerCols = cols.map(c => c.toLowerCase());
   const nameIdx = lowerCols.findIndex(c => c.includes('name') || c === 'model');
   if (nameIdx !== -1) document.getElementById('bulkMapName').value = cols[nameIdx];
@@ -1415,6 +1384,11 @@ async function apiCall(endpoint, options = {}) {
     throw new Error(errorText || 'Request failed');
   }
   return res.json();
+}
+
+// ===== CLOSE MODAL =====
+function closeModal(modalId) {
+  document.getElementById(modalId).style.display = 'none';
 }
 
 // ===== INIT =====
@@ -1588,8 +1562,3 @@ document.addEventListener('DOMContentLoaded', function() {
 
   populateSubcategories('');
 });
-
-// ===== CLOSE MODAL =====
-function closeModal(modalId) {
-  document.getElementById(modalId).style.display = 'none';
-}
