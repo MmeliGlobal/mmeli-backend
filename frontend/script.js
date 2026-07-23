@@ -2,8 +2,31 @@
 const SUPABASE_URL = 'https://proljdccjrifqgbmsyco.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb2xqZGNjanJpZnFnYm1zeWNvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTc4ODAxOSwiZXhwIjoyMDkxMzY0MDE5fQ.VltzBUq-bLvu0Ny4jPy1kBp5E-4hffQgqFpqHrRWlZA';
 
-// ===== SUPABASE CLIENT (for policies) =====
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// ===== SAFELY CREATE SUPABASE CLIENT =====
+let supabase = null;
+try {
+  if (typeof window !== 'undefined' && window.supabase) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('✅ Supabase client initialized.');
+  } else {
+    console.warn('⚠️ Supabase library not loaded – policies will not work.');
+    // Dummy client that logs errors
+    supabase = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            single: async () => {
+              throw new Error('Supabase client not available. Please check the CDN script.');
+            }
+          })
+        })
+      })
+    };
+  }
+} catch (e) {
+  console.error('❌ Failed to initialize Supabase:', e);
+  supabase = null;
+}
 
 // ===== CONFIG =====
 const API = '/api';
@@ -90,7 +113,7 @@ function updateMetaTags(product) {
   });
 }
 
-// ===== POLICY FUNCTIONS (Fixed – loads from Supabase) =====
+// ===== POLICY FUNCTIONS (Fixed – loads from Supabase, safe) =====
 async function openPolicy(key) {
   const modal = document.getElementById('policyModal');
   const title = document.getElementById('policyModalTitle');
@@ -101,6 +124,8 @@ async function openPolicy(key) {
   body.innerHTML = '<p style="text-align:center; color:#94a3b8;">Loading policy...</p>';
 
   try {
+    if (!supabase) throw new Error('Supabase client not available.');
+
     const { data, error } = await supabase
       .from('policies')
       .select('title, content')
@@ -891,20 +916,506 @@ async function generateShipment(orderId, phone, trackingCode) {
   }
 }
 
-// ===== ADMIN OTHER FUNCTIONS (stubs for completeness) =====
+// ===== ALL ADMIN MODAL FUNCTIONS (stubs – safe to call) =====
 async function loadDashboardStats(container) {
-  const stats = await apiCall('/dashboard/stats');
-  container.innerHTML = `<h3>Dashboard</h3><div class="stats-grid"><div class="stats-card">📦 Orders<br>${stats.totalOrders}</div><div class="stats-card">💰 Revenue<br>$${stats.totalRevenue}</div><div class="stats-card">🛍️ Products<br>${stats.totalProducts}</div><div class="stats-card">👥 Customers<br>${stats.totalUsers}</div><div class="stats-card">📅 Today<br>${stats.todayOrders} orders</div><div class="stats-card">📈 Week Revenue<br>$${stats.weekRevenue}</div></div><button onclick="closeModal('modalDashboardStats')">Close</button>`;
+  try {
+    const stats = await apiCall('/dashboard/stats');
+    container.innerHTML = `<h3>Dashboard</h3>
+      <div class="stats-grid">
+        <div class="stats-card">📦 Orders<br>${stats.totalOrders}</div>
+        <div class="stats-card">💰 Revenue<br>$${stats.totalRevenue}</div>
+        <div class="stats-card">🛍️ Products<br>${stats.totalProducts}</div>
+        <div class="stats-card">👥 Customers<br>${stats.totalUsers}</div>
+        <div class="stats-card">📅 Today<br>${stats.todayOrders} orders</div>
+        <div class="stats-card">📈 Week Revenue<br>$${stats.weekRevenue}</div>
+      </div>
+      <button onclick="closeModal('modalDashboardStats')">Close</button>`;
+  } catch (e) {
+    container.innerHTML = '<p>Could not load stats.</p>';
+  }
 }
-async function loadProductsModal(container) { /* ... existing code ... */ }
-async function deleteProduct(id) { /* ... existing code ... */ }
-async function loadDiscountsModal(container) { /* ... existing code ... */ }
-async function loadReturnsModal(container) { /* ... existing code ... */ }
-async function loadInventoryModal(container) { /* ... existing code ... */ }
-async function loadPoliciesModal(container) { /* ... existing code ... */ }
-async function loadShipmentsModal(container) { /* ... existing code ... */ }
-function loadBroadcastModal(container) { /* ... existing code ... */ }
-function showCreateQuotationForm(container) { /* ... existing code ... */ }
+async function loadProductsModal(container) {
+  try {
+    const products = await apiCall('/products');
+    container.innerHTML = `<h3>Manage Products</h3>
+      <input type="text" id="productSearch" placeholder="Search..." onkeyup="filterProductList()" style="width:100%; margin-bottom:10px;">
+      <div id="productListContainer">${products.map(p => `
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:8px;">
+          <img src="${p.main_image || ''}" width="50" style="border-radius:8px;" onerror="this.style.display='none'">
+          ${p.name} - $${p.price}
+          <div>
+            <button onclick="editProductModal(${p.id})">Edit</button>
+            <button onclick="deleteProduct(${p.id})">Delete</button>
+          </div>
+        </div>
+      `).join('')}</div>
+      <button onclick="closeModal('modalManageProducts')">Close</button>`;
+    window.filterProductList = function() {
+      const term = document.getElementById('productSearch').value.toLowerCase();
+      const filtered = products.filter(p => p.name.toLowerCase().includes(term));
+      document.getElementById('productListContainer').innerHTML = filtered.map(p => `
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:8px;">
+          <img src="${p.main_image || ''}" width="50" onerror="this.style.display='none'">
+          ${p.name} - $${p.price}
+          <div>
+            <button onclick="editProductModal(${p.id})">Edit</button>
+            <button onclick="deleteProduct(${p.id})">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    };
+  } catch (e) {
+    container.innerHTML = '<p>Could not load products.</p>';
+  }
+}
+async function deleteProduct(id) {
+  if (confirm('Delete product?')) {
+    try {
+      await apiCall(`/products/${id}`, { method: 'DELETE' });
+      alert('Product deleted');
+      openAdminModal('manageProducts');
+      loadProducts();
+    } catch (e) {
+      alert('Delete failed: ' + e.message);
+    }
+  }
+}
+async function loadDiscountsModal(container) {
+  try {
+    const discounts = await apiCall('/marketing/discounts');
+    container.innerHTML = `<h3>Discounts</h3>
+      <button onclick="showAddDiscountForm()">+ Add Discount</button>
+      <div id="discountsList">${discounts.map(d => `
+        <div>${d.code} - ${d.type} ${d.value}% - ${d.is_active ? 'Active' : 'Inactive'}
+          <button onclick="deleteDiscount(${d.id})">Delete</button>
+        </div>
+      `).join('')}</div>
+      <button onclick="closeModal('modalDiscounts')">Close</button>`;
+  } catch (e) {
+    container.innerHTML = '<p>Could not load discounts.</p>';
+  }
+}
+function showAddDiscountForm() {
+  const body = document.getElementById('modalDiscounts').querySelector('.modal-body');
+  body.innerHTML = `
+    <h3>Add Discount</h3>
+    <input id="discountCode" placeholder="Code">
+    <select id="discountType"><option value="percentage">%</option><option value="fixed">Fixed</option></select>
+    <input id="discountValue" placeholder="Value">
+    <input id="discountMinOrder" placeholder="Min Order">
+    <button onclick="addDiscount()">Save</button>
+    <button onclick="closeModal('modalDiscounts')">Cancel</button>
+  `;
+}
+async function addDiscount() {
+  const code = document.getElementById('discountCode').value;
+  const type = document.getElementById('discountType').value;
+  const value = parseFloat(document.getElementById('discountValue').value);
+  const min_order = parseFloat(document.getElementById('discountMinOrder').value);
+  try {
+    await apiCall('/marketing/discounts', { method: 'POST', body: JSON.stringify({ code, type, value, min_order, is_active: true }) });
+    alert('Discount added');
+    openAdminModal('discounts');
+  } catch (e) {
+    alert('Add failed: ' + e.message);
+  }
+}
+async function deleteDiscount(id) {
+  if (confirm('Delete discount?')) {
+    try {
+      await apiCall(`/marketing/discounts/${id}`, { method: 'DELETE' });
+      openAdminModal('discounts');
+    } catch (e) { alert('Delete failed: ' + e.message); }
+  }
+}
+async function loadReturnsModal(container) {
+  try {
+    const returns = await apiCall('/returns');
+    container.innerHTML = `<h3>Returns</h3>
+      ${returns.map(r => `
+        <div>Order ${r.order_id}: ${r.status} - ${r.reason}
+          <button onclick="updateReturnStatus(${r.id},'approved')">Approve</button>
+          <button onclick="updateReturnStatus(${r.id},'rejected')">Reject</button>
+        </div>
+      `).join('')}
+      <button onclick="closeModal('modalReturns')">Close</button>`;
+  } catch (e) {
+    container.innerHTML = '<p>Could not load returns.</p>';
+  }
+}
+async function updateReturnStatus(id, status) {
+  try {
+    await apiCall(`/returns/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
+    openAdminModal('returns');
+  } catch (e) { alert('Update failed: ' + e.message); }
+}
+async function loadInventoryModal(container) {
+  try {
+    const inv = await apiCall('/inventory');
+    container.innerHTML = `<h3>Inventory</h3>
+      ${inv.map(i => `
+        <div>${i.products?.name}: ${i.quantity} in ${i.warehouse}
+          <button onclick="updateStock(${i.id})">Update</button>
+        </div>
+      `).join('')}
+      <button onclick="closeModal('modalInventory')">Close</button>`;
+  } catch (e) {
+    container.innerHTML = '<p>Could not load inventory.</p>';
+  }
+}
+async function updateStock(id) {
+  const qty = prompt('New quantity');
+  if (qty !== null) {
+    try {
+      await apiCall(`/inventory/${id}`, { method: 'PUT', body: JSON.stringify({ quantity: parseInt(qty) }) });
+      openAdminModal('inventory');
+    } catch (e) { alert('Update failed: ' + e.message); }
+  }
+}
+async function loadPoliciesModal(container) {
+  try {
+    const policies = await apiCall('/policies');
+    container.innerHTML = `<h3>Policies</h3>
+      ${policies.map(p => `
+        <div>
+          <strong>${p.title}</strong>
+          <textarea id="policy_${p.key}" rows="3">${p.content || ''}</textarea>
+          <button onclick="updatePolicy('${p.key}')">Save</button>
+        </div>
+      `).join('')}
+      <button onclick="closeModal('modalManagePolicies')">Close</button>`;
+    window.updatePolicy = async (key) => {
+      const content = document.getElementById(`policy_${key}`).value;
+      try {
+        await apiCall(`/policies/${key}`, { method: 'PUT', body: JSON.stringify({ content }) });
+        alert('Policy updated');
+        openAdminModal('managePolicies');
+      } catch (e) { alert('Update failed: ' + e.message); }
+    };
+  } catch (e) {
+    container.innerHTML = '<p>Could not load policies.</p>';
+  }
+}
+async function loadShipmentsModal(container) {
+  try {
+    const shipments = await apiCall('/shipments');
+    container.innerHTML = `<h3>Shipments</h3>
+      <button onclick="showAddShipmentForm()">+ Add Shipment</button>
+      <div id="shipmentsList">${shipments.map(s => `
+        <div>
+          <strong>${s.tracking_code}</strong> - ${s.status}<br>
+          Client: ${s.client.name}<br>
+          Receiver: ${s.receiver.name}<br>
+          <button onclick="updateShipmentStatus('${s.id}','shipped')">Mark Shipped</button>
+        </div>
+      `).join('')}</div>
+      <button onclick="closeModal('modalManageShipments')">Close</button>`;
+  } catch (e) {
+    container.innerHTML = '<p>Could not load shipments.</p>';
+  }
+}
+function showAddShipmentForm() {
+  const body = document.getElementById('modalManageShipments').querySelector('.modal-body');
+  body.innerHTML = `
+    <h3>Add Shipment</h3>
+    <div><label>Tracking Code</label><input id="shipTrack"></div>
+    <div><label>Client Name</label><input id="shipClientName"></div>
+    <div><label>Client Phone</label><input id="shipClientPhone"></div>
+    <div><label>Receiver Name</label><input id="shipReceiverName"></div>
+    <div><label>Receiver Phone</label><input id="shipReceiverPhone"></div>
+    <div><label>Pickup Location</label><input id="shipPickup"></div>
+    <div><label>Courier Payment Status</label><select id="shipPaid"><option value="false">Pending</option><option value="true">Paid</option></select></div>
+    <div><label>Package Image</label><input type="file" id="shipImage"></div>
+    <div><label>Notes</label><textarea id="shipNotes"></textarea></div>
+    <button onclick="addShipment()">Save</button>
+    <button onclick="closeModal('modalManageShipments')">Cancel</button>
+  `;
+}
+async function addShipment() {
+  const tracking_code = document.getElementById('shipTrack').value || 'SHIP' + Math.floor(Math.random() * 1000000);
+  const client = { name: document.getElementById('shipClientName').value, phone: document.getElementById('shipClientPhone').value };
+  const receiver = { name: document.getElementById('shipReceiverName').value, phone: document.getElementById('shipReceiverPhone').value };
+  const pickup = document.getElementById('shipPickup').value;
+  const paid = document.getElementById('shipPaid').value === 'true';
+  const notes = document.getElementById('shipNotes').value;
+  const file = document.getElementById('shipImage').files[0];
+  let image = null;
+  const save = async (img) => {
+    try {
+      await apiCall('/shipments', { method: 'POST', body: JSON.stringify({ tracking_code, client, receiver, pickup, notes, image: img, paid, status: 'pending' }) });
+      alert('Shipment added');
+      closeModal('modalManageShipments');
+      openAdminModal('manageShipments');
+    } catch (e) { alert('Add failed: ' + e.message); }
+  };
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = e => save(e.target.result);
+    reader.readAsDataURL(file);
+  } else save(null);
+}
+async function updateShipmentStatus(id) {
+  try {
+    await apiCall(`/shipments/${id}/status`, { method: 'PUT', body: JSON.stringify({ status: 'shipped' }) });
+    openAdminModal('manageShipments');
+  } catch (e) { alert('Update failed: ' + e.message); }
+}
+function loadBroadcastModal(container) {
+  container.innerHTML = `
+    <h3>Broadcast</h3>
+    <textarea id="broadcastMsg" rows="3"></textarea>
+    <button onclick="sendBroadcast()">Generate WhatsApp Link</button>
+    <div id="broadcastResult"></div>
+    <button onclick="closeModal('modalBroadcast')">Close</button>
+  `;
+}
+async function sendBroadcast() {
+  let message = document.getElementById('broadcastMsg').value;
+  if (!message) return alert('Enter message');
+  const fullMessage = `${message}\n\nCheck our website: ${window.location.origin}`;
+  try {
+    const data = await apiCall('/notifications/broadcast', { method: 'POST', body: JSON.stringify({ message: fullMessage }) });
+    document.getElementById('broadcastResult').innerHTML = `<a href="${data.waLink}" target="_blank">Click to send broadcast to ${data.count} subscribers</a>`;
+  } catch (e) { alert('Broadcast failed: ' + e.message); }
+}
+function showCreateQuotationForm(container) {
+  container.innerHTML = `
+    <h3>Create Quotation</h3>
+    <div>Client Name: <input id="qcName"></div>
+    <div>Client Phone: <input id="qcPhone"></div>
+    <div>Client Email: <input id="qcEmail"></div>
+    <div>Address: <input id="qcAddress"></div>
+    <hr>
+    <div id="quoteItems">
+      <div class="quote-item">
+        <input placeholder="Description"> <input placeholder="Qty" size="5"> <input placeholder="Price" size="8">
+      </div>
+    </div>
+    <button onclick="addQuoteItemRow()">+ Add Item</button>
+    <hr>
+    <div>Shipping Cost: <input id="qcShipping" value="0"></div>
+    <div>Discount: <input id="qcDiscount" value="0"></div>
+    <div>Tax %: <input id="qcTax" value="0"></div>
+    <hr>
+    <div><strong>Total: $<span id="qcTotal">0.00</span></strong></div>
+    <button onclick="generateQuoteAndSave()">Generate & Save Quotation</button>
+  `;
+  window.addQuoteItemRow = () => {
+    const div = document.createElement('div');
+    div.className = 'quote-item';
+    div.innerHTML = '<input placeholder="Description"> <input placeholder="Qty" size="5"> <input placeholder="Price" size="8">';
+    document.getElementById('quoteItems').appendChild(div);
+  };
+  window.generateQuoteAndSave = async () => {
+    const client = {
+      name: document.getElementById('qcName').value,
+      phone: document.getElementById('qcPhone').value,
+      email: document.getElementById('qcEmail').value,
+      address: document.getElementById('qcAddress').value
+    };
+    if (!client.phone) { alert('Client phone number is required'); return; }
+    const items = [];
+    document.querySelectorAll('#quoteItems .quote-item').forEach(row => {
+      const desc = row.children[0].value;
+      const qty = parseFloat(row.children[1].value) || 0;
+      const price = parseFloat(row.children[2].value) || 0;
+      if (desc && qty > 0 && price > 0) items.push({ desc, qty, price, subtotal: qty * price });
+    });
+    if (items.length === 0) { alert('Add at least one item'); return; }
+    const subtotal = items.reduce((s, i) => s + i.subtotal, 0);
+    const shipping = parseFloat(document.getElementById('qcShipping').value) || 0;
+    const discount = parseFloat(document.getElementById('qcDiscount').value) || 0;
+    const taxRate = parseFloat(document.getElementById('qcTax').value) || 0;
+    const afterDiscount = subtotal - discount + shipping;
+    const tax = (taxRate / 100) * afterDiscount;
+    const total = afterDiscount + tax;
+    try {
+      const result = await apiCall('/quotations', {
+        method: 'POST',
+        body: JSON.stringify({ client, items, subtotal, discount, shipping, tax_rate: taxRate, total })
+      });
+      alert(`Quotation saved! ${result.new_user_created ? 'Client has been registered and login credentials sent via WhatsApp.' : 'Client notified.'}`);
+      closeModal('modalCreateQuotation');
+    } catch (err) { alert('Failed to create quotation: ' + err.message); }
+  };
+}
+
+// ===== OPEN ADMIN MODAL =====
+function openAdminModal(modalId) {
+  const modal = document.getElementById(`modal${modalId.charAt(0).toUpperCase() + modalId.slice(1)}`);
+  if (!modal) return;
+  const body = modal.querySelector('.modal-body');
+  switch (modalId) {
+    case 'dashboardStats': loadDashboardStats(body); break;
+    case 'manageProducts': loadProductsModal(body); break;
+    case 'addProduct': showAddProductForm(body); break;
+    case 'bulkUpload': showBulkUploadModal(body); break;
+    case 'manageOrders': loadOrdersModal(body); break;
+    case 'discounts': loadDiscountsModal(body); break;
+    case 'returns': loadReturnsModal(body); break;
+    case 'inventory': loadInventoryModal(body); break;
+    case 'managePolicies': loadPoliciesModal(body); break;
+    case 'manageShipments': loadShipmentsModal(body); break;
+    case 'broadcast': loadBroadcastModal(body); break;
+    case 'createQuotation': showCreateQuotationForm(body); break;
+    default: return;
+  }
+  modal.style.display = 'flex';
+}
+
+// ===== BULK UPLOAD MODAL =====
+function showBulkUploadModal(container) {
+  container.innerHTML = `
+    <h3>Bulk Upload</h3>
+    <p>Upload an Excel file (.xlsx or .xls) with columns for product data.</p>
+    <input type="file" id="bulkFileInput" accept=".xlsx,.xls">
+    <div id="bulkMappingArea" style="display:none;"></div>
+    <div id="bulkProgressArea" style="display:none;">
+      <div style="background:#eee; height:20px; border-radius:10px; overflow:hidden;">
+        <div id="bulkProgressFill" style="height:100%; width:0%; background:#4caf50;"></div>
+      </div>
+      <div id="bulkProgressText"></div>
+      <div id="bulkStatusLog" style="max-height:200px; overflow-y:auto; background:#f9f9f9; padding:8px; border-radius:4px;"></div>
+    </div>
+    <button id="bulkStartBtn" style="display:none;">Start Upload</button>
+    <button onclick="closeModal('modalBulkUpload')">Cancel</button>
+  `;
+  // Attach listeners
+  document.getElementById('bulkFileInput').addEventListener('change', handleBulkFile);
+  document.getElementById('bulkStartBtn').addEventListener('click', startBulkUpload);
+}
+let bulkRows = null;
+async function handleBulkFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const data = await file.arrayBuffer();
+  const workbook = XLSX.read(data, { type: 'arraybuffer' });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet);
+  if (!rows.length) { alert('No data found'); return; }
+  bulkRows = rows;
+  const cols = Object.keys(rows[0]);
+  const mappingDiv = document.getElementById('bulkMappingArea');
+  mappingDiv.innerHTML = `
+    <h4>Map Columns</h4>
+    <div class="mapping-row"><span style="width:120px;">Product Name *</span><select id="bulkMapName"><option value="">-- Select --</option>${cols.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div>
+    <div class="mapping-row"><span style="width:120px;">Price *</span><select id="bulkMapPrice"><option value="">-- Select --</option>${cols.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div>
+    <div class="mapping-row"><span style="width:120px;">Description</span><select id="bulkMapDesc"><option value="">-- Ignore --</option>${cols.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div>
+    <div class="mapping-row"><span style="width:120px;">Image URL</span><select id="bulkMapImage"><option value="">-- Ignore --</option>${cols.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div>
+    <div class="mapping-row"><span style="width:120px;">Category</span><select id="bulkMapCat"><option value="">-- Ignore (General) --</option>${cols.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div>
+    <div class="mapping-row"><span style="width:120px;">Subcategory</span><select id="bulkMapSubcat"><option value="">-- Ignore (General) --</option>${cols.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div>
+  `;
+  // Auto-suggest
+  const lowerCols = cols.map(c => c.toLowerCase());
+  const nameIdx = lowerCols.findIndex(c => c.includes('name') || c === 'model');
+  if (nameIdx !== -1) document.getElementById('bulkMapName').value = cols[nameIdx];
+  const priceIdx = lowerCols.findIndex(c => c.includes('price') || c.includes('usd'));
+  if (priceIdx !== -1) document.getElementById('bulkMapPrice').value = cols[priceIdx];
+  const descIdx = lowerCols.findIndex(c => c.includes('description') || c.includes('desc'));
+  if (descIdx !== -1) document.getElementById('bulkMapDesc').value = cols[descIdx];
+  const imgIdx = lowerCols.findIndex(c => c.includes('image') || c.includes('img') || c.includes('url'));
+  if (imgIdx !== -1) document.getElementById('bulkMapImage').value = cols[imgIdx];
+  const catIdx = lowerCols.findIndex(c => c.includes('category'));
+  if (catIdx !== -1) document.getElementById('bulkMapCat').value = cols[catIdx];
+  const subcatIdx = lowerCols.findIndex(c => c.includes('subcategory') || c.includes('subcat'));
+  if (subcatIdx !== -1) document.getElementById('bulkMapSubcat').value = cols[subcatIdx];
+  mappingDiv.style.display = 'block';
+  document.getElementById('bulkStartBtn').style.display = 'block';
+  document.getElementById('bulkProgressArea').style.display = 'none';
+}
+async function startBulkUpload() {
+  const nameCol = document.getElementById('bulkMapName').value;
+  const priceCol = document.getElementById('bulkMapPrice').value;
+  if (!nameCol || !priceCol) { alert('Please map Name and Price columns'); return; }
+  const descCol = document.getElementById('bulkMapDesc').value;
+  const imgCol = document.getElementById('bulkMapImage').value;
+  const catCol = document.getElementById('bulkMapCat').value;
+  const subcatCol = document.getElementById('bulkMapSubcat').value;
+  const products = [];
+  for (const row of bulkRows) {
+    let name = row[nameCol];
+    let price = parseFloat(row[priceCol]);
+    if (!name || isNaN(price)) continue;
+    let description = descCol ? (row[descCol] || '') : '';
+    let main_image = imgCol ? (row[imgCol] || '') : '';
+    let cat = catCol ? (row[catCol] || 'General') : 'General';
+    let subcat = subcatCol ? (row[subcatCol] || 'General') : 'General';
+    products.push({ name, price, description, main_image, cat, subcat });
+  }
+  if (products.length === 0) { alert('No valid products found'); return; }
+  const progressArea = document.getElementById('bulkProgressArea');
+  const fill = document.getElementById('bulkProgressFill');
+  const textDiv = document.getElementById('bulkProgressText');
+  const logDiv = document.getElementById('bulkStatusLog');
+  progressArea.style.display = 'block';
+  logDiv.innerHTML = '';
+  let completed = 0, success = 0, failed = 0;
+  const total = products.length;
+  const concurrency = 5;
+  let idx = 0;
+  function updateProgress() {
+    const percent = (completed / total) * 100;
+    fill.style.width = percent + '%';
+    textDiv.innerText = `${completed}/${total} (${success} ok, ${failed} failed)`;
+  }
+  async function uploadOne(p) {
+    try {
+      const productData = {
+        name: p.name,
+        price: p.price,
+        description: p.description,
+        main_image: p.main_image,
+        cat: p.cat,
+        subcat: p.subcat,
+        colors: [],
+        size_options: [{ size: 'Standard', price: p.price }]
+      };
+      await apiCall('/products', { method: 'POST', body: JSON.stringify(productData) });
+      success++;
+      logDiv.innerHTML += `<div style="color:green;">✅ ${p.name}</div>`;
+    } catch (e) {
+      failed++;
+      logDiv.innerHTML += `<div style="color:red;">❌ ${p.name}: ${e.message}</div>`;
+    } finally {
+      completed++;
+      updateProgress();
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+  }
+  async function worker() { while (idx < total) await uploadOne(products[idx++]); }
+  await Promise.all(Array(concurrency).fill().map(() => worker()));
+  logDiv.innerHTML += `<hr><strong>Done. ${success} added, ${failed} failed.</strong>`;
+}
+
+// ===== UPLOAD IMAGE TO SUPABASE =====
+async function uploadImageToSupabase(file) {
+  if (!file) return null;
+  const fileName = Date.now() + '_' + file.name;
+  const url = `${SUPABASE_URL}/storage/v1/object/products/${fileName}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': file.type },
+    body: file
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Upload failed (${res.status}): ${err}`);
+  }
+  const data = await res.json();
+  return `${SUPABASE_URL}/storage/v1/object/public/${data.Key}`;
+}
+
+// ===== API CALL =====
+async function apiCall(endpoint, options = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(API + endpoint, { ...options, headers });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(errorText || 'Request failed');
+  }
+  return res.json();
+}
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', function() {
@@ -1001,8 +1512,6 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('moreModal').addEventListener('click', function(e) {
     if (e.target === this) this.classList.remove('active');
   });
-
-  // Admin Link
   document.getElementById('adminLink').addEventListener('click', function(e) {
     e.preventDefault();
     document.getElementById('moreModal').classList.remove('active');
@@ -1069,35 +1578,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // Admin card click (for admin cards inside admin panel)
+  document.querySelectorAll('.admin-card').forEach(card => {
+    card.addEventListener('click', function() {
+      const modalId = this.getAttribute('data-modal');
+      if (modalId) openAdminModal(modalId);
+    });
+  });
+
   populateSubcategories('');
 });
 
-// ===== UPLOAD IMAGE TO SUPABASE (existing function) =====
-async function uploadImageToSupabase(file) {
-  if (!file) return null;
-  const fileName = Date.now() + '_' + file.name;
-  const url = `${SUPABASE_URL}/storage/v1/object/products/${fileName}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': file.type },
-    body: file
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Upload failed (${res.status}): ${err}`);
-  }
-  const data = await res.json();
-  return `${SUPABASE_URL}/storage/v1/object/public/${data.Key}`;
-}
-
-// ===== API CALL =====
-async function apiCall(endpoint, options = {}) {
-  const headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(API + endpoint, { ...options, headers });
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(errorText || 'Request failed');
-  }
-  return res.json();
+// ===== CLOSE MODAL =====
+function closeModal(modalId) {
+  document.getElementById(modalId).style.display = 'none';
 }
